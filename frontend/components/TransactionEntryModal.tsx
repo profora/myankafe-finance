@@ -66,7 +66,7 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
     }).catch(e=>setError(e instanceof Error?e.message:String(e)));
   },[open,entity?.PublicID,kind]);
 
-  const eligible=useMemo(()=>accounts.filter(a=>a.Postable&&a.Type===(kind==="INCOME"?"INCOME":"EXPENSE")),[accounts,kind]);
+  const eligible=useMemo(()=>accounts.filter(a=>a.Active&&a.Postable&&a.Type===(kind==="INCOME"?"INCOME":"EXPENSE")),[accounts,kind]);
   const fromFinancial=financial.find(x=>x.PublicID===financialID);
   const toFinancial=financial.find(x=>x.PublicID===toFinancialID);
 
