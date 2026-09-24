@@ -54,6 +54,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		write(w, http.StatusOK, map[string]any{"ok": true})
 	})
+	r.Get("/ready", s.readiness)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(s.bodyLimit)
