@@ -7,7 +7,7 @@ PR: `#1 feat: V1 multi-entity accounting foundation`
 
 ### Backend and database
 
-- PostgreSQL 17 schema and Goose migrations through 00010
+- PostgreSQL 17 schema and Goose migrations through 00011
 - UUIDv7 internal IDs / canonical ULID public IDs
 - multi-entity books and per-entity roles
 - hierarchical Chart of Accounts
@@ -27,10 +27,10 @@ PR: `#1 feat: V1 multi-entity accounting foundation`
 - entity/user/role administration
 - Argon2id username/password credentials
 - opaque database-backed sessions, HttpOnly cookies, Bearer-session support
-- own-password change and OWNER password reset/session revocation
+- own-password change, OWNER password reset, active-session listing/revocation, and sign-out-other-devices
 - login rate limiting and anti-enumeration dummy password verification
 - private Cloudflare R2 transaction attachments
-- multi-file upload, ordered metadata, authenticated content streaming
+- multi-file upload, ordered metadata, reorder, audited soft-removal, and authenticated content streaming
 - searchable/filterable transaction list with journal-derived functional-currency totals and running net
 - database integrity triggers for entity boundaries, balance, lifecycle, locks, FX, and posted immutability
 
@@ -49,8 +49,8 @@ Working Next.js screens/workflows include:
 - inter-entity posting/mapping with attachments on the initiating transaction
 - manual journals with attachments
 - private attachment gallery
-- fullscreen image preview with zoom, keyboard navigation and reset
-- inline PDF preview
+- fullscreen image preview with zoom, pan, keyboard navigation and reset
+- inline PDF, text and CSV preview
 - contacts
 - Chart of Accounts + account-ledger drill-down
 - financial accounts
@@ -116,18 +116,25 @@ Do not merge if CI is red.
    - structured logs/metrics and alerting
 
 4. **Polish without changing accounting semantics**
-   - responsive/mobile navigation (the current sidebar hides below 900px)
+   - mobile navigation drawer is already implemented; do final device QA
    - loading/skeleton states
    - confirmation dialog for accounting unlock
    - richer table sorting/export if desired
    - final accessibility/browser review
    - visual polish of forms and attachment gallery
+   - preserve the supplied Chieftain logo; do not replace it with the old MK placeholder
 
 5. **Optional future integrations**
    - Royal Masterpiece ingestion connector using integration events/external references
    - bank-feed ingestion
    - recurring/budgets (Phase 2)
    - more advanced approvals if needed
+
+## Deployment probes
+
+- `/health` — liveness only
+- `/ready` — PostgreSQL readiness plus attachment-storage configuration state
+- Compose starts the web service only after API readiness is healthy
 
 ## Do not reimplement
 
