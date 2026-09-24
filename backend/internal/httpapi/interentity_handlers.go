@@ -18,7 +18,7 @@ func (s *Server) listInterEntityMappings(w http.ResponseWriter,r *http.Request){
 
 func (s *Server) upsertInterEntityMapping(w http.ResponseWriter,r *http.Request){
 	a:=getAccess(r)
-	if a.Role=="VIEWER"{fail(w,403,errors.New("forbidden"));return}
+	if !requireRole(w,canConfigureAccounting(a.Role),"inter-entity mapping configuration requires OWNER, ADMIN, or ACCOUNTANT"){return}
 	counterparty,_,err:=s.Store.ResolveEntityAccess(r.Context(),a.User.ID,chi.URLParam(r,"counterparty"))
 	if err!=nil{fail(w,403,err);return}
 	var in map[string]string
@@ -43,7 +43,7 @@ func (s *Server) createInterEntityExpense(w http.ResponseWriter,r *http.Request)
 	if err:=json.NewDecoder(r.Body).Decode(&body);err!=nil{fail(w,400,err);return}
 	initEntity,initRole,err:=s.Store.ResolveEntityAccess(r.Context(),u.ID,body.InitiatingEntityID);if err!=nil{fail(w,403,err);return}
 	cpEntity,cpRole,err:=s.Store.ResolveEntityAccess(r.Context(),u.ID,body.CounterpartyEntityID);if err!=nil{fail(w,403,err);return}
-	if initRole=="VIEWER"||cpRole=="VIEWER"{fail(w,403,errors.New("posting access required on both entities"));return}
+	if !canOperateLedger(initRole)||!canOperateLedger(cpRole){fail(w,403,errors.New("ledger operation access required on both entities"));return}
 	v,err:=s.Store.PostInterEntityExpense(r.Context(),u,initEntity,cpEntity,postgres.InterEntityExpenseInput{
 		Date:body.Date,
 		InitiatingFinancialAccountPublicID:body.InitiatingFinancialAccountPublicID,
