@@ -28,6 +28,7 @@ export type FinancialAccount = {
   Currency: string;
   AccountPublicID: string;
   Institution?: string | null;
+  Reference?: string | null;
   Active: boolean;
 };
 
