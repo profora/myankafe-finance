@@ -35,7 +35,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 			r.Use(s.entityAccess)
 			r.Get("/accounts", s.listAccounts)
 			r.Post("/accounts", s.createAccount)
-			r.Get("/financial-accounts", s.listFinancialAccounts)
+			r.Get("/contacts", s.listContacts)\n\t\t\tr.Post("/contacts", s.createContact)\n\n\t\t\tr.Get("/financial-accounts", s.listFinancialAccounts)
 			r.Post("/financial-accounts", s.createFinancialAccount)
 			r.Get("/transactions", s.listTransactions)
 			r.Post("/transactions", s.createTransaction)
