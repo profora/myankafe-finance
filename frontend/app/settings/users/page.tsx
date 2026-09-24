@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 type User={id:string;username:string;display_name:string;email?:string;status:string};
 type Member={id:string;username:string;display_name:string;email?:string;role:string};
@@ -18,6 +19,8 @@ export default function Users(){
   const [assign,setAssign]=useState({user_id:"",role:"BOOKKEEPER"});
   const [reset,setReset]=useState({user_id:"",password:""});
   const [showResetPassword,setShowResetPassword]=useState(false);
+  const [statusTarget,setStatusTarget]=useState<User|null>(null);
+  const [statusBusy,setStatusBusy]=useState(false);
 
   const load=()=>{
     setErr("");
@@ -52,6 +55,19 @@ export default function Users(){
       setMsg("Entity role updated.");
       load();
     }catch(e){setErr(e instanceof Error?e.message:String(e))}
+  }
+
+  async function setUserStatus(){
+    if(!statusTarget)return;
+    const next=statusTarget.status==="ACTIVE"?"DISABLED":"ACTIVE";
+    setStatusBusy(true);setErr("");setMsg("");
+    try{
+      await api(`/users/${statusTarget.id}/status`,{method:"PUT",body:JSON.stringify({status:next})});
+      setMsg(next==="DISABLED"?"User disabled and active sessions revoked.":"User reactivated.");
+      setStatusTarget(null);
+      load();
+    }catch(e){setErr(e instanceof Error?e.message:String(e))}
+    finally{setStatusBusy(false)}
   }
 
   async function resetPassword(){
@@ -150,11 +166,41 @@ export default function Users(){
       </div>
     </div>
 
+    <div className="page-head" style={{marginTop:24}}><div><h1 style={{fontSize:20}}>Platform users</h1><p>Disable access without deleting accounting history or role assignments.</p></div></div>
+    <div className="table-wrap" style={{marginBottom:18}}>
+      <table>
+        <thead><tr><th>User</th><th>Username</th><th>Email</th><th>Status</th><th></th></tr></thead>
+        <tbody>{users.map(x=><tr key={x.id}>
+          <td>{x.display_name}</td>
+          <td>{x.username}</td>
+          <td>{x.email||"—"}</td>
+          <td><span className={`badge ${x.status==="ACTIVE"?"POSTED":"VOIDED"}`}>{x.status}</span></td>
+          <td><button className={x.status==="ACTIVE"?"danger":"secondary"} onClick={()=>setStatusTarget(x)}>{x.status==="ACTIVE"?"Disable":"Reactivate"}</button></td>
+        </tr>)}</tbody>
+      </table>
+    </div>
+
+    <div className="page-head"><div><h1 style={{fontSize:20}}>Access for {entity?.Name}</h1><p>Current active entity-role assignments.</p></div></div>
     <div className="table-wrap">
       <table>
         <thead><tr><th>User</th><th>Username</th><th>Role</th><th>Email</th></tr></thead>
         <tbody>{members.map(x=><tr key={x.id}><td>{x.display_name}</td><td>{x.username}</td><td>{x.role}</td><td>{x.email||"—"}</td></tr>)}</tbody>
       </table>
     </div>
+
+    <ConfirmDialog
+      open={Boolean(statusTarget)}
+      title={statusTarget?.status==="ACTIVE"?"Disable user?":"Reactivate user?"}
+      description={statusTarget?.status==="ACTIVE"
+        ?"The user will be signed out everywhere immediately. Accounting history and entity roles remain intact."
+        :"The user will be allowed to sign in again using their existing password and retained entity roles."}
+      confirmLabel={statusTarget?.status==="ACTIVE"?"Disable user":"Reactivate user"}
+      danger={statusTarget?.status==="ACTIVE"}
+      busy={statusBusy}
+      onCancel={()=>{if(!statusBusy)setStatusTarget(null)}}
+      onConfirm={setUserStatus}
+    >
+      {statusTarget&&<p><strong>{statusTarget.display_name}</strong> · {statusTarget.username}</p>}
+    </ConfirmDialog>
   </>;
 }
