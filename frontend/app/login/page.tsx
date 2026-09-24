@@ -34,7 +34,11 @@ export default function LoginPage(){
 
   return <main className="login-page">
     <div className="login-card">
-      <div className="brand login-brand">MyanKafe <span>Finance</span></div>
+      <div className="login-brand-lockup" aria-label="MyanKafe Finance">
+        <img className="login-brand-mark" src="/brand/logo-head.svg" alt=""/>
+        <img className="login-brand-wordmark" src="/brand/logo-text.svg" alt="MyanKafe"/>
+        <div className="login-brand-subtitle">Finance</div>
+      </div>
       <h1>Sign in</h1>
       <p className="muted">Access is limited to active finance users.</p>
       {expired&&!error&&<div className="alert">Your session expired. Please sign in again.</div>}
