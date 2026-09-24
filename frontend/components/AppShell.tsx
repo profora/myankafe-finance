@@ -14,7 +14,7 @@ const nav = [
   ["/manual-journal", "Manual Journal"],
   ["/reports", "Reports"],
   ["/audit", "Audit Log"],
-  ["/locking", "Transaction Locking"],
+  ["/locking", "Transaction Locking"],\n  ["/settings/entities", "Entities"],\n  ["/settings/users", "Users & Access"],
 ];
 
 function Shell({ children }: { children: React.ReactNode }) {
