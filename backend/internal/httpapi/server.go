@@ -130,6 +130,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 
 				r.Get("/users", s.listEntityUsers)
 				r.Put("/users/role", s.setUserRole)
+				r.Delete("/users/{user}", s.revokeUserEntityAccess)
 
 				r.Get("/audit-events", s.listAuditEvents)
 
