@@ -72,6 +72,8 @@ WITH filtered AS (
 ),
 effects AS (
   SELECT je.transaction_id,
+         COALESCE(SUM(CASE WHEN a.account_type='INCOME' THEN jl.credit_amount-jl.debit_amount ELSE 0 END),0) income_effect,
+         COALESCE(SUM(CASE WHEN a.account_type='EXPENSE' THEN jl.debit_amount-jl.credit_amount ELSE 0 END),0) expense_effect,
          COALESCE(SUM(
            CASE
              WHEN a.account_type='INCOME' THEN jl.credit_amount-jl.debit_amount
@@ -93,8 +95,8 @@ enriched AS (
            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
          ) running_net,
          COUNT(*) OVER() total_count,
-         COALESCE(SUM(CASE WHEN f.transaction_type='INCOME' AND f.status='POSTED' THEN ABS(COALESCE(e.functional_effect,0)) ELSE 0 END) OVER(),0) income_total,
-         COALESCE(SUM(CASE WHEN f.transaction_type='EXPENSE' AND f.status='POSTED' THEN ABS(COALESCE(e.functional_effect,0)) ELSE 0 END) OVER(),0) expense_total,
+         COALESCE(SUM(COALESCE(e.income_effect,0)) OVER(),0) income_total,
+         COALESCE(SUM(COALESCE(e.expense_effect,0)) OVER(),0) expense_total,
          COALESCE(SUM(COALESCE(e.functional_effect,0)) OVER(),0) net_total
   FROM filtered f
   LEFT JOIN effects e ON e.transaction_id=f.id
