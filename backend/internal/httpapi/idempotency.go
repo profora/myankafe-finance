@@ -63,7 +63,7 @@ func isMutation(method string) bool {
 
 func (s *Server) idempotency(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isMutation(r.Method) {
+		if !isMutation(r.Method) || strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "multipart/form-data") {
 			next.ServeHTTP(w, r)
 			return
 		}
