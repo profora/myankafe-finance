@@ -96,8 +96,9 @@ The draft feature PR runs GitHub Actions for:
 - frontend TypeScript typecheck
 - Next.js production build
 - Go module resolution
-- Go tests
+- Go unit and PostgreSQL integration tests
 - fresh Goose migration against PostgreSQL 17
+- production API and non-root web Docker image builds
 
 ## Documentation
 
@@ -107,4 +108,4 @@ The draft feature PR runs GitHub Actions for:
 
 ## Before production merge
 
-Cursor should commit generated dependency lock metadata (`backend/go.sum`, `frontend/package-lock.json`), run `gofmt`, add the PostgreSQL invariant tests listed in the handoff, replace development auth, and switch CI to strict non-mutating format/tidy checks.
+Cursor should commit generated dependency lock metadata (`backend/go.sum`, `frontend/package-lock.json`), run and commit `gofmt`, expand the remaining service-level integration tests listed in the handoff, replace development auth, and switch CI to strict non-mutating format/tidy checks.
