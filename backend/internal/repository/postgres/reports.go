@@ -17,8 +17,12 @@ func (s *Store) Dashboard(ctx context.Context, entityID string, from, to time.Ti
 SELECT fa.public_id::text,fa.name,fa.currency_code,
        COALESCE(SUM(jl.transaction_debit_amount-jl.transaction_credit_amount),0)::text
 FROM financial_accounts fa
-LEFT JOIN journal_lines jl ON jl.financial_account_id=fa.id
-LEFT JOIN journal_entries je ON je.id=jl.journal_entry_id AND je.status IN ('POSTED','REVERSED')
+LEFT JOIN (
+  SELECT jl.*
+  FROM journal_lines jl
+  JOIN journal_entries je ON je.id=jl.journal_entry_id
+  WHERE je.status IN ('POSTED','REVERSED')
+) jl ON jl.financial_account_id=fa.id
 WHERE fa.entity_id=$1 AND fa.active=true
 GROUP BY fa.id,fa.public_id,fa.name,fa.currency_code
 ORDER BY fa.name`, entityID)
@@ -66,8 +70,12 @@ SELECT a.public_id::text,a.code,a.name,a.account_type,
  COALESCE(SUM(jl.debit_amount),0)::text debits,
  COALESCE(SUM(jl.credit_amount),0)::text credits
 FROM accounts a
-LEFT JOIN journal_lines jl ON jl.account_id=a.id
-LEFT JOIN journal_entries je ON je.id=jl.journal_entry_id AND je.status IN ('POSTED','REVERSED') AND je.journal_date <= $2
+LEFT JOIN (
+  SELECT jl.*
+  FROM journal_lines jl
+  JOIN journal_entries je ON je.id=jl.journal_entry_id
+  WHERE je.status IN ('POSTED','REVERSED') AND je.journal_date <= $2
+) jl ON jl.account_id=a.id
 WHERE a.entity_id=$1
 GROUP BY a.id,a.public_id,a.code,a.name,a.account_type
 HAVING COALESCE(SUM(jl.debit_amount),0)<>0 OR COALESCE(SUM(jl.credit_amount),0)<>0
