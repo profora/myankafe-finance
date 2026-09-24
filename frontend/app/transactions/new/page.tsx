@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 import type { Account, FinancialAccount, Transaction } from "@/components/types";
 type Contact={id:string;display_name:string;contact_type:string};
@@ -15,7 +16,7 @@ export default function NewTransaction(){
   const [contacts,setContacts]=useState<Contact[]>([]);
   const [contact,setContact]=useState("");
   const [type,setType]=useState("EXPENSE");
-  const [date,setDate]=useState(new Date().toISOString().slice(0,10));
+  const [date,setDate]=useState(dateInTimeZone(entity?.Timezone??"Asia/Yangon"));
   const [description,setDescription]=useState("");
   const [fa,setFa]=useState("");
   const [splits,setSplits]=useState<Split[]>([{AccountPublicID:"",Amount:"",Description:""}]);
