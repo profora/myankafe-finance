@@ -107,6 +107,8 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 
 				r.Get("/exchange-rates", s.listExchangeRates)
 				r.Post("/exchange-rates", s.createExchangeRate)
+				r.Put("/exchange-rates/{rate}", s.updateExchangeRate)
+				r.Delete("/exchange-rates/{rate}", s.deleteExchangeRate)
 
 				r.Get("/transactions", s.listTransactions)
 				r.Get("/transactions/export.csv", s.exportTransactionsCSV)
