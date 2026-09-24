@@ -185,3 +185,52 @@ INSERT INTO audit_events(
 
 	return tx.Commit(ctx)
 }
+
+
+type UpdateEntitySettingsInput struct {
+	Name        string
+	Timezone    string
+	FiscalMonth int
+	FiscalDay   int
+}
+
+func (s *Store) UpdateEntitySettings(ctx context.Context,actor User,e Entity,in UpdateEntitySettingsInput)(Entity,error){
+	in.Name=strings.TrimSpace(in.Name)
+	in.Timezone=strings.TrimSpace(in.Timezone)
+	if in.Name==""{return Entity{},fmt.Errorf("name is required")}
+	if in.Timezone==""{return Entity{},fmt.Errorf("timezone is required")}
+	if _,err:=time.LoadLocation(in.Timezone);err!=nil{return Entity{},fmt.Errorf("invalid timezone")}
+	if in.FiscalMonth<1||in.FiscalMonth>12{return Entity{},fmt.Errorf("fiscal month must be 1-12")}
+	if in.FiscalDay<1||in.FiscalDay>31{return Entity{},fmt.Errorf("fiscal day must be 1-31")}
+	testDate:=time.Date(2000,time.Month(in.FiscalMonth),in.FiscalDay,0,0,0,0,time.UTC)
+	if int(testDate.Month())!=in.FiscalMonth||testDate.Day()!=in.FiscalDay{
+		return Entity{},fmt.Errorf("invalid fiscal year start date")
+	}
+
+	tx,err:=s.Pool.Begin(ctx);if err!=nil{return Entity{},err}
+	defer tx.Rollback(ctx)
+
+	var out Entity
+	if err:=tx.QueryRow(ctx,`
+UPDATE entities
+SET name=$2,
+    timezone=$3,
+    fiscal_year_start_month=$4,
+    fiscal_year_start_day=$5,
+    updated_at=now()
+WHERE id=$1
+RETURNING id::text,public_id::text,code,name,entity_type,functional_currency_code,
+          timezone,fiscal_year_start_month,fiscal_year_start_day`,
+		e.ID,in.Name,in.Timezone,in.FiscalMonth,in.FiscalDay).
+		Scan(&out.ID,&out.PublicID,&out.Code,&out.Name,&out.Type,&out.FunctionalCurrency,&out.Timezone,&out.FiscalMonth,&out.FiscalDay);err!=nil{
+		return Entity{},err
+	}
+	if err:=insertAuditTx(ctx,tx,actor,out,"ENTITY_SETTINGS_UPDATE","ENTITY",out.PublicID,map[string]any{
+		"name":out.Name,
+		"timezone":out.Timezone,
+		"fiscal_month":out.FiscalMonth,
+		"fiscal_day":out.FiscalDay,
+	});err!=nil{return Entity{},err}
+	if err:=tx.Commit(ctx);err!=nil{return Entity{},err}
+	return out,nil
+}
