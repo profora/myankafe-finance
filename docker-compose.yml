@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-myankafe_finance}
+      POSTGRES_USER: ${POSTGRES_USER:-myankafe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-myankafe_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - finance_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myankafe} -d ${POSTGRES_DB:-myankafe_finance}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: ghcr.io/pressly/goose:3.24.3
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://${POSTGRES_USER:-myankafe}:${POSTGRES_PASSWORD:-myankafe_dev}@db:5432/${POSTGRES_DB:-myankafe_finance}?sslmode=disable
+      GOOSE_MIGRATION_DIR: /migrations
+    volumes:
+      - ./backend/db/migrations:/migrations:ro
+    command: ["up"]
+
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      APP_ENV: development
+      HTTP_ADDR: :8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-myankafe}:${POSTGRES_PASSWORD:-myankafe_dev}@db:5432/${POSTGRES_DB:-myankafe_finance}?sslmode=disable
+      AUTH_MODE: dev
+      CORS_ORIGIN: http://localhost:${WEB_PORT:-3000}
+    ports:
+      - "${API_PORT:-8080}:8080"
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api/v1}
+        NEXT_PUBLIC_DEV_USER_ULID: ${NEXT_PUBLIC_DEV_USER_ULID:-}
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+volumes:
+  finance_pgdata:
