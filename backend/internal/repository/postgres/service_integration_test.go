@@ -8,7 +8,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/profora/myankafe-finance/backend/internal/ids"
