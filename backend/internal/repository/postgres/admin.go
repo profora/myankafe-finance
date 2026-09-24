@@ -72,11 +72,14 @@ func (s *Store) ListUsers(ctx context.Context) ([]map[string]any,error) {
 	return out,rows.Err()
 }
 
-func (s *Store) CreateUser(ctx context.Context, actor User, in CreateUserInput)(map[string]any,error){
+func (s *Store) CreateUser(ctx context.Context, actor User, in CreateUserInput,passwordHash string)(map[string]any,error){
 	if strings.TrimSpace(in.Username)==""||strings.TrimSpace(in.DisplayName)==""{return nil,fmt.Errorf("username and display name are required")}
+	if strings.TrimSpace(passwordHash)==""{return nil,fmt.Errorf("password hash is required")}
+	tx,err:=s.Pool.Begin(ctx);if err!=nil{return nil,err};defer tx.Rollback(ctx)
 	id,_:=ids.UUIDv7();pub,_:=ids.ULID()
-	_,err:=s.Pool.Exec(ctx,`INSERT INTO users(id,public_id,username,display_name,email) VALUES($1,$2,$3,$4,NULLIF($5,''))`,id,pub,in.Username,in.DisplayName,in.Email)
-	if err!=nil{return nil,err}
+	if _,err=tx.Exec(ctx,`INSERT INTO users(id,public_id,username,display_name,email) VALUES($1,$2,$3,$4,NULLIF($5,''))`,id,pub,in.Username,in.DisplayName,in.Email);err!=nil{return nil,err}
+	if _,err=tx.Exec(ctx,`INSERT INTO user_credentials(user_id,password_hash) VALUES($1,$2)`,id,passwordHash);err!=nil{return nil,err}
+	if err=tx.Commit(ctx);err!=nil{return nil,err}
 	_=s.Audit(ctx,actor,nil,"USER_CREATE","USER",&pub,"SUCCESS",map[string]any{"username":in.Username,"display_name":in.DisplayName})
 	return map[string]any{"id":pub,"username":in.Username,"display_name":in.DisplayName,"email":in.Email,"status":"ACTIVE"},nil
 }
