@@ -41,11 +41,11 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app">
       <aside className="sidebar">
-        <Link className="brand brand-lockup" href="/" aria-label="MyanKafe Finance home">
-          <img className="brand-mark" src="/brand/logo-head.svg" alt=""/>
-          <span className="brand-wordmark-wrap">
-            <img className="brand-wordmark" src="/brand/logo-text.svg" alt="MyanKafe"/>
-            <small>Finance</small>
+        <Link className="brand platform-brand" href="/" aria-label="MyanKafe Finance home">
+          <span className="sidebar-brand-mark" aria-hidden>MK</span>
+          <span className="sidebar-brand-text">
+            <strong>MyanKafe</strong>
+            <span>Finance</span>
           </span>
         </Link>
         <nav>
