@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/profora/myankafe-finance/backend/internal/ids"
@@ -43,7 +44,7 @@ func seedServiceEntity(t *testing.T, ctx context.Context, s *Store, suffix strin
 
 	userID := mustUUID(t)
 	userPublic := mustULID(t)
-	username := "svc-" + suffix + "-" + userPublic
+	username := strings.ToLower("svc-" + suffix + "-" + userPublic)
 	if _, err := tx.Exec(ctx, `
 INSERT INTO users(id,public_id,username,display_name)
 VALUES($1,$2,$3,$4)`, userID, userPublic, username, "Service Test User"); err != nil {
