@@ -316,6 +316,146 @@ func TestIdempotencyReleaseAllowsRetry(t *testing.T) {
 	}
 }
 
+func seedTypedAccountCommitted(t *testing.T, ctx context.Context, s *Store, entity Entity, user User, accountType, label string) (string, string) {
+	t.Helper()
+	id := mustUUID(t)
+	publicID := mustULID(t)
+	if _, err := s.Pool.Exec(ctx, `
+INSERT INTO accounts(id,public_id,entity_id,code,name,account_type,is_postable,created_by)
+VALUES($1,$2,$3,$4,$5,$6,true,$7)`,
+		id, publicID, entity.ID, label+"_"+publicID, label, accountType, user.ID); err != nil {
+		t.Fatal(err)
+	}
+	return id, publicID
+}
+
+func seedInterEntityMappings(
+	t *testing.T,
+	ctx context.Context,
+	s *Store,
+	user User,
+	left, right Entity,
+) (leftDueFromID, leftDueToID, rightDueFromID, rightDueToID string) {
+	t.Helper()
+
+	leftDueFromID, _ = seedTypedAccountCommitted(t, ctx, s, left, user, "ASSET", "DUE_FROM")
+	leftDueToID, _ = seedTypedAccountCommitted(t, ctx, s, left, user, "LIABILITY", "DUE_TO")
+	rightDueFromID, _ = seedTypedAccountCommitted(t, ctx, s, right, user, "ASSET", "DUE_FROM")
+	rightDueToID, _ = seedTypedAccountCommitted(t, ctx, s, right, user, "LIABILITY", "DUE_TO")
+
+	if _, err := s.Pool.Exec(ctx, `
+INSERT INTO inter_entity_account_mappings(
+  id,entity_id,counterparty_entity_id,due_from_account_id,due_to_account_id,created_by
+) VALUES
+($1,$2,$3,$4,$5,$6),
+($7,$3,$2,$8,$9,$6)`,
+		mustUUID(t), left.ID, right.ID, leftDueFromID, leftDueToID, user.ID,
+		mustUUID(t), rightDueFromID, rightDueToID); err != nil {
+		t.Fatal(err)
+	}
+
+	return
+}
+
+func TestInterEntityPostingCreatesBalancedPair(t *testing.T) {
+	ctx, s := integrationStore(t)
+	user, left, _, leftFinancial := seedServiceEntity(t, ctx, s, "INTER_LEFT")
+	_, right, rightExpense, _ := seedServiceEntity(t, ctx, s, "INTER_RIGHT")
+
+	leftDueFrom, _, _, rightDueTo := seedInterEntityMappings(t, ctx, s, user, left, right)
+
+	result, err := s.PostInterEntityExpense(ctx, user, left, right, InterEntityExpenseInput{
+		Date:                               "2026-09-24",
+		InitiatingFinancialAccountPublicID: leftFinancial,
+		InitiatingAmount:                   "10000",
+		CounterpartyAmount:                 "10000",
+		CounterpartyExpenseAccountPublicID: rightExpense,
+		Description:                        "Atomic success " + mustULID(t),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["id"] == nil {
+		t.Fatalf("missing inter-entity public id: %+v", result)
+	}
+
+	var dueFromBalance, dueToBalance string
+	if err := s.Pool.QueryRow(ctx, `
+SELECT
+  COALESCE((SELECT SUM(jl.debit_amount-jl.credit_amount)
+            FROM journal_lines jl JOIN journal_entries je ON je.id=jl.journal_entry_id
+            WHERE jl.account_id=$1 AND je.status='POSTED'),0)::text,
+  COALESCE((SELECT SUM(jl.credit_amount-jl.debit_amount)
+            FROM journal_lines jl JOIN journal_entries je ON je.id=jl.journal_entry_id
+            WHERE jl.account_id=$2 AND je.status='POSTED'),0)::text`,
+		leftDueFrom, rightDueTo).Scan(&dueFromBalance, &dueToBalance); err != nil {
+		t.Fatal(err)
+	}
+	if dueFromBalance != "10000.000000" || dueToBalance != "10000.000000" {
+		t.Fatalf("inter-entity balances due-from=%s due-to=%s", dueFromBalance, dueToBalance)
+	}
+}
+
+func TestInterEntityPostingRollsBackAfterLateDatabaseFailure(t *testing.T) {
+	ctx, s := integrationStore(t)
+	user, left, _, leftFinancial := seedServiceEntity(t, ctx, s, "ROLLBACK_LEFT")
+	_, right, rightExpense, _ := seedServiceEntity(t, ctx, s, "ROLLBACK_RIGHT")
+	_, _, _, rightDueTo := seedInterEntityMappings(t, ctx, s, user, left, right)
+
+	const functionName = "test_force_interentity_failure"
+	const triggerName = "trg_test_force_interentity_failure"
+	_, _ = s.Pool.Exec(ctx, "DROP TRIGGER IF EXISTS "+triggerName+" ON journal_lines")
+	_, _ = s.Pool.Exec(ctx, "DROP FUNCTION IF EXISTS "+functionName+"()")
+	t.Cleanup(func() {
+		_, _ = s.Pool.Exec(context.Background(), "DROP TRIGGER IF EXISTS "+triggerName+" ON journal_lines")
+		_, _ = s.Pool.Exec(context.Background(), "DROP FUNCTION IF EXISTS "+functionName+"()")
+	})
+
+	triggerSQL := fmt.Sprintf(`
+CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+BEGIN
+  IF NEW.entity_id = '%s'::uuid AND NEW.account_id = '%s'::uuid THEN
+    RAISE EXCEPTION 'forced late inter-entity test failure';
+  END IF;
+  RETURN NEW;
+END;
+$;
+CREATE TRIGGER %s
+BEFORE INSERT ON journal_lines
+FOR EACH ROW EXECUTE FUNCTION %s();`,
+		functionName, right.ID, rightDueTo, triggerName, functionName)
+	if _, err := s.Pool.Exec(ctx, triggerSQL); err != nil {
+		t.Fatal(err)
+	}
+
+	description := "Atomic rollback " + mustULID(t)
+	if _, err := s.PostInterEntityExpense(ctx, user, left, right, InterEntityExpenseInput{
+		Date:                               "2026-09-24",
+		InitiatingFinancialAccountPublicID: leftFinancial,
+		InitiatingAmount:                   "15000",
+		CounterpartyAmount:                 "15000",
+		CounterpartyExpenseAccountPublicID: rightExpense,
+		Description:                        description,
+	}); err == nil {
+		t.Fatal("expected forced late database failure")
+	}
+
+	var transactions, pairs, journals, lines int
+	if err := s.Pool.QueryRow(ctx, `
+SELECT
+  (SELECT count(*) FROM transactions WHERE description=$1),
+  (SELECT count(*) FROM inter_entity_transactions WHERE description=$1),
+  (SELECT count(*) FROM journal_entries WHERE description=$1),
+  (SELECT count(*) FROM journal_lines WHERE description=$1)`, description).
+		Scan(&transactions, &pairs, &journals, &lines); err != nil {
+		t.Fatal(err)
+	}
+	if transactions != 0 || pairs != 0 || journals != 0 || lines != 0 {
+		t.Fatalf("partial inter-entity data survived rollback: transactions=%d pairs=%d journals=%d lines=%d",
+			transactions, pairs, journals, lines)
+	}
+}
+
 func TestServiceFixtureUniqueness(t *testing.T) {
 	// Small guard against accidentally changing test ID helpers to static values.
 	a, err := ids.ULID()
