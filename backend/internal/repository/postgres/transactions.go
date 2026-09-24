@@ -81,9 +81,10 @@ WHERE t.entity_id=$1 AND t.public_id=$2 FOR UPDATE`,e.ID,pub).Scan(&id,&typ,&sta
   lineNo:=1
   totalFunctional:=new(big.Rat)
   for _,x:=range splits{
-    amt,_:=accounting.ParseAmount(x.amount); f:=new(big.Rat).Mul(amt,rate); totalFunctional.Add(totalFunctional,f)
+    amt,_:=accounting.ParseAmount(x.amount); f:=new(big.Rat).Mul(amt,rate); roundedFunctional:=f.FloatString(6)
+    roundedRat,_:=accounting.ParseAmount(roundedFunctional); totalFunctional.Add(totalFunctional,roundedRat)
     lid,_:=ids.UUIDv7(); td,tc,fd,fc:="0","0","0","0"
-    if typ=="EXPENSE"{td=amt.FloatString(6);fd=f.FloatString(6)}else{tc=amt.FloatString(6);fc=f.FloatString(6)}
+    if typ=="EXPENSE"{td=amt.FloatString(6);fd=roundedFunctional}else{tc=amt.FloatString(6);fc=roundedFunctional}
     if _,err:=tx.Exec(ctx,`INSERT INTO journal_lines(id,journal_entry_id,entity_id,line_no,account_id,description,transaction_currency_code,transaction_debit_amount,transaction_credit_amount,functional_currency_code,fx_rate_to_functional,debit_amount,credit_amount,exchange_rate_id)
 VALUES($1,$2,$3,$4,$5,NULLIF($6,''),$7,$8,$9,$10,$11,$12,$13,$14)`,lid,jid,e.ID,lineNo,x.aid,x.desc,currency,td,tc,e.FunctionalCurrency,rate.FloatString(12),fd,fc,rateID);err!=nil{return Transaction{},err};lineNo++
   }
