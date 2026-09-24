@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -233,12 +234,31 @@ func (s *Server) createFinancialAccount(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) listTransactions(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
-	v, err := s.Store.ListTransactions(r.Context(), a.Entity.ID)
+	q:=r.URL.Query()
+	limit,_:=strconv.Atoi(q.Get("limit"))
+	offset,_:=strconv.Atoi(q.Get("offset"))
+	status:=q.Get("status")
+	switch status{case "","DRAFT","POSTED","VOIDED":default:fail(w,400,errors.New("invalid status filter"));return}
+	typ:=q.Get("type")
+	switch typ{
+	case "","INCOME","EXPENSE","ACCOUNT_TRANSFER","INTER_ENTITY","MANUAL_JOURNAL","ADJUSTMENT","REVERSAL":
+	default:fail(w,400,errors.New("invalid type filter"));return
+	}
+	v, err := s.Store.ListTransactionsFiltered(r.Context(), a.Entity.ID, postgres.TransactionListFilter{
+		Search:q.Get("q"),
+		Status:status,
+		Type:typ,
+		From:q.Get("from"),
+		To:q.Get("to"),
+		FinancialAccountID:q.Get("financial_account_id"),
+		Limit:limit,
+		Offset:offset,
+	})
 	if err != nil {
 		fail(w, http.StatusInternalServerError, err)
 		return
 	}
-	write(w, http.StatusOK, map[string]any{"items": v})
+	write(w, http.StatusOK, v)
 }
 
 func (s *Server) createTransaction(w http.ResponseWriter, r *http.Request) {
