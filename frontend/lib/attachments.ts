@@ -35,6 +35,7 @@ export function formatAttachmentSize(bytes:number){
 export function previewKind(mime:string){
   if(mime.startsWith("image/"))return "image";
   if(mime==="application/pdf")return "pdf";
+  if(mime==="text/plain"||mime==="text/csv")return "text";
   return "file";
 }
 
