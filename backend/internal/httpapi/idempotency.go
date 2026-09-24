@@ -95,7 +95,7 @@ func (s *Server) idempotency(next http.Handler) http.Handler {
 			return
 		}
 
-		scope := p.PublicID + ":" + r.Method + ":" + r.URL.Path
+		scope := p.PublicID + ":" + r.Method + ":" + r.URL.RequestURI()
 		claimed, existing, err := s.Store.ClaimIdempotency(r.Context(), scope, key, requestHash)
 		if err != nil {
 			fail(w, http.StatusInternalServerError, err)
@@ -123,6 +123,9 @@ func (s *Server) idempotency(next http.Handler) http.Handler {
 
 		rec := newCaptureWriter()
 		next.ServeHTTP(rec, r)
+		if rec.status == 0 {
+			rec.status = http.StatusOK
+		}
 
 		if rec.status >= http.StatusInternalServerError {
 			_ = s.Store.ReleaseIdempotency(r.Context(), scope, key)
