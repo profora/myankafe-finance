@@ -1,23 +1,26 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 export default function LoginPage(){
   const router=useRouter();
-  const params=useSearchParams();
   const [username,setUsername]=useState("");
   const [password,setPassword]=useState("");
   const [showPassword,setShowPassword]=useState(false);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
 
-  const expired=useMemo(()=>params.get("expired")==="1",[params]);
-  const next=useMemo(()=>{
+  const [expired,setExpired]=useState(false);
+  const [next,setNext]=useState("/");
+
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    setExpired(params.get("expired")==="1");
     const raw=params.get("next");
-    return raw&&raw.startsWith("/")&&!raw.startsWith("//")?raw:"/";
-  },[params]);
+    if(raw&&raw.startsWith("/")&&!raw.startsWith("//"))setNext(raw);
+  },[]);
 
   async function submit(e:FormEvent){
     e.preventDefault();
