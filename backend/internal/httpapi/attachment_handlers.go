@@ -41,6 +41,7 @@ func (s *Server) uploadTransactionAttachments(w http.ResponseWriter,r *http.Requ
 		fail(w,http.StatusBadRequest,fmt.Errorf("invalid multipart upload: %w",err))
 		return
 	}
+	defer r.MultipartForm.RemoveAll()
 	files:=r.MultipartForm.File["files"]
 	if len(files)==0{fail(w,400,errors.New("at least one file is required"));return}
 	if len(files)>maxAttachmentsPerUpload{fail(w,400,fmt.Errorf("at most %d files may be uploaded at once",maxAttachmentsPerUpload));return}
