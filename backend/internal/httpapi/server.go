@@ -83,6 +83,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 			r.Route("/entities/{entity}", func(r chi.Router) {
 				r.Use(s.entityAccess)
 
+				r.Put("/", s.updateEntitySettings)
 				r.Get("/dashboard", s.dashboard)
 				r.Get("/reports/profit-loss", s.profitLoss)
 				r.Get("/reports/trial-balance", s.trialBalance)
