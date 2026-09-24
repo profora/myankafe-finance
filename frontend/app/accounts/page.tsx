@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
@@ -36,6 +37,6 @@ export default function Accounts() {
       </div>
       <button disabled={!form.Code||!form.Name} onClick={create}>Create account</button>
     </div>
-    <div className="table-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Subtype</th><th>Posting</th></tr></thead><tbody>{items.map(a=><tr key={a.PublicID}><td>{a.Code}</td><td>{a.Name}</td><td>{a.Type}</td><td>{a.Subtype??"—"}</td><td>{a.Postable?"Yes":"Header"}</td></tr>)}</tbody></table></div>
+    <div className="table-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Subtype</th><th>Posting</th></tr></thead><tbody>{items.map(a=><tr key={a.PublicID}><td><Link className="table-link" href={`/accounts/${a.PublicID}/ledger`}>{a.Code}</Link></td><td><Link className="table-link" href={`/accounts/${a.PublicID}/ledger`}>{a.Name}</Link></td><td>{a.Type}</td><td>{a.Subtype??"—"}</td><td>{a.Postable?"Yes":"Header"}</td></tr>)}</tbody></table></div>
   </>;
 }
