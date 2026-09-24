@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { clearDevUser, logout } from "@/lib/api";
+import { api } from "@/lib/api";
 import { EntityProvider, useEntity } from "./EntityContext";
 
 const nav = [
   ["/", "Dashboard"],
   ["/transactions", "Transactions"],
-  ["/transactions/new", "New Entry"],
   ["/transfers", "Transfers"],
   ["/inter-entity", "Inter-Entity"],
   ["/contacts", "Contacts"],
@@ -21,15 +21,20 @@ const nav = [
   ["/locking", "Transaction Locking"],
   ["/settings/entities", "Entities"],
   ["/settings/users", "Users & Access"],
+  ["/settings/security", "Security"],
 ];
+
+type Me={user:{public_id:string;username:string;display_name:string}};
 
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { entities, entity, setEntityID, error } = useEntity();
+  const [me,setMe]=useState<Me["user"]|null>(null);
+
+  useEffect(()=>{api<Me>("/auth/me").then(x=>setMe(x.user)).catch(()=>{})},[]);
 
   async function signOut(){
-    try { await logout(); } catch {}
-    clearDevUser();
+    try { await api("/auth/logout",{method:"POST",body:"{}"}); } catch {}
     window.location.assign("/login");
   }
 
@@ -39,7 +44,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className="brand">MyanKafe <span>Finance</span></div>
         <nav>
           {nav.map(([href, label]) => (
-            <Link key={href} className={pathname === href ? "active" : ""} href={href}>{label}</Link>
+            <Link key={href} className={pathname === href || (href!=="/"&&pathname.startsWith(href+"/")) ? "active" : ""} href={href}>{label}</Link>
           ))}
         </nav>
         <div className="sidebar-note">
@@ -55,7 +60,11 @@ function Shell({ children }: { children: React.ReactNode }) {
             </select>
           </div>
           <div className="actions">
-            <div className="top-meta">{entity ? `${entity.FunctionalCurrency} · FY ${entity.FiscalMonth}/${entity.FiscalDay}` : "No entity"}</div>
+            <div className="top-meta">
+              {me&&<strong>{me.display_name}</strong>}
+              {me&&entity&&" · "}
+              {entity ? `${entity.FunctionalCurrency} · FY ${entity.FiscalMonth}/${entity.FiscalDay}` : "No entity"}
+            </div>
             <button className="secondary" onClick={signOut}>Sign out</button>
           </div>
         </header>
