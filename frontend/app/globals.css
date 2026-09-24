@@ -34,3 +34,5 @@
   .topbar select{min-width:0;max-width:48vw}
   .top-meta{display:none}
 }
+
+.attachment-viewer-stage img.zoomed{cursor:grab;touch-action:none}.attachment-viewer-stage img.zoomed.dragging{cursor:grabbing;transition:none}
