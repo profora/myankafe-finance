@@ -60,10 +60,11 @@ Bootstrap the first owner and the three default entities:
 
 ```bash
 docker compose run --rm \
+  --entrypoint bootstrap \
   -e BOOTSTRAP_USERNAME=owner \
   -e BOOTSTRAP_DISPLAY_NAME="Owner" \
   -e BOOTSTRAP_ENTITIES=true \
-  api bootstrap
+  api
 ```
 
 The command prints an `owner_public_id`. Put it in `.env` as:
