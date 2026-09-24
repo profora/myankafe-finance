@@ -57,3 +57,18 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
           NEXT_PUBLIC_DEV_USER_ULID: 01ARZ3NDEKTSV4RRFFQ69G5FAV
         run: npm run build
+
+  containers:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -t myankafe-finance-api:ci ./backend
+      - name: Build web image
+        run: >-
+          docker build
+          --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+          --build-arg NEXT_PUBLIC_DEV_USER_ULID=01ARZ3NDEKTSV4RRFFQ69G5FAV
+          -t myankafe-finance-web:ci
+          ./frontend
