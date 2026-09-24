@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"strings"
 
 	"github.com/profora/myankafe-finance/backend/internal/config"
 	"github.com/profora/myankafe-finance/backend/internal/ids"
@@ -36,7 +37,7 @@ func seedHTTPRole(t *testing.T, store *postgres.Store, role string) (string, str
 	if _, err := store.Pool.Exec(ctx, `
 INSERT INTO users(id,public_id,username,display_name)
 VALUES($1,$2,$3,$4)`,
-		userID, userPublic, "auth-"+role+"-"+userPublic, role+" Test User"); err != nil {
+		userID, userPublic, strings.ToLower("auth-"+role+"-"+userPublic), role+" Test User"); err != nil {
 		t.Fatal(err)
 	}
 
