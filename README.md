@@ -10,6 +10,8 @@ Private multi-entity, multi-currency double-entry finance platform for MyanKafe,
 - Next.js 15 + React 19 + TypeScript
 - UUIDv7 internal relational IDs
 - canonical ULID public IDs
+- Argon2id username/password authentication with opaque database-backed sessions
+- Cloudflare R2 private attachment storage
 - Docker Compose
 - GitHub Actions CI
 
@@ -27,15 +29,19 @@ Private multi-entity, multi-currency double-entry finance platform for MyanKafe,
 - atomic inter-entity due-to/due-from posting
 - accounting period locking with OWNER-only unlock
 - reversal-based correction of posted accounting
-- append-only audit history
+- append-only business/request/auth audit history
 - mutation idempotency using `Idempotency-Key`
+- username/password login, logout, password change, owner password reset, session revocation
 - entity dashboard and all-entity management dashboard
+- searchable/filterable transaction list with functional-currency summaries and filtered running net
+- multi-action New Transaction menu for income, expense, transfer, manual journal, and inter-entity entry
 - transaction/journal detail inspection and account-ledger drill-down
+- multiple private R2 attachments per transaction
+- authenticated image/PDF attachment preview; fullscreen image viewer with zoom and keyboard navigation
 - P&L, Balance Sheet, Trial Balance, General Ledger, Account Ledger, cash movement, and inter-entity balances
-- report ranges default to each entity's configured fiscal year
 - entity-timezone-aware date defaults
 - entity/user/role administration
-- database-level entity-boundary and posted-immutability guards
+- database-level entity-boundary, lifecycle, lock, FX, and posted-immutability guards
 
 ## Accounting invariants
 
@@ -53,10 +59,17 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full rules.
 
 ## Local development
 
+Copy the environment template and set a real development owner password:
+
 ```bash
 cp .env.example .env
+# Edit BOOTSTRAP_PASSWORD in .env; minimum 12 characters.
+```
+
+Start PostgreSQL and run migrations:
+
+```bash
 docker compose up -d db migrate
-docker compose up -d api
 ```
 
 Bootstrap the first owner and the three default entities:
@@ -66,42 +79,65 @@ docker compose run --rm \
   --entrypoint bootstrap \
   -e BOOTSTRAP_USERNAME=owner \
   -e BOOTSTRAP_DISPLAY_NAME="Owner" \
+  -e BOOTSTRAP_PASSWORD="$BOOTSTRAP_PASSWORD" \
   -e BOOTSTRAP_ENTITIES=true \
   api
 ```
 
-The command prints an `owner_public_id`. Put it in `.env` as:
+Then start the application:
 
 ```bash
-NEXT_PUBLIC_DEV_USER_ULID=<owner-ulid>
+docker compose up -d api web
 ```
 
-Then start the web app:
+Open `http://localhost:3000/login` and sign in with the bootstrap username/password.
 
-```bash
-docker compose up -d web
-```
+### R2 attachments
 
-Open `http://localhost:3000`.
-
-Development authentication uses:
+Configure a private Cloudflare R2 bucket in `.env`:
 
 ```text
-Authorization: Bearer dev:<USER_ULID>
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+R2_BUCKET=<private-bucket-name>
+R2_REGION=auto
+R2_ACCESS_KEY_ID=<access-key>
+R2_SECRET_ACCESS_KEY=<secret>
+ATTACHMENT_MAX_MB=20
 ```
 
-`AUTH_MODE=dev` is rejected when `APP_ENV=production`. Production authentication must be wired before release.
+R2 credentials remain backend-only. The browser uploads and previews attachments through authenticated finance API endpoints; it never receives R2 credentials.
+
+If R2 is not configured, accounting still works, but attachment upload/content endpoints return service unavailable.
+
+## Authentication
+
+Normal mode is `AUTH_MODE=password`.
+
+- passwords are Argon2id hashes
+- raw session tokens are opaque random values
+- only SHA-256 session-token hashes are stored
+- web sessions use HttpOnly cookies
+- Bearer session tokens are supported for future native clients
+- changing a password revokes old sessions
+- OWNER password reset revokes all sessions for the target user
+- production refuses `AUTH_MODE=dev`
+- production requires secure cookies
+
+The legacy development ULID bearer path exists only when `AUTH_MODE=dev` is explicitly selected; the web UI no longer uses it.
 
 ## Validation
 
-The draft feature PR runs GitHub Actions for:
+The draft feature PR validates:
 
 - frontend TypeScript typecheck
 - Next.js production build
 - Go module resolution
-- Go unit and PostgreSQL integration tests
 - fresh Goose migration against PostgreSQL 17
-- production API and non-root web Docker image builds
+- Go unit and PostgreSQL integration tests
+- production API Docker image build
+- production non-root web Docker image build
+
+Tests cover core ledger invariants, authorization, idempotency, reversal, inter-entity atomicity, transaction running totals, attachment metadata ordering, password hashing/session tokens, and R2 signing helpers.
 
 ## Documentation
 
@@ -111,4 +147,9 @@ The draft feature PR runs GitHub Actions for:
 
 ## Before production merge
 
-Cursor should commit generated dependency lock metadata (`backend/go.sum`, `frontend/package-lock.json`), run and commit `gofmt`, expand the remaining service-level integration tests listed in the handoff, replace development auth, and switch CI to strict non-mutating format/tidy checks.
+Cursor should still:
+- commit generated dependency lock metadata (`backend/go.sum`, `frontend/package-lock.json`)
+- run and commit final `gofmt`, then make format/tidy CI checks non-mutating
+- validate against the real production R2 bucket and credentials
+- configure production secrets, TLS/reverse proxy, PostgreSQL backups/PITR, and observability
+- perform final responsive/accessibility/browser polish and deployment validation
