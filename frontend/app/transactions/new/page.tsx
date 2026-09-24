@@ -47,7 +47,7 @@ export default function NewTransaction(){
   },[entity]);
 
   const selectedFA=financial.find(x=>x.PublicID===fa);
-  const eligible=accounts.filter(x=>x.Postable&&x.Type===type);
+  const eligible=accounts.filter(x=>x.Active&&x.Postable&&x.Type===type);
   const total=useMemo(()=>splits.reduce((n,x)=>n+(Number(x.Amount)||0),0),[splits]);
 
   function update(i:number,key:keyof Split,value:string){setSplits(xs=>xs.map((x,n)=>n===i?{...x,[key]:value}:x))}
