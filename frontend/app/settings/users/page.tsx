@@ -16,6 +16,8 @@ export default function Users(){
   const [showPassword,setShowPassword]=useState(false);
   const [f,setF]=useState({Username:"",DisplayName:"",Email:"",Password:""});
   const [assign,setAssign]=useState({user_id:"",role:"BOOKKEEPER"});
+  const [reset,setReset]=useState({user_id:"",password:""});
+  const [showResetPassword,setShowResetPassword]=useState(false);
 
   const load=()=>{
     setErr("");
@@ -49,6 +51,20 @@ export default function Users(){
       await api(`/entities/${entity.PublicID}/users/role`,{method:"PUT",body:JSON.stringify(assign)});
       setMsg("Entity role updated.");
       load();
+    }catch(e){setErr(e instanceof Error?e.message:String(e))}
+  }
+
+  async function resetPassword(){
+    if(!reset.user_id||reset.password.length<12)return;
+    setErr("");setMsg("");
+    try{
+      await api(`/users/${reset.user_id}/reset-password`,{
+        method:"POST",
+        body:JSON.stringify({new_password:reset.password}),
+      });
+      setMsg("Password reset. All existing sessions for that user were revoked.");
+      setReset(v=>({...v,password:""}));
+      setShowResetPassword(false);
     }catch(e){setErr(e instanceof Error?e.message:String(e))}
   }
 
@@ -106,6 +122,31 @@ export default function Users(){
           </select>
         </div>
         <button disabled={!assign.user_id||!entity} onClick={setRole}>Set entity role</button>
+      </div>
+
+      <div className="card form">
+        <h3>Reset user password</h3>
+        <p className="muted">OWNER only. Resetting a password immediately revokes all existing sessions for that user.</p>
+        <div className="field">
+          <label>User</label>
+          <select value={reset.user_id} onChange={e=>setReset({...reset,user_id:e.target.value})}>
+            {users.map(x=><option key={x.id} value={x.id}>{x.display_name} · {x.username}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>New password</label>
+          <div className="password-field">
+            <input
+              type={showResetPassword?"text":"password"}
+              autoComplete="new-password"
+              value={reset.password}
+              onChange={e=>setReset({...reset,password:e.target.value})}
+              placeholder="At least 12 characters"
+            />
+            <button type="button" className="secondary compact" onClick={()=>setShowResetPassword(x=>!x)}>{showResetPassword?"Hide":"Show"}</button>
+          </div>
+        </div>
+        <button className="danger" disabled={!reset.user_id||reset.password.length<12} onClick={resetPassword}>Reset password & revoke sessions</button>
       </div>
     </div>
 
