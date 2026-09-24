@@ -109,3 +109,80 @@ WHERE t.entity_id=$1 AND t.public_id=$2 AND ta.public_id=$3 AND ta.deleted_at IS
 		Scan(&out.PublicID,&out.StorageKey,&out.OriginalFilename,&out.MimeType,&out.SizeBytes)
 	return out,err
 }
+
+
+func (s *Store) SoftDeleteTransactionAttachment(ctx context.Context,user User,e Entity,transactionPublicID,attachmentPublicID string)(AttachmentObject,error){
+	tx,err:=s.Pool.Begin(ctx);if err!=nil{return AttachmentObject{},err}
+	defer tx.Rollback(ctx)
+
+	var out AttachmentObject
+	err=tx.QueryRow(ctx,`
+SELECT ta.public_id::text,ta.storage_key,ta.original_filename,ta.mime_type,ta.size_bytes
+FROM transaction_attachments ta
+JOIN transactions t ON t.id=ta.transaction_id
+WHERE t.entity_id=$1 AND t.public_id=$2 AND ta.public_id=$3 AND ta.deleted_at IS NULL
+FOR UPDATE`,e.ID,transactionPublicID,attachmentPublicID).
+		Scan(&out.PublicID,&out.StorageKey,&out.OriginalFilename,&out.MimeType,&out.SizeBytes)
+	if err!=nil{return AttachmentObject{},err}
+
+	if _,err=tx.Exec(ctx,`
+UPDATE transaction_attachments
+SET deleted_at=now(),deleted_by=$4
+WHERE transaction_id=(SELECT id FROM transactions WHERE entity_id=$1 AND public_id=$2)
+  AND public_id=$3 AND deleted_at IS NULL`,
+		e.ID,transactionPublicID,attachmentPublicID,user.ID);err!=nil{return AttachmentObject{},err}
+	if err:=insertAuditTx(ctx,tx,user,e,"TRANSACTION_ATTACHMENT_DELETE","TRANSACTION",transactionPublicID,map[string]any{
+		"attachment_id":attachmentPublicID,
+		"filename":out.OriginalFilename,
+	});err!=nil{return AttachmentObject{},err}
+	if err:=tx.Commit(ctx);err!=nil{return AttachmentObject{},err}
+	return out,nil
+}
+
+func (s *Store) ReorderTransactionAttachments(ctx context.Context,user User,e Entity,transactionPublicID string,attachmentPublicIDs []string) error {
+	tx,err:=s.Pool.Begin(ctx);if err!=nil{return err}
+	defer tx.Rollback(ctx)
+
+	var transactionID string
+	if err:=tx.QueryRow(ctx,`
+SELECT id::text FROM transactions WHERE entity_id=$1 AND public_id=$2 FOR UPDATE`,
+		e.ID,transactionPublicID).Scan(&transactionID);err!=nil{return err}
+
+	rows,err:=tx.Query(ctx,`
+SELECT public_id::text
+FROM transaction_attachments
+WHERE transaction_id=$1 AND deleted_at IS NULL
+ORDER BY display_order,created_at,public_id
+FOR UPDATE`,transactionID)
+	if err!=nil{return err}
+	active:=[]string{}
+	for rows.Next(){var id string;if err:=rows.Scan(&id);err!=nil{rows.Close();return err};active=append(active,id)}
+	rows.Close()
+	if err:=rows.Err();err!=nil{return err}
+	if len(active)!=len(attachmentPublicIDs){return fmt.Errorf("reorder must include every active attachment exactly once")}
+	seen:=map[string]bool{}
+	activeSet:=map[string]bool{}
+	for _,id:=range active{activeSet[id]=true}
+	for _,id:=range attachmentPublicIDs{
+		if !activeSet[id]||seen[id]{return fmt.Errorf("invalid or duplicate attachment in reorder")}
+		seen[id]=true
+	}
+
+	// Shift to a disjoint range first so the partial unique index cannot
+	// conflict while individual rows are assigned their final order.
+	if _,err:=tx.Exec(ctx,`
+UPDATE transaction_attachments
+SET display_order=display_order+10000
+WHERE transaction_id=$1 AND deleted_at IS NULL`,transactionID);err!=nil{return err}
+
+	for order,id:=range attachmentPublicIDs{
+		if _,err:=tx.Exec(ctx,`
+UPDATE transaction_attachments SET display_order=$3
+WHERE transaction_id=$1 AND public_id=$2 AND deleted_at IS NULL`,
+			transactionID,id,order);err!=nil{return err}
+	}
+	if err:=insertAuditTx(ctx,tx,user,e,"TRANSACTION_ATTACHMENTS_REORDER","TRANSACTION",transactionPublicID,map[string]any{
+		"attachment_ids":attachmentPublicIDs,
+	});err!=nil{return err}
+	return tx.Commit(ctx)
+}
