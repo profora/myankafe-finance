@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
-import type { Account, FinancialAccount } from "@/components/types";
+import type { Account, FinancialAccount } from "@/components/types";\ntype Contact={id:string;display_name:string;contact_type:string};
 
 type Split={AccountPublicID:string;Amount:string;Description:string};
 
 export default function NewTransaction(){
   const {entity}=useEntity();
   const [accounts,setAccounts]=useState<Account[]>([]);
-  const [financial,setFinancial]=useState<FinancialAccount[]>([]);
+  const [financial,setFinancial]=useState<FinancialAccount[]>([]);\n  const [contacts,setContacts]=useState<Contact[]>([]);\n  const [contact,setContact]=useState("");
   const [type,setType]=useState("EXPENSE");
   const [date,setDate]=useState(new Date().toISOString().slice(0,10));
   const [description,setDescription]=useState("");
@@ -23,8 +23,9 @@ export default function NewTransaction(){
     if(!entity)return;
     Promise.all([
       api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
-      api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`)
-    ]).then(([a,f])=>{setAccounts(a.items);setFinancial(f.items);setFa(x=>x||f.items[0]?.PublicID||"")}).catch(e=>setError(e.message));
+      api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
+      api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`)
+    ]).then(([a,f,ct])=>{setAccounts(a.items);setFinancial(f.items);setContacts(ct.items);setFa(x=>x||f.items[0]?.PublicID||"")}).catch(e=>setError(e.message));
   },[entity]);
 
   const selectedFA=financial.find(x=>x.PublicID===fa);
@@ -43,6 +44,7 @@ export default function NewTransaction(){
           Type:type,Date:date,Description:description,
           FinancialAccountPublicID:selectedFA.PublicID,
           Currency:selectedFA.Currency,
+          ContactPublicID:contact,
           Splits:splits
         })
       });
@@ -62,6 +64,7 @@ export default function NewTransaction(){
         <div className="field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
         <div className="field span-2"><label>Description</label><input value={description} onChange={e=>setDescription(e.target.value)}/></div>
         <div className="field span-2"><label>{type==="EXPENSE"?"Paid from":"Received into"}</label><select value={fa} onChange={e=>setFa(e.target.value)}>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
+        <div className="field span-2"><label>{type==="EXPENSE"?"Payee":"Payer"}</label><select value={contact} onChange={e=>setContact(e.target.value)}><option value="">None</option>{contacts.map(x=><option key={x.id} value={x.id}>{x.display_name} · {x.contact_type}</option>)}</select></div>
       </div>
       <div><strong>Split</strong><p className="muted">One line for a normal entry; add more lines to split by category.</p></div>
       {splits.map((sp,i)=><div className="split-row" key={i}>
