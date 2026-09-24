@@ -29,6 +29,7 @@ type TransactionListItem struct {
 	FinancialAccount   *string `json:"financial_account_name"`
 	FunctionalEffect   string  `json:"functional_effect"`
 	RunningNet         string  `json:"running_net"`
+	AttachmentCount    int     `json:"attachment_count"`
 }
 
 type TransactionListResult struct {
@@ -51,7 +52,8 @@ WITH filtered AS (
   SELECT t.id,t.public_id,t.transaction_type,t.status,t.transaction_date,t.description,
          t.currency_code,t.total_amount,t.created_at,
          c.display_name contact_name,
-         fa.public_id financial_account_public_id,fa.name financial_account_name
+         fa.public_id financial_account_public_id,fa.name financial_account_name,
+         (SELECT count(*) FROM transaction_attachments ta WHERE ta.transaction_id=t.id AND ta.deleted_at IS NULL) attachment_count
   FROM transactions t
   LEFT JOIN contacts c ON c.id=t.contact_id
   LEFT JOIN financial_accounts fa ON fa.id=t.primary_financial_account_id
@@ -60,14 +62,29 @@ WITH filtered AS (
     AND ($3='' OR t.transaction_type=$3)
     AND ($4='' OR t.transaction_date>=NULLIF($4,'')::date)
     AND ($5='' OR t.transaction_date<=NULLIF($5,'')::date)
-    AND ($6='' OR fa.public_id::text=$6)
+    AND (
+      $6='' OR
+      fa.public_id::text=$6 OR
+      EXISTS (
+        SELECT 1
+        FROM journal_entries jef
+        JOIN journal_lines jlf ON jlf.journal_entry_id=jef.id
+        JOIN financial_accounts faf ON faf.id=jlf.financial_account_id
+        WHERE jef.transaction_id=t.id AND faf.public_id::text=$6
+      )
+    )
     AND (
       $7='' OR
       t.description ILIKE '%'||$7||'%' OR
       t.public_id::text ILIKE '%'||$7||'%' OR
       COALESCE(c.display_name,'') ILIKE '%'||$7||'%' OR
       COALESCE(fa.name,'') ILIKE '%'||$7||'%' OR
-      COALESCE(t.external_reference,'') ILIKE '%'||$7||'%'
+      COALESCE(t.external_reference,'') ILIKE '%'||$7||'%' OR
+      EXISTS (
+        SELECT 1 FROM transaction_attachments ta
+        WHERE ta.transaction_id=t.id AND ta.deleted_at IS NULL
+          AND ta.original_filename ILIKE '%'||$7||'%'
+      )
     )
 ),
 effects AS (
@@ -104,7 +121,7 @@ enriched AS (
 SELECT e.public_id::text,e.transaction_type,e.status,e.transaction_date::text,e.description,
        e.currency_code,e.total_amount::text,e.contact_name,
        e.financial_account_public_id::text,e.financial_account_name,
-       e.functional_effect::text,e.running_net::text,
+       e.functional_effect::text,e.running_net::text,e.attachment_count,
        e.total_count,e.income_total::text,e.expense_total::text,e.net_total::text,
        ent.functional_currency_code
 FROM enriched e
@@ -123,7 +140,7 @@ LIMIT $8 OFFSET $9`,
 		if err:=rows.Scan(
 			&item.PublicID,&item.Type,&item.Status,&item.Date,&item.Description,
 			&item.Currency,&item.Total,&item.ContactName,&item.FinancialAccountID,&item.FinancialAccount,
-			&item.FunctionalEffect,&item.RunningNet,
+			&item.FunctionalEffect,&item.RunningNet,&item.AttachmentCount,
 			&totalCount,&income,&expense,&net,&functionalCurrency,
 		);err!=nil{return TransactionListResult{},err}
 		out.Items=append(out.Items,item)
