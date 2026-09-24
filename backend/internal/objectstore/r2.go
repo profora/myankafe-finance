@@ -16,10 +16,16 @@ import (
 	"time"
 )
 
+type ReadObject struct {
+	Body          io.ReadCloser
+	ContentType   string
+	ContentLength int64
+}
+
 type Store interface {
 	Configured() bool
 	Put(ctx context.Context, key, contentType string, body []byte) error
-	Get(ctx context.Context, key string) ([]byte, string, error)
+	Open(ctx context.Context, key string) (ReadObject, error)
 	Delete(ctx context.Context, key string) error
 }
 
@@ -88,35 +94,36 @@ func (s *R2Store) Put(ctx context.Context, key, contentType string, body []byte)
 	return nil
 }
 
-func (s *R2Store) Get(ctx context.Context, key string) ([]byte, string, error) {
+func (s *R2Store) Open(ctx context.Context, key string) (ReadObject, error) {
 	if !s.Configured() {
-		return nil, "", errors.New("R2 attachment storage is not configured")
+		return ReadObject{}, errors.New("R2 attachment storage is not configured")
 	}
 	req, err := s.newSignedRequest(ctx, http.MethodGet, key, "", nil)
 	if err != nil {
-		return nil, "", err
+		return ReadObject{}, err
 	}
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, "", err
+		return ReadObject{}, err
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		defer resp.Body.Close()
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, "", fmt.Errorf("R2 GET failed: %s: %s", resp.Status, strings.TrimSpace(string(b)))
+		return ReadObject{}, fmt.Errorf("R2 GET failed: %s: %s", resp.Status, strings.TrimSpace(string(b)))
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, (100<<20)+1))
-	if err != nil {
-		return nil, "", err
-	}
-	if len(body) > 100<<20 {
-		return nil, "", errors.New("R2 object exceeds 100 MB safety limit")
+	if resp.ContentLength > 100<<20 {
+		_ = resp.Body.Close()
+		return ReadObject{}, errors.New("R2 object exceeds 100 MB safety limit")
 	}
 	ct := strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"), ";")[0])
 	if ct == "" {
-		ct = http.DetectContentType(body)
+		ct = "application/octet-stream"
 	}
-	return body, ct, nil
+	return ReadObject{
+		Body: resp.Body,
+		ContentType: ct,
+		ContentLength: resp.ContentLength,
+	}, nil
 }
 
 func (s *R2Store) Delete(ctx context.Context, key string) error {
