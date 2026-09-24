@@ -16,7 +16,7 @@ export default function Transfers(){
   const [busy,setBusy]=useState(false);
   const [form,setForm]=useState({Date:dateInTimeZone(entity?.Timezone??"Asia/Yangon"),FromFinancialAccountPublicID:"",ToFinancialAccountPublicID:"",FromAmount:"",ToAmount:"",Description:""});
 
-  useEffect(()=>{if(entity)api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`).then(x=>{setAccounts(x.items);setForm(v=>({...v,FromFinancialAccountPublicID:x.items[0]?.PublicID||"",ToFinancialAccountPublicID:x.items[1]?.PublicID||""}))}).catch(e=>setError(e.message))},[entity]);
+  useEffect(()=>{if(entity)api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`).then(x=>{const active=x.items.filter(a=>a.Active);setAccounts(active);setForm(v=>({...v,FromFinancialAccountPublicID:active[0]?.PublicID||"",ToFinancialAccountPublicID:active[1]?.PublicID||""}))}).catch(e=>setError(e.message))},[entity]);
 
   async function submit(){
     if(!entity)return;setError("");setMessage("");setBusy(true);
