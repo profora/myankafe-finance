@@ -9,6 +9,7 @@ import { EntityProvider, useEntity } from "./EntityContext";
 const nav = [
   ["/", "Dashboard"],
   ["/transactions", "Transactions"],
+  ["/transfers", "Transfers"],
   ["/inter-entity", "Inter-Entity"],
   ["/contacts", "Contacts"],
   ["/accounts", "Chart of Accounts"],
@@ -40,7 +41,13 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand">MyanKafe <span>Finance</span></div>
+        <Link className="brand brand-lockup" href="/" aria-label="MyanKafe Finance home">
+          <img className="brand-mark" src="/brand/logo-head.svg" alt=""/>
+          <span className="brand-wordmark-wrap">
+            <img className="brand-wordmark" src="/brand/logo-text.svg" alt="MyanKafe"/>
+            <small>Finance</small>
+          </span>
+        </Link>
         <nav>
           {nav.map(([href, label]) => (
             <Link key={href} className={pathname === href || (href!=="/"&&pathname.startsWith(href+"/")) ? "active" : ""} href={href}>{label}</Link>
