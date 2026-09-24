@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/profora/myankafe-finance/backend/internal/repository/postgres"
 )
 
@@ -74,4 +75,24 @@ func (s *Server) manualJournal(w http.ResponseWriter,r *http.Request){
 	a:=getAccess(r);if a.Role!="OWNER"&&a.Role!="ACCOUNTANT"{fail(w,403,errors.New("manual journal requires OWNER or ACCOUNTANT"));return}
 	var in postgres.ManualJournalInput;if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
 	v,err:=s.Store.PostManualJournal(r.Context(),a.User,a.Entity,in);if err!=nil{fail(w,400,err);return};write(w,201,v)
+}
+
+
+func (s *Server) updateExchangeRate(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if !requireRole(w,canConfigureAccounting(a.Role),"exchange-rate configuration requires OWNER, ADMIN, or ACCOUNTANT"){return}
+	var in postgres.UpdateExchangeRateInput
+	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
+	v,err:=s.Store.UpdateExchangeRate(r.Context(),a.User,a.Entity,chi.URLParam(r,"rate"),in)
+	if err!=nil{fail(w,400,err);return}
+	write(w,200,v)
+}
+
+func (s *Server) deleteExchangeRate(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if !requireRole(w,canConfigureAccounting(a.Role),"exchange-rate configuration requires OWNER, ADMIN, or ACCOUNTANT"){return}
+	if err:=s.Store.DeleteExchangeRate(r.Context(),a.User,a.Entity,chi.URLParam(r,"rate"));err!=nil{
+		fail(w,400,err);return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
