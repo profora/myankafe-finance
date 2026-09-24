@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { clearDevUser, logout } from "@/lib/api";
 import { EntityProvider, useEntity } from "./EntityContext";
 
 const nav = [
@@ -26,6 +27,12 @@ function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { entities, entity, setEntityID, error } = useEntity();
 
+  async function signOut(){
+    try { await logout(); } catch {}
+    clearDevUser();
+    window.location.assign("/login");
+  }
+
   return (
     <div className="app">
       <aside className="sidebar">
@@ -47,9 +54,12 @@ function Shell({ children }: { children: React.ReactNode }) {
               {entities.map((x) => <option key={x.PublicID} value={x.PublicID}>{x.Name}</option>)}
             </select>
           </div>
-          <div className="top-meta">{entity ? `${entity.FunctionalCurrency} · FY ${entity.FiscalMonth}/${entity.FiscalDay}` : "No entity"}</div>
+          <div className="actions">
+            <div className="top-meta">{entity ? `${entity.FunctionalCurrency} · FY ${entity.FiscalMonth}/${entity.FiscalDay}` : "No entity"}</div>
+            <button className="secondary" onClick={signOut}>Sign out</button>
+          </div>
         </header>
-        {error && <div className="alert error">{error}. Configure the development user first.</div>}
+        {error && <div className="alert error">{error}</div>}
         <section className="content">{children}</section>
       </main>
     </div>
@@ -57,5 +67,9 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  if (pathname === "/login" || pathname === "/dev-login") {
+    return <main className="auth-shell">{children}</main>;
+  }
   return <EntityProvider><Shell>{children}</Shell></EntityProvider>;
 }
