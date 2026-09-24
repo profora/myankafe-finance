@@ -25,7 +25,7 @@ export default function Users(){
     ]).then(([u,m])=>{
       setUsers(u.items);
       setMembers(m.items);
-      setAssign(a=>({...a,user_id:a.user_id||u.items[0]?.id||""}));
+      setAssign(a=>({...a,user_id:a.user_id||u.items[0]?.id||""}));setReset(a=>({...a,user_id:a.user_id||u.items[0]?.id||""}));
     }).catch(e=>setErr(e instanceof Error?e.message:String(e)));
   };
 
