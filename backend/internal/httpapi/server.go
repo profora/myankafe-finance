@@ -66,6 +66,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 			r.Post("/exchange-rates", s.createExchangeRate)
 
 			r.Get("/transactions", s.listTransactions)
+			r.Get("/transactions/{tx}", s.transactionDetail)
 			r.Post("/transactions", s.createTransaction)
 			r.Post("/transactions/{tx}/post", s.postTransaction)
 			r.Post("/transactions/{tx}/reverse", s.reverseTransaction)
