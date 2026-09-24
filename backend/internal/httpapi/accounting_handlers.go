@@ -16,6 +16,19 @@ func parseDate(v string, fallback time.Time) (time.Time, error) {
 	return time.Parse("2006-01-02", v)
 }
 
+func fiscalYearStart(e postgres.Entity, now time.Time) time.Time {
+	loc, err := time.LoadLocation(e.Timezone)
+	if err != nil {
+		loc = time.UTC
+	}
+	localNow := now.In(loc)
+	start := time.Date(localNow.Year(), time.Month(e.FiscalMonth), e.FiscalDay, 0, 0, 0, 0, loc)
+	if localNow.Before(start) {
+		start = time.Date(localNow.Year()-1, time.Month(e.FiscalMonth), e.FiscalDay, 0, 0, 0, 0, loc)
+	}
+	return start
+}
+
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
 	now := time.Now()
@@ -30,7 +43,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 func (s *Server) profitLoss(w http.ResponseWriter, r *http.Request) {
 	a:=getAccess(r)
 	now:=time.Now().UTC()
-	from,err:=parseDate(r.URL.Query().Get("from"),time.Date(now.Year(),1,1,0,0,0,0,time.UTC));if err!=nil{fail(w,400,err);return}
+	from,err:=parseDate(r.URL.Query().Get("from"),fiscalYearStart(a.Entity,now));if err!=nil{fail(w,400,err);return}
 	to,err:=parseDate(r.URL.Query().Get("to"),now);if err!=nil{fail(w,400,err);return}
 	v,err:=s.Store.ProfitLoss(r.Context(),a.Entity.ID,from,to);if err!=nil{fail(w,500,err);return}
 	_=s.Store.Audit(r.Context(),a.User,&a.Entity,"REPORT_VIEW","PROFIT_LOSS",nil,"SUCCESS",map[string]any{"from":from.Format("2006-01-02"),"to":to.Format("2006-01-02")})
