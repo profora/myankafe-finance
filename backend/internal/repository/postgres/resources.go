@@ -12,7 +12,7 @@ import (
 type User struct{ ID,PublicID,Username,DisplayName string }
 type Entity struct{ ID,PublicID,Code,Name,Type,FunctionalCurrency,Timezone string; FiscalMonth,FiscalDay int }
 type Account struct{ PublicID,Code,Name,Type string; Subtype *string; Postable,Active bool }
-type FinancialAccount struct{ PublicID,Code,Name,Kind,Currency,AccountPublicID string; Institution *string; Active bool }
+type FinancialAccount struct{ PublicID,Code,Name,Kind,Currency,AccountPublicID string; Institution,Reference *string; Active bool }
 
 func (s *Store) ResolveUser(ctx context.Context,pub string)(User,error){
   var u User
@@ -58,10 +58,10 @@ RETURNING public_id::text,code,name,account_type,account_subtype,is_postable,act
 }
 
 func (s *Store) ListFinancialAccounts(ctx context.Context,entityID string)([]FinancialAccount,error){
-  rows,err:=s.Pool.Query(ctx,`SELECT fa.public_id::text,fa.code,fa.name,fa.kind,fa.currency_code,a.public_id::text,fa.institution_name,fa.active
-FROM financial_accounts fa JOIN accounts a ON a.id=fa.account_id WHERE fa.entity_id=$1 ORDER BY fa.name`,entityID)
+  rows,err:=s.Pool.Query(ctx,`SELECT fa.public_id::text,fa.code,fa.name,fa.kind,fa.currency_code,a.public_id::text,fa.institution_name,fa.account_reference,fa.active
+FROM financial_accounts fa JOIN accounts a ON a.id=fa.account_id WHERE fa.entity_id=$1 ORDER BY fa.active DESC,fa.name`,entityID)
   if err!=nil{return nil,err}; defer rows.Close(); out:=[]FinancialAccount{}
-  for rows.Next(){var f FinancialAccount;if err:=rows.Scan(&f.PublicID,&f.Code,&f.Name,&f.Kind,&f.Currency,&f.AccountPublicID,&f.Institution,&f.Active);err!=nil{return nil,err};out=append(out,f)}
+  for rows.Next(){var f FinancialAccount;if err:=rows.Scan(&f.PublicID,&f.Code,&f.Name,&f.Kind,&f.Currency,&f.AccountPublicID,&f.Institution,&f.Reference,&f.Active);err!=nil{return nil,err};out=append(out,f)}
   return out,rows.Err()
 }
 
@@ -73,7 +73,7 @@ func (s *Store) CreateFinancialAccount(ctx context.Context,user User,e Entity,in
   id,_:=ids.UUIDv7();pub,_:=ids.ULID();var f FinancialAccount
   err:=s.Pool.QueryRow(ctx,`INSERT INTO financial_accounts(id,public_id,entity_id,account_id,code,name,kind,currency_code,institution_name,account_reference,created_by)
 VALUES($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,''),NULLIF($10,''),$11)
-RETURNING public_id::text,code,name,kind,currency_code,$12,NULLIF(institution_name,''),active`,id,pub,e.ID,aid,in.Code,in.Name,in.Kind,in.Currency,in.Institution,in.Reference,user.ID,in.AccountPublicID).Scan(&f.PublicID,&f.Code,&f.Name,&f.Kind,&f.Currency,&f.AccountPublicID,&f.Institution,&f.Active)
+RETURNING public_id::text,code,name,kind,currency_code,$12,NULLIF(institution_name,''),NULLIF(account_reference,''),active`,id,pub,e.ID,aid,in.Code,in.Name,in.Kind,in.Currency,in.Institution,in.Reference,user.ID,in.AccountPublicID).Scan(&f.PublicID,&f.Code,&f.Name,&f.Kind,&f.Currency,&f.AccountPublicID,&f.Institution,&f.Reference,&f.Active)
   if err==nil{_=s.Audit(ctx,user,&e,"FINANCIAL_ACCOUNT_CREATE","FINANCIAL_ACCOUNT",&pub,"SUCCESS",map[string]any{"code":in.Code,"name":in.Name})}
   return f,err
 }
