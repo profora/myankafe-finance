@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/profora/myankafe-finance/backend/internal/auth"
 	"github.com/profora/myankafe-finance/backend/internal/repository/postgres"
 )
@@ -45,6 +46,19 @@ func (s *Server) createUser(w http.ResponseWriter,r *http.Request){
 		Username:username,DisplayName:in.DisplayName,Email:in.Email,
 	},passwordHash);if err!=nil{fail(w,400,err);return}
 	write(w,201,v)
+}
+
+
+func (s *Server) resetUserPassword(w http.ResponseWriter,r *http.Request){
+	u,err:=s.principal(r);if err!=nil{fail(w,401,err);return}
+	isOwner,err:=s.ownerAnywhere(r,u);if err!=nil{fail(w,500,err);return}
+	if !isOwner{fail(w,403,errors.New("OWNER access required"));return}
+	var in struct{NewPassword string `json:"new_password"`}
+	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
+	if err:=auth.ValidatePassword(in.NewPassword);err!=nil{fail(w,422,err);return}
+	hash,err:=auth.HashPassword(in.NewPassword);if err!=nil{fail(w,500,err);return}
+	if err:=s.Store.ResetUserPassword(r.Context(),u,chi.URLParam(r,"user"),hash);err!=nil{fail(w,400,err);return}
+	write(w,200,map[string]any{"reset":true,"sessions_revoked":true})
 }
 
 func (s *Server) listEntityUsers(w http.ResponseWriter,r *http.Request){
