@@ -31,13 +31,13 @@ Private multi-entity, multi-currency double-entry finance platform for MyanKafe,
 - reversal-based correction of posted accounting
 - append-only business/request/auth audit history
 - mutation idempotency using `Idempotency-Key`
-- username/password login, logout, password change, owner password reset, session revocation
+- username/password login, logout, password change, owner password reset, active-session listing/revocation and sign-out-other-devices
 - entity dashboard and all-entity management dashboard
 - searchable/filterable transaction list with functional-currency summaries and filtered running net
 - multi-action New Transaction menu for income, expense, transfer, manual journal, and inter-entity entry
 - transaction/journal detail inspection and account-ledger drill-down
 - multiple private R2 attachments per transaction
-- authenticated image/PDF attachment preview; fullscreen image viewer with zoom and keyboard navigation
+- authenticated streaming attachment preview; fullscreen image viewer with zoom, pan and keyboard navigation; PDF/text/CSV inline preview
 - P&L, Balance Sheet, Trial Balance, General Ledger, Account Ledger, cash movement, and inter-entity balances
 - entity-timezone-aware date defaults
 - entity/user/role administration
@@ -97,8 +97,8 @@ Open `http://localhost:3000/login` and sign in with the bootstrap username/passw
 Configure a private Cloudflare R2 bucket in `.env`:
 
 ```text
-R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-R2_BUCKET=<private-bucket-name>
+R2_ENDPOINT=https://dbc116a454dda65b1ab21ad7744e9473.r2.cloudflarestorage.com/myankafe-finance
+R2_BUCKET=
 R2_REGION=auto
 R2_ACCESS_KEY_ID=<access-key>
 R2_SECRET_ACCESS_KEY=<secret>
@@ -107,7 +107,7 @@ ATTACHMENT_MAX_MB=20
 
 R2 credentials remain backend-only. The browser uploads and previews attachments through authenticated finance API endpoints; it never receives R2 credentials.
 
-If R2 is not configured, accounting still works, but attachment upload/content endpoints return service unavailable.
+If R2 is not configured, accounting still works, but attachment upload/content endpoints return service unavailable. Attachment metadata supports reorder and audited soft-removal; object deletion is best-effort after the database audit state is committed.
 
 ## Authentication
 
@@ -124,6 +124,16 @@ Normal mode is `AUTH_MODE=password`.
 - production requires secure cookies
 
 The legacy development ULID bearer path exists only when `AUTH_MODE=dev` is explicitly selected; the web UI no longer uses it.
+
+## Branding
+
+The web app uses the Chieftain Chin Coffee logo supplied for MyanKafe Finance at `frontend/public/brand/chieftain-logo.png` on login, sidebar, and app metadata/icon surfaces.
+
+## Operations
+
+- `GET /health` is a lightweight liveness endpoint.
+- `GET /ready` verifies PostgreSQL reachability and reports whether attachment storage is configured.
+- Docker Compose waits for API readiness before starting the web container.
 
 ## Validation
 
