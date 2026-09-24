@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"strings"
 
@@ -37,7 +38,7 @@ func seedHTTPRole(t *testing.T, store *postgres.Store, role string) (string, str
 	if _, err := store.Pool.Exec(ctx, `
 INSERT INTO users(id,public_id,username,display_name)
 VALUES($1,$2,$3,$4)`,
-		userID, userPublic, strings.ToLower("auth-"+role+"-"+userPublic), role+" Test User"); err != nil {
+		userID, userPublic, strings.ToLower("auth-"+strings.ToLower(role)+"-"+strings.ToLower(userPublic)), role+" Test User"); err != nil {
 		t.Fatal(err)
 	}
 
