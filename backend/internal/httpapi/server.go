@@ -76,6 +76,8 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 			r.Get("/users", s.listUsers)
 			r.Post("/users", s.createUser)
 			r.Post("/users/{user}/reset-password", s.resetUserPassword)
+			r.Put("/users/{user}/status", s.setUserStatus)
+			r.Post("/users/{user}/reset-password", s.resetUserPassword)
 			r.Post("/inter-entity-transactions", s.createInterEntityExpense)
 			r.Get("/dashboard/combined", s.combinedDashboard)
 
