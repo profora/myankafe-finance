@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
 import type { Account, Entity, FinancialAccount, Transaction } from "@/components/types";
 
-type Contact={id:string;display_name:string;contact_type:string};
+type Contact={id:string;display_name:string;contact_type:string;active:boolean};
 export type QuickEntryKind="INCOME"|"EXPENSE"|"TRANSFER";
 
 type Props={
@@ -57,9 +57,10 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
       api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
       api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`)
     ]).then(([a,f,c])=>{
-      setAccounts(a.items);setFinancial(f.items);setContacts(c.items);
-      setFinancialID(f.items[0]?.PublicID??"");
-      setToFinancialID(f.items[1]?.PublicID??f.items[0]?.PublicID??"");
+      const activeFinancial=f.items.filter(x=>x.Active);
+      setAccounts(a.items);setFinancial(activeFinancial);setContacts(c.items.filter(x=>x.active));
+      setFinancialID(activeFinancial[0]?.PublicID??"");
+      setToFinancialID(activeFinancial[1]?.PublicID??activeFinancial[0]?.PublicID??"");
       const want=kind==="INCOME"?"INCOME":"EXPENSE";
       setAccountID(a.items.find(x=>x.Postable&&x.Type===want)?.PublicID??"");
     }).catch(e=>setError(e instanceof Error?e.message:String(e)));
