@@ -46,6 +46,11 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 			r.Get("/dashboard", s.dashboard)
 			r.Get("/reports/profit-loss", s.profitLoss)
 			r.Get("/reports/trial-balance", s.trialBalance)
+			r.Get("/reports/balance-sheet", s.balanceSheet)
+			r.Get("/reports/general-ledger", s.generalLedger)
+			r.Get("/reports/account-ledger", s.accountLedger)
+			r.Get("/reports/cash-movement", s.cashMovement)
+			r.Get("/reports/inter-entity-balances", s.interEntityBalances)
 
 			r.Get("/accounts", s.listAccounts)
 			r.Post("/accounts", s.createAccount)
