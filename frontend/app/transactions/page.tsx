@@ -22,6 +22,7 @@ type TransactionRow={
   financial_account_name?:string|null;
   functional_effect:string;
   running_net:string;
+  attachment_count:number;
 };
 
 type TransactionList={
@@ -192,7 +193,7 @@ export default function Transactions(){
         <tbody>{items.map(t=><tr key={t.id}>
           <td>{t.date}</td>
           <td><span className="type-pill">{t.type.replaceAll("_"," ")}</span></td>
-          <td><Link className="table-link transaction-description" href={`/transactions/${t.id}`}>{t.description}</Link></td>
+          <td><Link className="table-link transaction-description" href={`/transactions/${t.id}`}>{t.description}</Link>{t.attachment_count>0&&<div className="muted">📎 {t.attachment_count} attachment{t.attachment_count===1?"":"s"}</div>}</td>
           <td><div>{t.financial_account_name||"—"}</div>{t.contact_name&&<div className="muted">{t.contact_name}</div>}</td>
           <td><span className={`badge ${t.status}`}>{t.status}</span></td>
           <td>{Number(t.total).toLocaleString()} {t.currency}</td>
