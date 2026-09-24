@@ -411,19 +411,23 @@ func TestInterEntityPostingRollsBackAfterLateDatabaseFailure(t *testing.T) {
 		_, _ = s.Pool.Exec(context.Background(), "DROP FUNCTION IF EXISTS "+functionName+"()")
 	})
 
-	triggerSQL := fmt.Sprintf(`
-CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+	functionSQL := fmt.Sprintf(`
+CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $test$
 BEGIN
   IF NEW.entity_id = '%s'::uuid AND NEW.account_id = '%s'::uuid THEN
     RAISE EXCEPTION 'forced late inter-entity test failure';
   END IF;
   RETURN NEW;
 END;
-$;
+$test$`, functionName, right.ID, rightDueTo)
+	if _, err := s.Pool.Exec(ctx, functionSQL); err != nil {
+		t.Fatal(err)
+	}
+
+	triggerSQL := fmt.Sprintf(`
 CREATE TRIGGER %s
 BEFORE INSERT ON journal_lines
-FOR EACH ROW EXECUTE FUNCTION %s();`,
-		functionName, right.ID, rightDueTo, triggerName, functionName)
+FOR EACH ROW EXECUTE FUNCTION %s()`, triggerName, functionName)
 	if _, err := s.Pool.Exec(ctx, triggerSQL); err != nil {
 		t.Fatal(err)
 	}
