@@ -1,70 +1,49 @@
-const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
+export const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  constructor(status:number,message:string){
     super(message);
-    this.name = "ApiError";
-    this.status = status;
+    this.status=status;
   }
 }
 
-export function currentDevUser() {
-  if (typeof window === "undefined") return process.env.NEXT_PUBLIC_DEV_USER_ULID ?? "";
-  return localStorage.getItem("myankafe-finance-dev-user") ?? process.env.NEXT_PUBLIC_DEV_USER_ULID ?? "";
+function requestHeaders(init:RequestInit){
+  const headers=new Headers(init.headers);
+  if(init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")){
+    headers.set("Content-Type","application/json");
+  }
+  return headers;
 }
 
-export function setDevUser(v: string) {
-  localStorage.setItem("myankafe-finance-dev-user", v);
+function handleUnauthorized(path:string,status:number){
+  if(status!==401||path==="/auth/login"||typeof window==="undefined")return;
+  const next=encodeURIComponent(window.location.pathname+window.location.search);
+  window.location.assign(`/login?expired=1&next=${next}`);
 }
 
-export function clearDevUser() {
-  localStorage.removeItem("myankafe-finance-dev-user");
-}
-
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = currentDevUser();
-  const headers = new Headers(init.headers);
-  if (init.body != null && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-  if (token) headers.set("Authorization", `Bearer dev:${token}`);
-
-  const res = await fetch(`${base}${path}`, {
+export async function api<T>(path:string,init:RequestInit={}):Promise<T>{
+  const res=await fetch(`${apiBase}${path}`,{
     ...init,
-    headers,
-    credentials: "include",
-    cache: "no-store",
+    headers:requestHeaders(init),
+    credentials:"include",
+    cache:"no-store",
   });
-
-  if (res.status === 204) return undefined as T;
-
-  const text = await res.text();
-  let body: any = {};
-  if (text) {
-    try { body = JSON.parse(text); }
-    catch { body = { error: text }; }
-  }
-
-  if (!res.ok) throw new ApiError(res.status, body.error ?? `HTTP ${res.status}`);
+  handleUnauthorized(path,res.status);
+  const body=await res.json().catch(()=>({}));
+  if(!res.ok)throw new ApiError(res.status,body.error??`HTTP ${res.status}`);
   return body as T;
 }
 
-export type AuthUser = {
-  public_id: string;
-  username: string;
-  display_name: string;
-};
-
-export async function login(username: string, password: string) {
-  return api<{user: AuthUser; session_expires_at: string; session_token?: string}>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ username, password }),
+export async function apiBlob(path:string):Promise<Blob>{
+  const res=await fetch(`${apiBase}${path}`,{
+    credentials:"include",
+    cache:"no-store",
   });
-}
-
-export async function logout() {
-  return api<void>("/auth/logout", { method: "POST", body: "{}" });
-}
-
-export async function me() {
-  return api<{user: AuthUser}>("/auth/me");
+  handleUnauthorized(path,res.status);
+  if(!res.ok){
+    const body=await res.json().catch(()=>({}));
+    throw new ApiError(res.status,body.error??`HTTP ${res.status}`);
+  }
+  return res.blob();
 }
