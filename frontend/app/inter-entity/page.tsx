@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 import type { Account, FinancialAccount } from "@/components/types";
 
@@ -15,7 +16,7 @@ export default function InterEntity(){
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
   const [mapping,setMapping]=useState({due_from_account_id:"",due_to_account_id:""});
-  const [form,setForm]=useState({Date:new Date().toISOString().slice(0,10),InitiatingFinancialAccountPublicID:"",InitiatingAmount:"",CounterpartyAmount:"",CounterpartyExpenseAccountPublicID:"",Description:""});
+  const [form,setForm]=useState({Date:dateInTimeZone(entity?.Timezone??"Asia/Yangon"),InitiatingFinancialAccountPublicID:"",InitiatingAmount:"",CounterpartyAmount:"",CounterpartyExpenseAccountPublicID:"",Description:""});
 
   useEffect(()=>{
     if(!entity)return;
