@@ -62,6 +62,18 @@ SET password_hash=EXCLUDED.password_hash,
 		}
 	}
 
+	if passwordHash != "" {
+		if _, err = tx.Exec(ctx, `
+INSERT INTO user_credentials(user_id,password_hash)
+VALUES($1,$2)
+ON CONFLICT(user_id) DO UPDATE
+SET password_hash=EXCLUDED.password_hash,
+    password_changed_at=now(),
+    updated_at=now()`, userID, passwordHash); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	if strings.EqualFold(getenv("BOOTSTRAP_ENTITIES", "true"), "true") {
 		type spec struct{ Code, Name, Kind string }
 		for _, e := range []spec{
