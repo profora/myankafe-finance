@@ -23,6 +23,7 @@ type UserSession struct {
 }
 
 type UserSessionInfo struct {
+	InternalID string    `json:"-"`
 	PublicID   string    `json:"id"`
 	UserAgent  *string   `json:"user_agent"`
 	IPAddress  *string   `json:"ip_address"`
@@ -228,7 +229,7 @@ func (s *Store) CreateOrUpdateUserPassword(ctx context.Context,username,password
 
 func (s *Store) ListActiveSessions(ctx context.Context,userID string)([]UserSessionInfo,error){
 	rows,err:=s.Pool.Query(ctx,`
-SELECT public_id::text,user_agent,host(ip_address)::text,expires_at,last_seen_at,created_at
+SELECT id::text,public_id::text,user_agent,host(ip_address)::text,expires_at,last_seen_at,created_at
 FROM user_sessions
 WHERE user_id=$1
   AND public_id IS NOT NULL
@@ -240,7 +241,7 @@ ORDER BY created_at DESC`,userID)
 	out:=[]UserSessionInfo{}
 	for rows.Next(){
 		var item UserSessionInfo
-		if err:=rows.Scan(&item.PublicID,&item.UserAgent,&item.IPAddress,&item.ExpiresAt,&item.LastSeenAt,&item.CreatedAt);err!=nil{return nil,err}
+		if err:=rows.Scan(&item.InternalID,&item.PublicID,&item.UserAgent,&item.IPAddress,&item.ExpiresAt,&item.LastSeenAt,&item.CreatedAt);err!=nil{return nil,err}
 		out=append(out,item)
 	}
 	return out,rows.Err()
