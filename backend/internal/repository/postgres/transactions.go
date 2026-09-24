@@ -12,7 +12,7 @@ import (
 )
 
 type SplitInput struct{ AccountPublicID,Amount,Description string }
-type CreateTransactionInput struct{ Type,Date,Description,FinancialAccountPublicID,Currency string; Splits []SplitInput }
+type CreateTransactionInput struct{ Type,Date,Description,FinancialAccountPublicID,Currency,ContactPublicID string; Splits []SplitInput }
 type Transaction struct{ PublicID,Type,Status,Date,Description,Currency,Total string }
 
 func (s *Store) ListTransactions(ctx context.Context,entityID string)([]Transaction,error){
@@ -45,7 +45,7 @@ func (s *Store) CreateTransaction(ctx context.Context,user User,e Entity,in Crea
   }
   id,_:=ids.UUIDv7();pub,_:=ids.ULID()
   if _,err:=tx.Exec(ctx,`INSERT INTO transactions(id,public_id,entity_id,transaction_type,status,transaction_date,description,primary_financial_account_id,currency_code,total_amount,created_by)
-VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7,$8,$9,$10)`,id,pub,e.ID,in.Type,in.Date,in.Description,faID,in.Currency,total.FloatString(6),user.ID);err!=nil{return Transaction{},err}
+VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7,$8,$9,$10)`,id,pub,e.ID,in.Type,in.Date,in.Description,contactID,faID,in.Currency,total.FloatString(6),user.ID);err!=nil{return Transaction{},err}
   for i,sp:=range rr{sid,_:=ids.UUIDv7();if _,err:=tx.Exec(ctx,`INSERT INTO transaction_splits(id,transaction_id,line_no,account_id,amount,description) VALUES($1,$2,$3,$4,$5,NULLIF($6,''))`,sid,id,i+1,sp.id,sp.amount,sp.desc);err!=nil{return Transaction{},err}}
   if err:=insertAuditTx(ctx,tx,user,e,"TRANSACTION_CREATE","TRANSACTION",pub,map[string]any{"type":in.Type,"total":total.FloatString(6)});err!=nil{return Transaction{},err}
   if err:=tx.Commit(ctx);err!=nil{return Transaction{},err}
