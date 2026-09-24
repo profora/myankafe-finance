@@ -67,8 +67,10 @@ ORDER BY a.account_type,a.code`,entityID,from,to)
 func (s *Store) TrialBalance(ctx context.Context, entityID string, through time.Time)([]map[string]any,error){
 	rows,err:=s.Pool.Query(ctx,`
 SELECT a.public_id::text,a.code,a.name,a.account_type,
- COALESCE(SUM(jl.debit_amount),0)::text debits,
- COALESCE(SUM(jl.credit_amount),0)::text credits
+ CASE WHEN COALESCE(SUM(jl.debit_amount-jl.credit_amount),0) > 0
+      THEN COALESCE(SUM(jl.debit_amount-jl.credit_amount),0) ELSE 0 END::text debits,
+ CASE WHEN COALESCE(SUM(jl.debit_amount-jl.credit_amount),0) < 0
+      THEN -COALESCE(SUM(jl.debit_amount-jl.credit_amount),0) ELSE 0 END::text credits
 FROM accounts a
 LEFT JOIN (
   SELECT jl.*
@@ -78,7 +80,7 @@ LEFT JOIN (
 ) jl ON jl.account_id=a.id
 WHERE a.entity_id=$1
 GROUP BY a.id,a.public_id,a.code,a.name,a.account_type
-HAVING COALESCE(SUM(jl.debit_amount),0)<>0 OR COALESCE(SUM(jl.credit_amount),0)<>0
+HAVING COALESCE(SUM(jl.debit_amount-jl.credit_amount),0)<>0
 ORDER BY a.code`,entityID,through)
 	if err!=nil{return nil,err};defer rows.Close()
 	out:=[]map[string]any{}
