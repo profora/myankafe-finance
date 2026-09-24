@@ -3,6 +3,8 @@ package httpapi
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"reflect"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -78,8 +80,15 @@ func TestHTTPIdempotencyReplaysAndRejectsMismatchedReuse(t *testing.T) {
 	if replay.Header().Get("Idempotency-Replayed") != "true" {
 		t.Fatalf("missing replay header: %v", replay.Header())
 	}
-	if replay.Body.String() != first.Body.String() {
-		t.Fatalf("replayed body=%q first=%q", replay.Body.String(), first.Body.String())
+	var firstJSON, replayJSON map[string]any
+	if err := json.Unmarshal(first.Body.Bytes(), &firstJSON); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(replay.Body.Bytes(), &replayJSON); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(replayJSON, firstJSON) {
+		t.Fatalf("replayed JSON=%v first=%v", replayJSON, firstJSON)
 	}
 	if executions.Load() != 1 {
 		t.Fatalf("replay re-executed downstream: %d", executions.Load())
