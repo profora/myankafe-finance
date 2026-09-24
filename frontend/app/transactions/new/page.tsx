@@ -6,7 +6,7 @@ import { dateInTimeZone } from "@/lib/date";
 import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
 import type { Account, FinancialAccount, Transaction } from "@/components/types";
-type Contact={id:string;display_name:string;contact_type:string};
+type Contact={id:string;display_name:string;contact_type:string;active:boolean};
 
 type Split={AccountPublicID:string;Amount:string;Description:string};
 
@@ -39,7 +39,11 @@ export default function NewTransaction(){
       api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
       api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
       api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`)
-    ]).then(([a,f,ct])=>{setAccounts(a.items);setFinancial(f.items);setContacts(ct.items);setFa(x=>x||f.items[0]?.PublicID||"")}).catch(e=>setError(e.message));
+    ]).then(([a,f,ct])=>{
+      const activeFinancial=f.items.filter(x=>x.Active);
+      setAccounts(a.items);setFinancial(activeFinancial);setContacts(ct.items.filter(x=>x.active));
+      setFa(x=>activeFinancial.some(item=>item.PublicID===x)?x:(activeFinancial[0]?.PublicID||""));
+    }).catch(e=>setError(e.message));
   },[entity]);
 
   const selectedFA=financial.find(x=>x.PublicID===fa);
