@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
+import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
 import type { Account, FinancialAccount, Transaction } from "@/components/types";
 type Contact={id:string;display_name:string;contact_type:string};
@@ -22,6 +23,15 @@ export default function NewTransaction(){
   const [splits,setSplits]=useState<Split[]>([{AccountPublicID:"",Amount:"",Description:""}]);
   const [message,setMessage]=useState("");
   const [error,setError]=useState("");
+  const [attachments,setAttachments]=useState<File[]>([]);
+  const [busy,setBusy]=useState(false);
+
+  useEffect(()=>{
+    if(typeof window!=="undefined"){
+      const requested=new URLSearchParams(window.location.search).get("type");
+      if(requested==="INCOME"||requested==="EXPENSE")setType(requested);
+    }
+  },[]);
 
   useEffect(()=>{
     if(!entity)return;
@@ -40,9 +50,10 @@ export default function NewTransaction(){
 
   async function save(postNow:boolean){
     if(!entity||!selectedFA)return;
-    setMessage("");setError("");
+    setMessage("");setError("");setBusy(true);
+    let tx:Transaction|undefined;
     try{
-      const tx=await api<Transaction>(`/entities/${entity.PublicID}/transactions`,{
+      tx=await api<Transaction>(`/entities/${entity.PublicID}/transactions`,{
         method:"POST",
         body:JSON.stringify({
           Type:type,Date:date,Description:description,
@@ -52,10 +63,18 @@ export default function NewTransaction(){
           Splits:splits
         })
       });
-      if(postNow) await api(`/entities/${entity.PublicID}/transactions/${tx.PublicID}/post`,{method:"POST",body:"{}"});
-      setMessage(postNow?"Transaction posted.":"Draft saved.");
-      setDescription("");setSplits([{AccountPublicID:"",Amount:"",Description:""}]);
+      if(attachments.length){
+        try{
+          await uploadTransactionAttachments(entity.PublicID,tx.PublicID,attachments);
+        }catch(uploadErr){
+          setError(`Draft ${tx.PublicID} was created, but attachment upload failed. It was not posted. ${uploadErr instanceof Error?uploadErr.message:String(uploadErr)}`);
+          return;
+        }
+      }
+      if(postNow)await api(`/entities/${entity.PublicID}/transactions/${tx.PublicID}/post`,{method:"POST",body:"{}"});
+      window.location.assign(`/transactions/${tx.PublicID}`);
     }catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setBusy(false)}
   }
 
   return <>
@@ -78,7 +97,12 @@ export default function NewTransaction(){
         <button className="danger" disabled={splits.length===1} onClick={()=>setSplits(xs=>xs.filter((_,n)=>n!==i))}>×</button>
       </div>)}
       <div className="actions"><button className="secondary" onClick={()=>setSplits(xs=>[...xs,{AccountPublicID:"",Amount:"",Description:""}])}>+ Split</button><strong style={{marginLeft:"auto"}}>{total.toLocaleString()} {selectedFA?.Currency}</strong></div>
-      <div className="actions"><button disabled={!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(false)}>Save draft</button><button disabled={!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(true)}>Save & post</button></div>
+      <div className="field">
+        <label>Attachments</label>
+        <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,text/csv,.docx,.xlsx" onChange={e=>setAttachments(Array.from(e.target.files??[]))}/>
+        <span className="muted">{attachments.length?attachments.map(x=>x.name).join(", "):"Optional. Select multiple receipts/invoices; files upload before posting."}</span>
+      </div>
+      <div className="actions"><button disabled={busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(false)}>{busy?"Saving…":"Save draft"}</button><button disabled={busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(true)}>{busy?"Saving…":"Save & post"}</button></div>
     </div>
   </>;
 }
