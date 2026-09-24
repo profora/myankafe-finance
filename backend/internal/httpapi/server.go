@@ -150,8 +150,7 @@ func (s *Server) listAccounts(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) createAccount(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
-	if a.Role == "VIEWER" {
-		fail(w, http.StatusForbidden, errors.New("forbidden"))
+	if !requireRole(w, canConfigureAccounting(a.Role), "account configuration requires OWNER, ADMIN, or ACCOUNTANT") {
 		return
 	}
 	var in postgres.CreateAccountInput
@@ -179,8 +178,7 @@ func (s *Server) listFinancialAccounts(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) createFinancialAccount(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
-	if a.Role == "VIEWER" {
-		fail(w, http.StatusForbidden, errors.New("forbidden"))
+	if !requireRole(w, canConfigureAccounting(a.Role), "financial account configuration requires OWNER, ADMIN, or ACCOUNTANT") {
 		return
 	}
 	var in postgres.CreateFinancialAccountInput
@@ -208,8 +206,7 @@ func (s *Server) listTransactions(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) createTransaction(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
-	if a.Role == "VIEWER" {
-		fail(w, http.StatusForbidden, errors.New("forbidden"))
+	if !requireRole(w, canOperateLedger(a.Role), "ledger operation access required") {
 		return
 	}
 	var in postgres.CreateTransactionInput
@@ -227,8 +224,7 @@ func (s *Server) createTransaction(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) postTransaction(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
-	if a.Role == "VIEWER" {
-		fail(w, http.StatusForbidden, errors.New("forbidden"))
+	if !requireRole(w, canOperateLedger(a.Role), "ledger operation access required") {
 		return
 	}
 	v, err := s.Store.PostTransaction(r.Context(), a.User, a.Entity, chi.URLParam(r, "tx"))
