@@ -57,8 +57,10 @@ GitHub Actions currently validates:
 - frontend TypeScript
 - Next.js production build
 - Go module resolution
-- Go tests
 - fresh Goose migration of PostgreSQL 17
+- Go unit and PostgreSQL integration tests
+- production API Docker image build
+- production non-root web Docker image build
 
 Do not merge if those checks are red.
 
@@ -70,15 +72,20 @@ Do not merge if those checks are red.
    - `cd frontend && npm install` and commit `package-lock.json`
    - once lockfiles exist, change CI to `npm ci` and make `go mod tidy`/format checks fail on dirty output rather than mutating the runner checkout.
 
-2. Add PostgreSQL integration tests for the critical invariants:
-   - posted unbalanced journal rejected,
-   - locked-date post/reversal rejected,
-   - cross-entity split rejected,
-   - posted journal-line mutation rejected,
-   - used FX rate mutation rejected,
+2. Expand service-level integration coverage. Database integration tests already verify:
+   - posted unbalanced journal rejection,
+   - locked-period journal posting rejection,
+   - cross-entity transaction-split rejection,
+   - posted journal-line immutability,
+   - used FX snapshot immutability,
+   - transaction posting requires a posted journal.
+
+   Add higher-level tests for:
    - duplicate idempotency key cannot double-post,
    - inter-entity pair is all-or-nothing,
-   - reversal preserves original and produces opposite journal.
+   - reversal preserves the original and produces the opposite journal,
+   - reversal inside a locked period is rejected,
+   - role authorization on accounting configuration/correction endpoints.
 
 3. Polish the admin UI without changing accounting semantics:
    - stronger responsive layout,
