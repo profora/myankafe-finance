@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -57,7 +58,7 @@ func seedEntity(t *testing.T, ctx context.Context, tx pgx.Tx, suffix string) (us
 	if _, err := tx.Exec(ctx, `
 INSERT INTO users(id,public_id,username,display_name)
 VALUES($1,$2,$3,$4)`,
-		userID, userPublic, "test-"+suffix+"-"+userPublic, "Test User"); err != nil {
+		userID, userPublic, strings.ToLower("test-"+suffix+"-"+userPublic), "Test User"); err != nil {
 		t.Fatal(err)
 	}
 
