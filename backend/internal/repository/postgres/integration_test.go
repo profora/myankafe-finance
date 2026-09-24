@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 	"strings"
 
@@ -58,7 +59,7 @@ func seedEntity(t *testing.T, ctx context.Context, tx pgx.Tx, suffix string) (us
 	if _, err := tx.Exec(ctx, `
 INSERT INTO users(id,public_id,username,display_name)
 VALUES($1,$2,$3,$4)`,
-		userID, userPublic, strings.ToLower("test-"+suffix+"-"+userPublic), "Test User"); err != nil {
+		userID, userPublic, strings.ToLower("test-"+strings.ToLower(suffix)+"-"+strings.ToLower(userPublic)), "Test User"); err != nil {
 		t.Fatal(err)
 	}
 
