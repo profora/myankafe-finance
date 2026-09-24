@@ -30,7 +30,10 @@ Private multi-entity, multi-currency double-entry finance platform for MyanKafe,
 - append-only audit history
 - mutation idempotency using `Idempotency-Key`
 - entity dashboard and all-entity management dashboard
-- P&L, Balance Sheet, Trial Balance, General Ledger, Account Ledger API, cash movement, and inter-entity balances
+- transaction/journal detail inspection and account-ledger drill-down
+- P&L, Balance Sheet, Trial Balance, General Ledger, Account Ledger, cash movement, and inter-entity balances
+- report ranges default to each entity's configured fiscal year
+- entity-timezone-aware date defaults
 - entity/user/role administration
 - database-level entity-boundary and posted-immutability guards
 
