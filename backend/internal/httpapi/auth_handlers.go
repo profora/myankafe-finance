@@ -78,20 +78,23 @@ func (s *Server) login(w http.ResponseWriter,r *http.Request){
 	session,err:=s.Store.CreateSession(r.Context(),cred.User.ID,tokenHash,r.UserAgent(),ip,expires)
 	if err!=nil{fail(w,500,errors.New("could not create session"));return}
 
-	_ = s.Store.AuditAuth(r.Context(),&cred.User.ID,"AUTH_LOGIN","SUCCESS",map[string]any{"session_id":session.ID,"ip":ip})
+	_ = s.Store.AuditAuth(r.Context(),&cred.User.ID,"AUTH_LOGIN","SUCCESS",map[string]any{"session_id":session.PublicID,"ip":ip})
 	s.LoginLimiter.Reset(usernameKey)
 	s.LoginLimiter.Reset("ip:"+ip)
 	s.setSessionCookie(w,rawToken,session.ExpiresAt)
 	w.Header().Set("Cache-Control","no-store")
-	write(w,200,map[string]any{
+	response:=map[string]any{
 		"user":map[string]any{
 			"public_id":cred.User.PublicID,
 			"username":cred.User.Username,
 			"display_name":cred.User.DisplayName,
 		},
 		"session_expires_at":session.ExpiresAt,
-		"session_token":rawToken,
-	})
+	}
+	if strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Session-Transport")),"bearer"){
+		response["session_token"]=rawToken
+	}
+	write(w,200,response)
 }
 
 func (s *Server) logout(w http.ResponseWriter,r *http.Request){
@@ -102,7 +105,7 @@ func (s *Server) logout(w http.ResponseWriter,r *http.Request){
 	}
 	if p,ok:=auth.From(r.Context());ok{
 		if u,err:=s.Store.ResolveUser(r.Context(),p.PublicID);err==nil{
-			_ = s.Store.AuditAuth(r.Context(),&u.ID,"AUTH_LOGOUT","SUCCESS",map[string]any{"session_id":p.SessionID})
+			_ = s.Store.AuditAuth(r.Context(),&u.ID,"AUTH_LOGOUT","SUCCESS",map[string]any{"session_id":p.SessionPublicID})
 		}
 	}
 	s.clearSessionCookie(w)
