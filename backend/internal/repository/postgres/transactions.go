@@ -30,6 +30,12 @@ func (s *Store) CreateTransaction(ctx context.Context,user User,e Entity,in Crea
   var faID,faCurrency string
   if err:=tx.QueryRow(ctx,`SELECT id::text,currency_code FROM financial_accounts WHERE entity_id=$1 AND public_id=$2 AND active=true`,e.ID,in.FinancialAccountPublicID).Scan(&faID,&faCurrency);err!=nil{return Transaction{},err}
   if in.Currency==""{in.Currency=faCurrency};if in.Currency!=faCurrency{return Transaction{},fmt.Errorf("transaction currency must match selected financial account")}
+  var contactID any
+  if in.ContactPublicID!=""{
+    var cid string
+    if err:=tx.QueryRow(ctx,`SELECT id::text FROM contacts WHERE entity_id=$1 AND public_id=$2 AND active=true`,e.ID,in.ContactPublicID).Scan(&cid);err!=nil{return Transaction{},err}
+    contactID=cid
+  }
   total:=new(big.Rat)
   type resolved struct{ id,amount,desc string }
   rr:=make([]resolved,0,len(in.Splits))
@@ -44,8 +50,8 @@ func (s *Store) CreateTransaction(ctx context.Context,user User,e Entity,in Crea
     rr=append(rr,resolved{aid,sp.Amount,sp.Description})
   }
   id,_:=ids.UUIDv7();pub,_:=ids.ULID()
-  if _,err:=tx.Exec(ctx,`INSERT INTO transactions(id,public_id,entity_id,transaction_type,status,transaction_date,description,primary_financial_account_id,currency_code,total_amount,created_by)
-VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7,$8,$9,$10)`,id,pub,e.ID,in.Type,in.Date,in.Description,contactID,faID,in.Currency,total.FloatString(6),user.ID);err!=nil{return Transaction{},err}
+  if _,err:=tx.Exec(ctx,`INSERT INTO transactions(id,public_id,entity_id,transaction_type,status,transaction_date,description,contact_id,primary_financial_account_id,currency_code,total_amount,created_by)
+VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7,$8,$9,$10,$11)`,id,pub,e.ID,in.Type,in.Date,in.Description,contactID,faID,in.Currency,total.FloatString(6),user.ID);err!=nil{return Transaction{},err}
   for i,sp:=range rr{sid,_:=ids.UUIDv7();if _,err:=tx.Exec(ctx,`INSERT INTO transaction_splits(id,transaction_id,line_no,account_id,amount,description) VALUES($1,$2,$3,$4,$5,NULLIF($6,''))`,sid,id,i+1,sp.id,sp.amount,sp.desc);err!=nil{return Transaction{},err}}
   if err:=insertAuditTx(ctx,tx,user,e,"TRANSACTION_CREATE","TRANSACTION",pub,map[string]any{"type":in.Type,"total":total.FloatString(6)});err!=nil{return Transaction{},err}
   if err:=tx.Commit(ctx);err!=nil{return Transaction{},err}
