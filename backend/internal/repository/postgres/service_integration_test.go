@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -44,7 +45,7 @@ func seedServiceEntity(t *testing.T, ctx context.Context, s *Store, suffix strin
 
 	userID := mustUUID(t)
 	userPublic := mustULID(t)
-	username := strings.ToLower("svc-" + suffix + "-" + userPublic)
+	username := strings.ToLower("svc-" + strings.ToLower(suffix) + "-" + strings.ToLower(userPublic))
 	if _, err := tx.Exec(ctx, `
 INSERT INTO users(id,public_id,username,display_name)
 VALUES($1,$2,$3,$4)`, userID, userPublic, username, "Service Test User"); err != nil {
