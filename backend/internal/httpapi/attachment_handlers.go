@@ -45,56 +45,48 @@ func (s *Server) uploadTransactionAttachments(w http.ResponseWriter,r *http.Requ
 	if len(files)==0{fail(w,400,errors.New("at least one file is required"));return}
 	if len(files)>maxAttachmentsPerUpload{fail(w,400,fmt.Errorf("at most %d files may be uploaded at once",maxAttachmentsPerUpload));return}
 
-	type staged struct{
-		meta postgres.NewAttachment
-		body []byte
-	}
-	stagedFiles:=make([]staged,0,len(files))
+	meta:=make([]postgres.NewAttachment,0,len(files))
+	uploaded:=make([]string,0,len(files))
+	cleanup:=func(){for _,key:=range uploaded{_ = s.AttachmentStore.Delete(r.Context(),key)}}
+
 	for _,fh:=range files{
-		file,err:=fh.Open();if err!=nil{fail(w,400,err);return}
+		file,err:=fh.Open();if err!=nil{cleanup();fail(w,400,err);return}
 		body,readErr:=io.ReadAll(io.LimitReader(file,s.Config.AttachmentMaxBytes+1))
 		_ = file.Close()
-		if readErr!=nil{fail(w,400,readErr);return}
+		if readErr!=nil{cleanup();fail(w,400,readErr);return}
 		if int64(len(body))>s.Config.AttachmentMaxBytes{
-			fail(w,http.StatusRequestEntityTooLarge,fmt.Errorf("%s exceeds the %d MB attachment limit",fh.Filename,s.Config.AttachmentMaxBytes>>20))
+			cleanup();fail(w,http.StatusRequestEntityTooLarge,fmt.Errorf("%s exceeds the %d MB attachment limit",fh.Filename,s.Config.AttachmentMaxBytes>>20))
 			return
 		}
-		if len(body)==0{fail(w,400,fmt.Errorf("%s is empty",fh.Filename));return}
+		if len(body)==0{cleanup();fail(w,400,fmt.Errorf("%s is empty",fh.Filename));return}
 
 		mimeType:=strings.ToLower(strings.TrimSpace(strings.Split(fh.Header.Get("Content-Type"),";")[0]))
 		detected:=strings.ToLower(strings.TrimSpace(strings.Split(http.DetectContentType(body[:minInt(len(body),512)]),";")[0]))
 		if mimeType==""||mimeType=="application/octet-stream"{mimeType=detected}
 		if !allowedAttachmentType(mimeType){
-			fail(w,http.StatusUnsupportedMediaType,fmt.Errorf("%s has unsupported content type %s",fh.Filename,mimeType))
+			cleanup();fail(w,http.StatusUnsupportedMediaType,fmt.Errorf("%s has unsupported content type %s",fh.Filename,mimeType))
 			return
 		}
 		if err:=validatePreviewAttachmentContent(mimeType,detected);err!=nil{
-			fail(w,http.StatusUnsupportedMediaType,fmt.Errorf("%s: %w",fh.Filename,err))
+			cleanup();fail(w,http.StatusUnsupportedMediaType,fmt.Errorf("%s: %w",fh.Filename,err))
 			return
 		}
-		publicID,err:=ids.ULID();if err!=nil{fail(w,500,err);return}
+
+		publicID,err:=ids.ULID();if err!=nil{cleanup();fail(w,500,err);return}
 		sum:=sha256.Sum256(body)
 		filename:=safeAttachmentFilename(fh.Filename)
 		key:=fmt.Sprintf("transactions/%s/%s/%s/%s",a.Entity.PublicID,chi.URLParam(r,"tx"),publicID,filename)
-		stagedFiles=append(stagedFiles,staged{
-			meta:postgres.NewAttachment{
-				PublicID:publicID,StorageKey:key,OriginalFilename:filename,MimeType:mimeType,
-				SizeBytes:int64(len(body)),SHA256Hex:hex.EncodeToString(sum[:]),
-			},
-			body:body,
-		})
-	}
-
-	uploaded:=make([]string,0,len(stagedFiles))
-	cleanup:=func(){for _,key:=range uploaded{_ = s.AttachmentStore.Delete(r.Context(),key)}}
-	for _,item:=range stagedFiles{
-		if err:=s.AttachmentStore.Put(r.Context(),item.meta.StorageKey,item.meta.MimeType,item.body);err!=nil{
+		attachment:=postgres.NewAttachment{
+			PublicID:publicID,StorageKey:key,OriginalFilename:filename,MimeType:mimeType,
+			SizeBytes:int64(len(body)),SHA256Hex:hex.EncodeToString(sum[:]),
+		}
+		if err:=s.AttachmentStore.Put(r.Context(),key,mimeType,body);err!=nil{
 			cleanup();fail(w,http.StatusBadGateway,err);return
 		}
-		uploaded=append(uploaded,item.meta.StorageKey)
+		uploaded=append(uploaded,key)
+		meta=append(meta,attachment)
 	}
-	meta:=make([]postgres.NewAttachment,0,len(stagedFiles))
-	for _,item:=range stagedFiles{meta=append(meta,item.meta)}
+
 	items,err:=s.Store.RegisterTransactionAttachments(r.Context(),a.User,a.Entity,chi.URLParam(r,"tx"),meta)
 	if err!=nil{cleanup();fail(w,400,err);return}
 	write(w,http.StatusCreated,map[string]any{"items":items})
