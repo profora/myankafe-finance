@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { dateInTimeZone, firstDayOfYearInTimeZone } from "@/lib/date";
+import { dateInTimeZone, fiscalYearStartInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 
 type Row={id?:string;code?:string;name?:string;type?:string;amount?:string;debits?:string;credits?:string;balance?:string};
@@ -22,7 +22,7 @@ export default function Reports(){
   const [inter,setInter]=useState<Inter[]>([]);
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
-  const [from,setFrom]=useState(()=>firstDayOfYearInTimeZone());
+  const [from,setFrom]=useState(()=>fiscalYearStartInTimeZone());
   const [to,setTo]=useState(()=>dateInTimeZone());
 
   async function load(){
@@ -46,7 +46,7 @@ export default function Reports(){
 
   useEffect(()=>{
     if(!entity)return;
-    setFrom(firstDayOfYearInTimeZone(entity.Timezone));
+    setFrom(fiscalYearStartInTimeZone(entity.Timezone,entity.FiscalMonth,entity.FiscalDay));
     setTo(dateInTimeZone(entity.Timezone));
   },[entity?.PublicID]);
 
