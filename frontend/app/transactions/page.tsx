@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { api } from "@/lib/api";
+import { api, apiBlob } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 import type { FinancialAccount } from "@/components/types";
@@ -110,6 +110,24 @@ export default function Transactions(){
     }).catch(e=>setError(e instanceof Error?e.message:String(e)));
   },[entity?.PublicID]);
 
+  async function exportCSV(){
+    if(!entity)return;
+    setError("");
+    try{
+      const q=new URLSearchParams(query);
+      q.delete("limit");q.delete("offset");
+      const blob=await apiBlob(`/entities/${entity.PublicID}/transactions/export.csv?${q.toString()}`);
+      const href=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=href;
+      a.download=`${entity.Code.toLowerCase()}-transactions.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+  }
+
   async function post(id:string){
     if(!entity)return;
     setBusy(id);setError("");
@@ -177,6 +195,7 @@ export default function Transactions(){
       <div className="actions">
         <button type="submit" disabled={loading}>Apply filters</button>
         <button type="button" className="secondary" onClick={clearFilters}>Clear</button>
+        <button type="button" className="secondary" disabled={loading||summary.count===0} onClick={exportCSV}>Export CSV</button>
         <span className="muted">{summary.count.toLocaleString()} matching transaction{summary.count===1?"":"s"}</span>
       </div>
     </form>
