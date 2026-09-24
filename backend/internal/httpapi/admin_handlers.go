@@ -100,3 +100,13 @@ func (s *Server) updateEntitySettings(w http.ResponseWriter,r *http.Request){
 	if err!=nil{fail(w,400,err);return}
 	write(w,200,v)
 }
+
+
+func (s *Server) revokeUserEntityAccess(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if a.Role!="OWNER"{fail(w,403,errors.New("OWNER required"));return}
+	if err:=s.Store.RevokeUserEntityAccess(r.Context(),a.User,chi.URLParam(r,"user"),a.Entity);err!=nil{
+		fail(w,400,err);return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
