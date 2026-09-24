@@ -50,6 +50,7 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		next.ServeHTTP(w,r.WithContext(auth.WithPrincipal(r.Context(),auth.Principal{
 			PublicID:user.PublicID,
 			SessionID:session.ID,
+			SessionPublicID:session.PublicID,
 		})))
 	})
 }
