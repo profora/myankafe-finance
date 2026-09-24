@@ -30,7 +30,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(auth.Middleware(cfg.AuthMode))
 		r.Use(s.auditRequests)
-		r.Get("/entities", s.listEntities)\n\t\tr.Post("/inter-entity-transactions", s.createInterEntityExpense)
+		r.Get("/entities", s.listEntities)\n\t\tr.Post("/entities", s.createEntity)\n\t\tr.Get("/users", s.listUsers)\n\t\tr.Post("/users", s.createUser)\n\t\tr.Post("/inter-entity-transactions", s.createInterEntityExpense)
 		r.Route("/entities/{entity}", func(r chi.Router) {
 			r.Use(s.entityAccess)
 			r.Get("/accounts", s.listAccounts)
@@ -40,7 +40,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 			r.Get("/transactions", s.listTransactions)
 			r.Post("/transactions", s.createTransaction)
 			r.Post("/transactions/{tx}/post", s.postTransaction)
-			r.Get("/audit-events", s.listAuditEvents)
+			r.Get("/users", s.listEntityUsers)\n\t\t\tr.Put("/users/role", s.setUserRole)\n\n\t\t\tr.Get("/audit-events", s.listAuditEvents)
 
 			r.Get("/accounting-lock", s.getLock)
 			r.Post("/accounting-lock", s.lock)
