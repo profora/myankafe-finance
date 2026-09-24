@@ -141,3 +141,58 @@ func TestPasswordLoginRejectsWrongPassword(t *testing.T) {
 		t.Fatalf("wrong-password status=%d body=%s", login.Code, login.Body.String())
 	}
 }
+
+
+func TestPasswordChangeRotatesSessionsAndCredential(t *testing.T) {
+	store := testHTTPStore(t)
+	username, password, _ := seedPasswordUser(t, store)
+	router := passwordRouter(store)
+
+	login := jsonRequest(t, router, http.MethodPost, "/api/v1/auth/login", map[string]string{
+		"username": username,
+		"password": password,
+	})
+	if login.Code != http.StatusOK {
+		t.Fatalf("login status=%d body=%s", login.Code, login.Body.String())
+	}
+	oldCookie := login.Result().Cookies()[0]
+	newPassword := "updated correct horse battery"
+
+	change := jsonRequest(t, router, http.MethodPost, "/api/v1/auth/change-password", map[string]string{
+		"current_password": password,
+		"new_password":     newPassword,
+	}, oldCookie)
+	if change.Code != http.StatusOK {
+		t.Fatalf("change-password status=%d body=%s", change.Code, change.Body.String())
+	}
+	replacementCookies := change.Result().Cookies()
+	if len(replacementCookies) != 1 || replacementCookies[0].Value == "" {
+		t.Fatalf("missing replacement cookie: %+v", replacementCookies)
+	}
+	replacement := replacementCookies[0]
+
+	oldSession := jsonRequest(t, router, http.MethodGet, "/api/v1/auth/me", nil, oldCookie)
+	if oldSession.Code != http.StatusUnauthorized {
+		t.Fatalf("old session status=%d body=%s", oldSession.Code, oldSession.Body.String())
+	}
+	newSession := jsonRequest(t, router, http.MethodGet, "/api/v1/auth/me", nil, replacement)
+	if newSession.Code != http.StatusOK {
+		t.Fatalf("replacement session status=%d body=%s", newSession.Code, newSession.Body.String())
+	}
+
+	oldPasswordLogin := jsonRequest(t, router, http.MethodPost, "/api/v1/auth/login", map[string]string{
+		"username": username,
+		"password": password,
+	})
+	if oldPasswordLogin.Code != http.StatusUnauthorized {
+		t.Fatalf("old password login status=%d body=%s", oldPasswordLogin.Code, oldPasswordLogin.Body.String())
+	}
+
+	newPasswordLogin := jsonRequest(t, router, http.MethodPost, "/api/v1/auth/login", map[string]string{
+		"username": username,
+		"password": newPassword,
+	})
+	if newPasswordLogin.Code != http.StatusOK {
+		t.Fatalf("new password login status=%d body=%s", newPasswordLogin.Code, newPasswordLogin.Body.String())
+	}
+}
