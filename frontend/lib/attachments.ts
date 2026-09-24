@@ -37,3 +37,15 @@ export function previewKind(mime:string){
   if(mime==="application/pdf")return "pdf";
   return "file";
 }
+
+
+export async function deleteTransactionAttachment(entityID:string,transactionID:string,attachmentID:string){
+  await api(`/entities/${entityID}/transactions/${transactionID}/attachments/${attachmentID}`,{method:"DELETE"});
+}
+
+export async function reorderTransactionAttachments(entityID:string,transactionID:string,attachmentIDs:string[]){
+  return api<{items:TransactionAttachment[]}>(`/entities/${entityID}/transactions/${transactionID}/attachments/reorder`,{
+    method:"PUT",
+    body:JSON.stringify({attachment_ids:attachmentIDs}),
+  });
+}
