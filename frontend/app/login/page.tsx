@@ -32,15 +32,20 @@ export default function LoginPage(){
     finally{setBusy(false)}
   }
 
-  return <main className="login-page">
-    <div className="login-card">
-      <div className="login-brand-lockup" aria-label="MyanKafe Finance">
-        <img className="login-brand-mark" src="/brand/logo-head.svg" alt=""/>
-        <img className="login-brand-wordmark" src="/brand/logo-text.svg" alt="MyanKafe"/>
-        <div className="login-brand-subtitle">Finance</div>
+  return <main className="login-page finance-login-page">
+    <section className="login-brand-panel">
+      <div className="brand-mark-hero" aria-hidden>MK</div>
+      <div>
+        <div className="login-kicker">MyanKafe · Finance workspace</div>
+        <h1>MyanKafe Finance</h1>
+        <p>Multi-entity double-entry accounting for MyanKafe, Royal Masterpiece, Personal, and future entities.</p>
       </div>
+      <small>Authenticated finance users only</small>
+    </section>
+    <section className="login-form-side">
+      <div className="login-card">
       <h1>Sign in</h1>
-      <p className="muted">Access is limited to active finance users.</p>
+      <p className="muted">Sign in with your finance username and password.</p>
       {expired&&!error&&<div className="alert">Your session expired. Please sign in again.</div>}
       {error&&<div className="alert error">{error}</div>}
       <form className="form" onSubmit={submit}>
@@ -54,6 +59,7 @@ export default function LoginPage(){
         </div>
         <button disabled={busy||!username||!password}>{busy?"Signing in…":"Sign in"}</button>
       </form>
-    </div>
+      </div>
+    </section>
   </main>;
 }
