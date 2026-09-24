@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
+import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
 import type { Account, FinancialAccount } from "@/components/types";
 
@@ -15,6 +16,8 @@ export default function InterEntity(){
   const [financial,setFinancial]=useState<FinancialAccount[]>([]);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
+  const [attachments,setAttachments]=useState<File[]>([]);
+  const [busy,setBusy]=useState(false);
   const [mapping,setMapping]=useState({due_from_account_id:"",due_to_account_id:""});
   const [form,setForm]=useState({Date:dateInTimeZone(entity?.Timezone??"Asia/Yangon"),InitiatingFinancialAccountPublicID:"",InitiatingAmount:"",CounterpartyAmount:"",CounterpartyExpenseAccountPublicID:"",Description:""});
 
@@ -35,12 +38,20 @@ export default function InterEntity(){
   }
 
   async function post(){
-    if(!entity||!counterparty)return;setError("");setMessage("");
+    if(!entity||!counterparty)return;setError("");setMessage("");setBusy(true);
     try{
-      const v=await api<{id:string}>("/inter-entity-transactions",{method:"POST",body:JSON.stringify({InitiatingEntityID:entity.PublicID,CounterpartyEntityID:counterparty,...form})});
-      setMessage(`Inter-entity transaction posted atomically: ${v.id}`);
-      setForm(v=>({...v,InitiatingAmount:"",CounterpartyAmount:"",Description:""}));
+      const v=await api<{id:string;initiating_transaction_id:string;counterparty_transaction_id:string}>("/inter-entity-transactions",{method:"POST",body:JSON.stringify({InitiatingEntityID:entity.PublicID,CounterpartyEntityID:counterparty,...form})});
+      if(attachments.length){
+        try{await uploadTransactionAttachments(entity.PublicID,v.initiating_transaction_id,attachments)}
+        catch(uploadErr){
+          setMessage(`Inter-entity transaction posted atomically: ${v.id}`);
+          setError(`Both accounting entries were posted, but attachment upload failed on the initiating transaction. Add files from transaction ${v.initiating_transaction_id}. ${uploadErr instanceof Error?uploadErr.message:String(uploadErr)}`);
+          return;
+        }
+      }
+      window.location.assign(`/transactions/${v.initiating_transaction_id}`);
     }catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setBusy(false)}
   }
 
   const dueFrom=ownAccounts.filter(a=>a.Postable&&a.Type==="ASSET");
@@ -68,7 +79,8 @@ export default function InterEntity(){
           <div className="field"><label>Counterparty expense account</label><select value={form.CounterpartyExpenseAccountPublicID} onChange={e=>setForm({...form,CounterpartyExpenseAccountPublicID:e.target.value})}><option value="">Choose…</option>{expenses.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
           <div className="field span-2"><label>Description</label><input value={form.Description} onChange={e=>setForm({...form,Description:e.target.value})}/></div>
         </div>
-        <button disabled={!form.InitiatingAmount||!form.CounterpartyAmount||!form.CounterpartyExpenseAccountPublicID||!form.Description} onClick={post}>Post both entities atomically</button>
+        <div className="field"><label>Attachments</label><input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,text/csv,.docx,.xlsx" onChange={e=>setAttachments(Array.from(e.target.files??[]))}/><span className="muted">{attachments.length?attachments.map(x=>x.name).join(", "):"Optional supporting documents. They are stored on the initiating transaction."}</span></div>
+        <button disabled={busy||!form.InitiatingAmount||!form.CounterpartyAmount||!form.CounterpartyExpenseAccountPublicID||!form.Description} onClick={post}>{busy?"Posting…":"Post both entities atomically"}</button>
       </div>
     </div>
   </>;
