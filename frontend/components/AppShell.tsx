@@ -7,14 +7,19 @@ import { EntityProvider, useEntity } from "./EntityContext";
 const nav = [
   ["/", "Dashboard"],
   ["/transactions", "Transactions"],
-  ["/transactions/new", "New Entry"],\n  ["/transfers", "Transfers"],\n  ["/inter-entity", "Inter-Entity"],\n  ["/contacts", "Contacts"],
+  ["/transactions/new", "New Entry"],
+  ["/transfers", "Transfers"],
+  ["/inter-entity", "Inter-Entity"],
+  ["/contacts", "Contacts"],
   ["/accounts", "Chart of Accounts"],
   ["/financial-accounts", "Cash / Bank"],
   ["/exchange-rates", "Exchange Rates"],
   ["/manual-journal", "Manual Journal"],
   ["/reports", "Reports"],
   ["/audit", "Audit Log"],
-  ["/locking", "Transaction Locking"],\n  ["/settings/entities", "Entities"],\n  ["/settings/users", "Users & Access"],
+  ["/locking", "Transaction Locking"],
+  ["/settings/entities", "Entities"],
+  ["/settings/users", "Users & Access"],
 ];
 
 function Shell({ children }: { children: React.ReactNode }) {
