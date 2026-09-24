@@ -32,6 +32,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(auth.Middleware(cfg.AuthMode))
 		r.Use(s.auditRequests)
+		r.Use(s.idempotency)
 
 		r.Get("/entities", s.listEntities)
 		r.Post("/entities", s.createEntity)
