@@ -10,6 +10,10 @@ const nav = [
   ["/transactions/new", "New Entry"],
   ["/accounts", "Chart of Accounts"],
   ["/financial-accounts", "Cash / Bank"],
+  ["/exchange-rates", "Exchange Rates"],
+  ["/manual-journal", "Manual Journal"],
+  ["/reports", "Reports"],
+  ["/audit", "Audit Log"],
   ["/locking", "Transaction Locking"],
 ];
 
