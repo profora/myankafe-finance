@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import type { Entity } from "./types";
 
 type Value = {
@@ -26,7 +26,13 @@ export function EntityProvider({ children }: { children: React.ReactNode }) {
         setEntities(x.items);
         setEntityIDState((current) => current || x.items[0]?.PublicID || "");
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => {
+        if (e instanceof ApiError && e.status === 401 && typeof window !== "undefined") {
+          window.location.assign("/login");
+          return;
+        }
+        setError(e instanceof Error ? e.message : String(e));
+      });
   };
 
   useEffect(load, []);
