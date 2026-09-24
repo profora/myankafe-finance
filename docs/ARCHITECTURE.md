@@ -105,13 +105,43 @@ Combined reporting translates each entity's functional totals using stored entit
 
 ## Authentication boundary
 
-The current development authentication header is intentionally non-production:
+The normal authentication mode is username/password with database-backed opaque sessions, adapted from the Royal Masterpiece platform pattern.
 
-`Authorization: Bearer dev:<USER_ULID>`
+- usernames are normalized lowercase identifiers
+- passwords use Argon2id
+- raw 32-byte session tokens are returned only to the client
+- PostgreSQL stores only the SHA-256 session-token hash
+- web clients use an HttpOnly SameSite=Strict cookie
+- Bearer session tokens are accepted for future native clients
+- sessions expire and may be revoked
+- password changes revoke previous sessions and issue a replacement session
+- OWNER password reset revokes all sessions for the target user
+- login failures/rate limiting and auth lifecycle events are audited
+- production requires `AUTH_MODE=password` and secure cookies
 
-`AUTH_MODE=dev` is rejected when `APP_ENV=production`.
+The legacy `Authorization: Bearer dev:<USER_ULID>` path remains only for explicit development/test mode; production rejects it.
 
-Production release must wire the real private admin identity boundary before deployment.
+## Attachment storage
+
+Transaction attachments are private Cloudflare R2 objects accessed only through the Go backend.
+
+- R2 credentials never reach Next.js/browser code.
+- A transaction may have multiple ordered active attachments.
+- The API accepts multi-file multipart uploads and records SHA-256, MIME type, size, storage key, filename, uploader, and display order.
+- Object identity/content metadata becomes immutable after registration.
+- Images and PDFs are streamed through authenticated endpoints for inline preview.
+- Other supported document types are served as attachments.
+- Image previews support fullscreen zoom/navigation in the web client.
+- Upload cleanup is best-effort if database registration fails.
+- Multipart requests bypass generic body-buffer idempotency to avoid duplicating large receipt bodies in memory.
+
+## Transaction operations view
+
+The transaction list is a server-filtered accounting operations view.
+
+Filters include search text, status, type, date range, and financial account. Search includes descriptions, ULIDs, contacts, financial accounts, external references, and attachment filenames. Financial-account filtering also matches financial accounts represented on journal lines, so both sides of transfers can be found.
+
+Summary and running figures are calculated from posted/reversed journal effects in the entity functional currency. This avoids adding unlike transaction currencies. Reversal journals unwind income/expense summaries instead of leaving original amounts overstated.
 
 
 ## Role model
@@ -120,6 +150,7 @@ Authorization is enforced server-side. UI visibility is not a security boundary.
 
 - **OWNER**
   - full entity access
+  - reset user passwords and revoke their sessions
   - create platform users and new entities
   - configure accounting
   - operate the ledger
