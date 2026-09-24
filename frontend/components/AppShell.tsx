@@ -30,8 +30,10 @@ function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { entities, entity, setEntityID, error } = useEntity();
   const [me,setMe]=useState<Me["user"]|null>(null);
+  const [mobileNavOpen,setMobileNavOpen]=useState(false);
 
   useEffect(()=>{api<Me>("/auth/me").then(x=>setMe(x.user)).catch(()=>{})},[]);
+  useEffect(()=>{setMobileNavOpen(false)},[pathname]);
 
   async function signOut(){
     try { await api("/auth/logout",{method:"POST",body:"{}"}); } catch {}
@@ -40,8 +42,8 @@ function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <Link className="brand platform-brand" href="/" aria-label="MyanKafe Finance home">
+      <aside className={`sidebar ${mobileNavOpen?"mobile-open":""}`}>
+        <Link className="brand platform-brand" href="/" aria-label="MyanKafe Finance home" onClick={()=>setMobileNavOpen(false)}>
           <span className="sidebar-brand-mark" aria-hidden>MK</span>
           <span className="sidebar-brand-text">
             <strong>MyanKafe</strong>
@@ -50,20 +52,24 @@ function Shell({ children }: { children: React.ReactNode }) {
         </Link>
         <nav>
           {nav.map(([href, label]) => (
-            <Link key={href} className={pathname === href || (href!=="/"&&pathname.startsWith(href+"/")) ? "active" : ""} href={href}>{label}</Link>
+            <Link key={href} className={pathname === href || (href!=="/"&&pathname.startsWith(href+"/")) ? "active" : ""} href={href} onClick={()=>setMobileNavOpen(false)}>{label}</Link>
           ))}
         </nav>
         <div className="sidebar-note">
           Double-entry ledger<br />UUIDv7 internal · ULID public
         </div>
       </aside>
+      {mobileNavOpen&&<button className="mobile-nav-overlay" aria-label="Close navigation" onClick={()=>setMobileNavOpen(false)}/>}
       <main className="main">
         <header className="topbar">
-          <div>
-            <div className="eyebrow">Entity</div>
-            <select value={entity?.PublicID ?? ""} onChange={(e) => setEntityID(e.target.value)}>
-              {entities.map((x) => <option key={x.PublicID} value={x.PublicID}>{x.Name}</option>)}
-            </select>
+          <div className="topbar-entity">
+            <button className="secondary mobile-nav-button" aria-label="Open navigation" onClick={()=>setMobileNavOpen(true)}>☰</button>
+            <div>
+              <div className="eyebrow">Entity</div>
+              <select value={entity?.PublicID ?? ""} onChange={(e) => setEntityID(e.target.value)}>
+                {entities.map((x) => <option key={x.PublicID} value={x.PublicID}>{x.Name}</option>)}
+              </select>
+            </div>
           </div>
           <div className="actions">
             <div className="top-meta">
