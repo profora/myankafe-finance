@@ -66,6 +66,9 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 			r.Get("/auth/me", s.me)
 			r.Post("/auth/logout", s.logout)
 			r.Post("/auth/change-password", s.changePassword)
+			r.Get("/auth/sessions", s.listSessions)
+			r.Post("/auth/sessions/revoke-others", s.revokeOtherSessions)
+			r.Delete("/auth/sessions/{session}", s.revokeSession)
 
 			r.Get("/entities", s.listEntities)
 			r.Post("/entities", s.createEntity)
