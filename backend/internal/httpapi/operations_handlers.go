@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/profora/myankafe-finance/backend/internal/repository/postgres"
