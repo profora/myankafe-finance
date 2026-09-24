@@ -26,7 +26,7 @@ export default function InterEntity(){
     Promise.all([
       api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
       api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`)
-    ]).then(([a,f])=>{setOwnAccounts(a.items);setFinancial(f.items);setForm(v=>({...v,InitiatingFinancialAccountPublicID:f.items[0]?.PublicID||""}));setCounterparty(x=>x||counterparts[0]?.PublicID||"")}).catch(e=>setError(e.message))
+    ]).then(([a,f])=>{const activeFinancial=f.items.filter(x=>x.Active);setOwnAccounts(a.items);setFinancial(activeFinancial);setForm(v=>({...v,InitiatingFinancialAccountPublicID:activeFinancial[0]?.PublicID||""}));setCounterparty(x=>x||counterparts[0]?.PublicID||"")}).catch(e=>setError(e.message))
   },[entity,counterparts.length]);
 
   useEffect(()=>{if(counterparty)api<{items:Account[]}>(`/entities/${counterparty}/accounts`).then(x=>setCpAccounts(x.items)).catch(e=>setError(e.message))},[counterparty]);
