@@ -114,3 +114,75 @@ WHERE fa.id=$1`,id).
 	if err:=tx.Commit(ctx);err!=nil{return FinancialAccount{},err}
 	return out,nil
 }
+
+
+type UpdateAccountInput struct {
+	Name    string
+	Subtype string
+	Active  bool
+}
+
+func (s *Store) UpdateAccount(ctx context.Context,user User,e Entity,publicID string,in UpdateAccountInput)(Account,error){
+	in.Name=strings.TrimSpace(in.Name)
+	if in.Name==""{return Account{},fmt.Errorf("name is required")}
+
+	tx,err:=s.Pool.Begin(ctx);if err!=nil{return Account{},err}
+	defer tx.Rollback(ctx)
+
+	var id string
+	var currentActive bool
+	if err:=tx.QueryRow(ctx,`
+SELECT id::text,active
+FROM accounts
+WHERE entity_id=$1 AND public_id=$2
+FOR UPDATE`,e.ID,publicID).Scan(&id,&currentActive);err!=nil{return Account{},err}
+
+	if currentActive&&!in.Active{
+		var activeDescendants int
+		if err:=tx.QueryRow(ctx,`
+WITH RECURSIVE descendants AS (
+  SELECT id,parent_id,active
+  FROM accounts
+  WHERE entity_id=$1 AND parent_id=$2
+  UNION ALL
+  SELECT a.id,a.parent_id,a.active
+  FROM accounts a
+  JOIN descendants d ON a.parent_id=d.id
+  WHERE a.entity_id=$1
+)
+SELECT count(*) FROM descendants WHERE active=true`,e.ID,id).Scan(&activeDescendants);err!=nil{return Account{},err}
+		if activeDescendants>0{return Account{},fmt.Errorf("deactivate active child accounts first")}
+
+		var activeFinancial int
+		if err:=tx.QueryRow(ctx,`
+SELECT count(*)
+FROM financial_accounts
+WHERE entity_id=$1 AND account_id=$2 AND active=true`,e.ID,id).Scan(&activeFinancial);err!=nil{return Account{},err}
+		if activeFinancial>0{return Account{},fmt.Errorf("deactivate linked financial accounts first")}
+	}
+
+	if _,err:=tx.Exec(ctx,`
+UPDATE accounts
+SET name=$3,
+    account_subtype=NULLIF($4,''),
+    active=$5,
+    updated_at=now()
+WHERE id=$1 AND entity_id=$2`,
+		id,e.ID,in.Name,strings.TrimSpace(in.Subtype),in.Active);err!=nil{return Account{},err}
+
+	var out Account
+	if err:=tx.QueryRow(ctx,`
+SELECT public_id::text,code,name,account_type,account_subtype,is_postable,active
+FROM accounts WHERE id=$1`,id).
+		Scan(&out.PublicID,&out.Code,&out.Name,&out.Type,&out.Subtype,&out.Postable,&out.Active);err!=nil{
+		return Account{},err
+	}
+
+	if err:=insertAuditTx(ctx,tx,user,e,"COA_UPDATE","ACCOUNT",publicID,map[string]any{
+		"name":out.Name,
+		"subtype":out.Subtype,
+		"active":out.Active,
+	});err!=nil{return Account{},err}
+	if err:=tx.Commit(ctx);err!=nil{return Account{},err}
+	return out,nil
+}
