@@ -94,6 +94,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 
 				r.Get("/accounts", s.listAccounts)
 				r.Post("/accounts", s.createAccount)
+				r.Put("/accounts/{account}", s.updateAccount)
 
 				r.Get("/financial-accounts", s.listFinancialAccounts)
 				r.Post("/financial-accounts", s.createFinancialAccount)
@@ -213,6 +214,16 @@ func (s *Server) createAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, http.StatusCreated, v)
+}
+
+func (s *Server) updateAccount(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if !requireRole(w,canConfigureAccounting(a.Role),"account configuration requires OWNER, ADMIN, or ACCOUNTANT"){return}
+	var in postgres.UpdateAccountInput
+	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
+	v,err:=s.Store.UpdateAccount(r.Context(),a.User,a.Entity,chi.URLParam(r,"account"),in)
+	if err!=nil{fail(w,400,err);return}
+	write(w,200,v)
 }
 
 func (s *Server) listFinancialAccounts(w http.ResponseWriter, r *http.Request) {
