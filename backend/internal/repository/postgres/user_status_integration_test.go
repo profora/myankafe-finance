@@ -1,13 +1,14 @@
 package postgres
 
 import (
+	"context"
 	"testing"
 	"time"
 )
 
 func seedPlatformUser(t *testing.T, s *Store, suffix string) User {
 	t.Helper()
-	ctx := t.Context()
+	ctx := context.Background()
 	id := mustUUID(t)
 	pub := mustULID(t)
 	username := "status-" + suffix + "-" + lowerULID(pub)
