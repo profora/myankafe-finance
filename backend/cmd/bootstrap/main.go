@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/profora/myankafe-finance/backend/internal/auth"
 	"github.com/profora/myankafe-finance/backend/internal/config"
 	"github.com/profora/myankafe-finance/backend/internal/ids"
 	"github.com/profora/myankafe-finance/backend/internal/repository/postgres"
@@ -21,9 +22,11 @@ func main() {
 	defer store.Close()
 
 	ctx := context.Background()
-	username := getenv("BOOTSTRAP_USERNAME", "owner")
+	username, err := auth.NormalizeUsername(getenv("BOOTSTRAP_USERNAME", "owner"))
+	if err != nil { log.Fatal(err) }
 	display := getenv("BOOTSTRAP_DISPLAY_NAME", "Owner")
 	email := os.Getenv("BOOTSTRAP_EMAIL")
+	password := os.Getenv("BOOTSTRAP_PASSWORD")
 
 	tx, err := store.Pool.Begin(ctx)
 	if err != nil { log.Fatal(err) }
@@ -35,6 +38,26 @@ func main() {
 		userID, _ = ids.UUIDv7()
 		publicID, _ = ids.ULID()
 		if _, err = tx.Exec(ctx, "INSERT INTO users(id,public_id,username,display_name,email) VALUES($1,$2,$3,$4,NULLIF($5,''))", userID, publicID, username, display, email); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	var existingHash string
+	credentialErr := tx.QueryRow(ctx, "SELECT password_hash FROM user_credentials WHERE user_id=$1", userID).Scan(&existingHash)
+	if password == "" && credentialErr != nil {
+		log.Fatal("BOOTSTRAP_PASSWORD is required when the owner has no password credential")
+	}
+	if password != "" {
+		if err := auth.ValidatePassword(password); err != nil { log.Fatal(err) }
+		passwordHash, err := auth.HashPassword(password)
+		if err != nil { log.Fatal(err) }
+		if _, err = tx.Exec(ctx, `
+INSERT INTO user_credentials(user_id,password_hash)
+VALUES($1,$2)
+ON CONFLICT(user_id) DO UPDATE
+SET password_hash=EXCLUDED.password_hash,
+    password_changed_at=now(),
+    updated_at=now()`, userID,passwordHash); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -63,7 +86,7 @@ func main() {
 	}
 
 	if err := tx.Commit(ctx); err != nil { log.Fatal(err) }
-	_ = json.NewEncoder(os.Stdout).Encode(map[string]string{"owner_public_id": publicID, "username": username})
+	_ = json.NewEncoder(os.Stdout).Encode(map[string]string{"owner_public_id": publicID, "username": username, "auth_mode": "password"})
 }
 
 func getenv(k, d string) string {
