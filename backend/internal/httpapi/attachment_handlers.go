@@ -60,11 +60,15 @@ func (s *Server) uploadTransactionAttachments(w http.ResponseWriter,r *http.Requ
 		}
 		if len(body)==0{fail(w,400,fmt.Errorf("%s is empty",fh.Filename));return}
 
-		mimeType:=strings.TrimSpace(strings.Split(fh.Header.Get("Content-Type"),";")[0])
-		detected:=http.DetectContentType(body[:minInt(len(body),512)])
+		mimeType:=strings.ToLower(strings.TrimSpace(strings.Split(fh.Header.Get("Content-Type"),";")[0]))
+		detected:=strings.ToLower(strings.TrimSpace(strings.Split(http.DetectContentType(body[:minInt(len(body),512)]),";")[0]))
 		if mimeType==""||mimeType=="application/octet-stream"{mimeType=detected}
 		if !allowedAttachmentType(mimeType){
 			fail(w,http.StatusUnsupportedMediaType,fmt.Errorf("%s has unsupported content type %s",fh.Filename,mimeType))
+			return
+		}
+		if err:=validatePreviewAttachmentContent(mimeType,detected);err!=nil{
+			fail(w,http.StatusUnsupportedMediaType,fmt.Errorf("%s: %w",fh.Filename,err))
 			return
 		}
 		publicID,err:=ids.ULID();if err!=nil{fail(w,500,err);return}
@@ -117,6 +121,24 @@ func (s *Server) transactionAttachmentContent(w http.ResponseWriter,r *http.Requ
 	_,_ = w.Write(body)
 }
 
+func validatePreviewAttachmentContent(declared,detected string) error {
+	switch declared {
+	case "image/jpeg","image/png","image/webp","image/gif","application/pdf":
+		if detected!=declared{
+			return fmt.Errorf("declared %s but detected %s",declared,detected)
+		}
+	case "text/csv":
+		if detected!="text/plain"&&detected!="text/csv"{
+			return fmt.Errorf("declared text/csv but detected %s",detected)
+		}
+	case "text/plain":
+		if detected!="text/plain"{
+			return fmt.Errorf("declared text/plain but detected %s",detected)
+		}
+	}
+	return nil
+}
+
 func allowedAttachmentType(v string) bool {
 	switch strings.ToLower(strings.TrimSpace(v)){
 	case "image/jpeg","image/png","image/webp","image/gif","application/pdf",
@@ -137,7 +159,8 @@ func safeAttachmentFilename(v string) string {
 		if unicode.IsLetter(r)||unicode.IsDigit(r)||strings.ContainsRune("._- ()",r){b.WriteRune(r)}else{b.WriteRune('_')}
 	}
 	out:=strings.TrimSpace(b.String())
-	if len(out)>180{out=out[:180]}
+	runes:=[]rune(out)
+	if len(runes)>180{out=string(runes[:180])}
 	if out==""{return "attachment"}
 	return out
 }
