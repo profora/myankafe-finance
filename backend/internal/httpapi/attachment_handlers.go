@@ -3,6 +3,7 @@ package httpapi
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -166,3 +167,41 @@ func safeAttachmentFilename(v string) string {
 }
 
 func minInt(a,b int)int{if a<b{return a};return b}
+
+
+func (s *Server) deleteTransactionAttachment(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if !requireRole(w,canOperateLedger(a.Role),"ledger operation access required"){return}
+	obj,err:=s.Store.SoftDeleteTransactionAttachment(
+		r.Context(),a.User,a.Entity,chi.URLParam(r,"tx"),chi.URLParam(r,"attachment"),
+	)
+	if err!=nil{fail(w,http.StatusNotFound,err);return}
+
+	if s.AttachmentStore!=nil&&s.AttachmentStore.Configured(){
+		if err:=s.AttachmentStore.Delete(r.Context(),obj.StorageKey);err!=nil{
+			_ = s.Store.Audit(r.Context(),a.User,&a.Entity,"ATTACHMENT_OBJECT_DELETE_FAILED","TRANSACTION",nil,"FAILED",map[string]any{
+				"transaction_id":chi.URLParam(r,"tx"),
+				"attachment_id":obj.PublicID,
+				"storage_key":obj.StorageKey,
+				"error":err.Error(),
+			})
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) reorderTransactionAttachments(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if !requireRole(w,canOperateLedger(a.Role),"ledger operation access required"){return}
+	var in struct{
+		AttachmentIDs []string `json:"attachment_ids"`
+	}
+	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
+	if len(in.AttachmentIDs)==0{fail(w,400,errors.New("attachment_ids is required"));return}
+	if err:=s.Store.ReorderTransactionAttachments(r.Context(),a.User,a.Entity,chi.URLParam(r,"tx"),in.AttachmentIDs);err!=nil{
+		fail(w,400,err);return
+	}
+	items,err:=s.Store.ListTransactionAttachments(r.Context(),a.Entity.ID,chi.URLParam(r,"tx"))
+	if err!=nil{fail(w,500,err);return}
+	write(w,200,map[string]any{"items":items})
+}
