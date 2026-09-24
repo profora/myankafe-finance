@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/profora/myankafe-finance/backend/internal/auth"
+	"github.com/profora/myankafe-finance/backend/internal/repository/postgres"
 )
 
 type statusRecorder struct {
