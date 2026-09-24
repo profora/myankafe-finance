@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/profora/myankafe-finance/backend/internal/auth"
 )
@@ -160,4 +161,45 @@ func clientIP(r *http.Request) string {
 	v:=strings.TrimSpace(r.RemoteAddr)
 	if host,_,err:=net.SplitHostPort(v);err==nil{return host}
 	return v
+}
+
+
+func (s *Server) listSessions(w http.ResponseWriter,r *http.Request){
+	p,ok:=auth.From(r.Context());if !ok{fail(w,401,errors.New("authentication required"));return}
+	u,err:=s.Store.ResolveUser(r.Context(),p.PublicID);if err!=nil{fail(w,401,errors.New("authentication required"));return}
+	items,err:=s.Store.ListActiveSessions(r.Context(),u.ID);if err!=nil{fail(w,500,err);return}
+	out:=make([]map[string]any,0,len(items))
+	for _,item:=range items{
+		out=append(out,map[string]any{
+			"id":item.PublicID,
+			"user_agent":item.UserAgent,
+			"ip_address":item.IPAddress,
+			"expires_at":item.ExpiresAt,
+			"last_seen_at":item.LastSeenAt,
+			"created_at":item.CreatedAt,
+			"current":item.InternalID==p.SessionID,
+		})
+	}
+	write(w,200,map[string]any{"items":out})
+}
+
+func (s *Server) revokeSession(w http.ResponseWriter,r *http.Request){
+	p,ok:=auth.From(r.Context());if !ok{fail(w,401,errors.New("authentication required"));return}
+	u,err:=s.Store.ResolveUser(r.Context(),p.PublicID);if err!=nil{fail(w,401,errors.New("authentication required"));return}
+	internalID,err:=s.Store.RevokeSessionByPublicID(r.Context(),u.ID,chi.URLParam(r,"session"))
+	if err!=nil{fail(w,404,errors.New("session not found"));return}
+	_ = s.Store.AuditAuth(r.Context(),&u.ID,"AUTH_SESSION_REVOKED","SUCCESS",map[string]any{"session_id":chi.URLParam(r,"session")})
+	if internalID==p.SessionID{
+		s.clearSessionCookie(w)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) revokeOtherSessions(w http.ResponseWriter,r *http.Request){
+	p,ok:=auth.From(r.Context());if !ok{fail(w,401,errors.New("authentication required"));return}
+	u,err:=s.Store.ResolveUser(r.Context(),p.PublicID);if err!=nil{fail(w,401,errors.New("authentication required"));return}
+	if p.SessionID==""{fail(w,400,errors.New("current session cannot be identified in development auth mode"));return}
+	count,err:=s.Store.RevokeOtherSessions(r.Context(),u.ID,p.SessionID);if err!=nil{fail(w,500,err);return}
+	_ = s.Store.AuditAuth(r.Context(),&u.ID,"AUTH_OTHER_SESSIONS_REVOKED","SUCCESS",map[string]any{"count":count})
+	write(w,200,map[string]any{"revoked":count})
 }
