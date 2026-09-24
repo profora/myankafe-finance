@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 
 type Rate={id:string;rate_date:string;from_currency:string;to_currency:string;rate:string;source:string};
@@ -10,7 +11,7 @@ export default function ExchangeRates(){
   const {entity}=useEntity();
   const [items,setItems]=useState<Rate[]>([]);
   const [error,setError]=useState("");
-  const [form,setForm]=useState({rate_date:new Date().toISOString().slice(0,10),from_currency:"USD",to_currency:"MMK",rate:"",source:"MANUAL",source_reference:""});
+  const [form,setForm]=useState({rate_date:dateInTimeZone(entity?.Timezone??"Asia/Yangon"),from_currency:"USD",to_currency:"MMK",rate:"",source:"MANUAL",source_reference:""});
 
   const load=()=>{if(entity)api<{items:Rate[]}>(`/entities/${entity.PublicID}/exchange-rates`).then(x=>setItems(x.items)).catch(e=>setError(e.message))};
   useEffect(load,[entity]);
