@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { dateInTimeZone, firstDayOfYearInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 
 type Row={id?:string;code?:string;name?:string;type?:string;amount?:string;debits?:string;credits?:string;balance?:string};
@@ -20,25 +21,47 @@ export default function Reports(){
   const [cash,setCash]=useState<Cash[]>([]);
   const [inter,setInter]=useState<Inter[]>([]);
   const [error,setError]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [from,setFrom]=useState(()=>firstDayOfYearInTimeZone());
+  const [to,setTo]=useState(()=>dateInTimeZone());
+
+  async function load(){
+    if(!entity)return;
+    setLoading(true);setError("");
+    const range=`from=${from}&to=${to}`;
+    try{
+      const [p,t,b,g,c,i]=await Promise.all([
+        api<{items:Row[]}>(`/entities/${entity.PublicID}/reports/profit-loss?${range}`),
+        api<{items:Row[]}>(`/entities/${entity.PublicID}/reports/trial-balance?through=${to}`),
+        api<{items:Row[];current_earnings:string}>(`/entities/${entity.PublicID}/reports/balance-sheet?through=${to}`),
+        api<{items:GL[]}>(`/entities/${entity.PublicID}/reports/general-ledger?${range}&limit=200`),
+        api<{items:Cash[]}>(`/entities/${entity.PublicID}/reports/cash-movement?${range}`),
+        api<{items:Inter[]}>(`/entities/${entity.PublicID}/reports/inter-entity-balances?through=${to}`)
+      ]);
+      setPL(p.items);setTB(t.items);setBS(b.items);setEarnings(b.current_earnings);
+      setGL(g.items);setCash(c.items);setInter(i.items);
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setLoading(false)}
+  }
 
   useEffect(()=>{
     if(!entity)return;
-    Promise.all([
-      api<{items:Row[]}>(`/entities/${entity.PublicID}/reports/profit-loss`),
-      api<{items:Row[]}>(`/entities/${entity.PublicID}/reports/trial-balance`),
-      api<{items:Row[];current_earnings:string}>(`/entities/${entity.PublicID}/reports/balance-sheet`),
-      api<{items:GL[]}>(`/entities/${entity.PublicID}/reports/general-ledger?limit=200`),
-      api<{items:Cash[]}>(`/entities/${entity.PublicID}/reports/cash-movement`),
-      api<{items:Inter[]}>(`/entities/${entity.PublicID}/reports/inter-entity-balances`)
-    ]).then(([p,t,b,g,c,i])=>{
-      setPL(p.items);setTB(t.items);setBS(b.items);setEarnings(b.current_earnings);
-      setGL(g.items);setCash(c.items);setInter(i.items);
-    }).catch(e=>setError(e.message));
-  },[entity]);
+    setFrom(firstDayOfYearInTimeZone(entity.Timezone));
+    setTo(dateInTimeZone(entity.Timezone));
+  },[entity?.PublicID]);
+
+  useEffect(()=>{load()},[entity?.PublicID]);
 
   return <>
     <div className="page-head"><div><h1>Reports</h1><p>Reports are generated from posted/reversed journal history only.</p></div></div>
     {error&&<div className="alert error">{error}</div>}
+    <div className="card form" style={{marginBottom:16}}>
+      <div className="form-grid">
+        <div className="field"><label>From</label><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></div>
+        <div className="field"><label>To / Through</label><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></div>
+      </div>
+      <div className="actions"><button disabled={loading||!from||!to||from>to} onClick={load}>{loading?"Refreshing…":"Apply report range"}</button><span className="muted">P&L, ledger and cash movement use the range. Balance Sheet and Trial Balance are through the end date.</span></div>
+    </div>
 
     <div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(420px,1fr))"}}>
       <div><h3>Profit & Loss</h3><div className="table-wrap"><table><thead><tr><th>Account</th><th>Type</th><th>Amount</th></tr></thead><tbody>{pl.map((x,n)=><tr key={x.id??n}><td>{x.id?<Link className="table-link" href={`/accounts/${x.id}/ledger`}>{x.code} · {x.name}</Link>:<>{x.code} · {x.name}</>}</td><td>{x.type}</td><td>{Number(x.amount||0).toLocaleString()}</td></tr>)}</tbody></table></div></div>
