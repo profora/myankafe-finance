@@ -3,6 +3,7 @@ package postgres
 import (
   "context"
   "fmt"
+  "strings"
   "time"
 
   "github.com/jackc/pgx/v5"
@@ -47,8 +48,25 @@ func (s *Store) ListAccounts(ctx context.Context,entityID string)([]Account,erro
 
 type CreateAccountInput struct{ Code,Name,Type,Subtype,ParentPublicID string; Postable bool }
 func (s *Store) CreateAccount(ctx context.Context,user User,e Entity,in CreateAccountInput)(Account,error){
+  in.Code=strings.ToUpper(strings.TrimSpace(in.Code))
+  in.Name=strings.TrimSpace(in.Name)
+  in.Type=strings.ToUpper(strings.TrimSpace(in.Type))
+  in.Subtype=strings.TrimSpace(in.Subtype)
+  if in.Code==""||in.Name==""{return Account{},fmt.Errorf("code and name are required")}
+  switch in.Type{
+  case "ASSET","LIABILITY","EQUITY","INCOME","EXPENSE":
+  default:return Account{},fmt.Errorf("invalid account type")
+  }
+
   id,_:=ids.UUIDv7(); pub,_:=ids.ULID(); var parent any
-  if in.ParentPublicID!="" { var pid string; if err:=s.Pool.QueryRow(ctx,`SELECT id::text FROM accounts WHERE entity_id=$1 AND public_id=$2`,e.ID,in.ParentPublicID).Scan(&pid);err!=nil{return Account{},err};parent=pid }
+  if in.ParentPublicID!="" {
+    var pid,parentType string
+    var active bool
+    if err:=s.Pool.QueryRow(ctx,`SELECT id::text,account_type,active FROM accounts WHERE entity_id=$1 AND public_id=$2`,e.ID,in.ParentPublicID).Scan(&pid,&parentType,&active);err!=nil{return Account{},err}
+    if !active{return Account{},fmt.Errorf("parent account is inactive")}
+    if parentType!=in.Type{return Account{},fmt.Errorf("parent account must have the same fundamental account type")}
+    parent=pid
+  }
   var a Account
   err:=s.Pool.QueryRow(ctx,`INSERT INTO accounts(id,public_id,entity_id,code,name,parent_id,account_type,account_subtype,is_postable,created_by)
 VALUES($1,$2,$3,$4,$5,$6,$7,NULLIF($8,''),$9,$10)
@@ -68,7 +86,7 @@ FROM financial_accounts fa JOIN accounts a ON a.id=fa.account_id WHERE fa.entity
 type CreateFinancialAccountInput struct{ Code,Name,Kind,Currency,AccountPublicID,Institution,Reference string }
 func (s *Store) CreateFinancialAccount(ctx context.Context,user User,e Entity,in CreateFinancialAccountInput)(FinancialAccount,error){
   var aid,typ string; var postable bool
-  if err:=s.Pool.QueryRow(ctx,`SELECT id::text,account_type,is_postable FROM accounts WHERE entity_id=$1 AND public_id=$2 AND active=true`,e.ID,in.AccountPublicID).Scan(&aid,&typ,&postable);err!=nil{return FinancialAccount{},err}
+  if err:=s.Pool.QueryRow(ctx,`SELECT id::text,account_type,is_postable FROM accounts WHERE entity_id=$1 AND public_id=$2 AND active=true AND active=true`,e.ID,in.AccountPublicID).Scan(&aid,&typ,&postable);err!=nil{return FinancialAccount{},err}
   if !postable || (typ!="ASSET" && typ!="LIABILITY"){return FinancialAccount{},fmt.Errorf("financial account must map to a postable ASSET or LIABILITY account")}
   id,_:=ids.UUIDv7();pub,_:=ids.ULID();var f FinancialAccount
   err:=s.Pool.QueryRow(ctx,`INSERT INTO financial_accounts(id,public_id,entity_id,account_id,code,name,kind,currency_code,institution_name,account_reference,created_by)
