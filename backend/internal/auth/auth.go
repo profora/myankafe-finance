@@ -7,8 +7,9 @@ import (
 )
 
 type Principal struct {
-	PublicID  string
-	SessionID string
+	PublicID        string
+	SessionID       string
+	SessionPublicID string
 }
 
 type key struct{}
