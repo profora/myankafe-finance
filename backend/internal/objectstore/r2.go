@@ -47,18 +47,22 @@ func NewR2Store(cfg R2Config) (*R2Store, error) {
 	if cfg.Endpoint == "" && cfg.Bucket == "" && cfg.AccessKey == "" && cfg.SecretKey == "" {
 		return &R2Store{cfg: cfg, client: &http.Client{Timeout: 45 * time.Second}}, nil
 	}
-	if cfg.Endpoint == "" || cfg.Bucket == "" || cfg.AccessKey == "" || cfg.SecretKey == "" {
-		return nil, errors.New("R2 endpoint, bucket, access key and secret key must be configured together")
+	if cfg.Endpoint == "" || cfg.AccessKey == "" || cfg.SecretKey == "" {
+		return nil, errors.New("R2 endpoint, access key and secret key must be configured together")
 	}
 	base, err := url.Parse(cfg.Endpoint)
 	if err != nil || base.Scheme == "" || base.Host == "" {
 		return nil, errors.New("R2_ENDPOINT must be an absolute http(s) URL")
 	}
+	base.Path = strings.TrimRight(base.Path, "/")
+	if cfg.Bucket == "" && strings.Trim(base.Path, "/") == "" {
+		return nil, errors.New("R2 bucket must be present in R2_ENDPOINT or R2_BUCKET")
+	}
 	return &R2Store{cfg: cfg, base: base, client: &http.Client{Timeout: 45 * time.Second}}, nil
 }
 
 func (s *R2Store) Configured() bool {
-	return s != nil && s.base != nil && s.cfg.Bucket != "" && s.cfg.AccessKey != "" && s.cfg.SecretKey != ""
+	return s != nil && s.base != nil && (s.cfg.Bucket != "" || strings.Trim(s.base.Path, "/") != "") && s.cfg.AccessKey != "" && s.cfg.SecretKey != ""
 }
 
 func (s *R2Store) Put(ctx context.Context, key, contentType string, body []byte) error {
@@ -140,7 +144,11 @@ func (s *R2Store) Delete(ctx context.Context, key string) error {
 
 func (s *R2Store) newSignedRequest(ctx context.Context, method, key, contentType string, body []byte) (*http.Request, error) {
 	u := *s.base
-	u.Path = path.Join(u.Path, s.cfg.Bucket, strings.TrimLeft(key, "/"))
+	if s.cfg.Bucket != "" {
+		u.Path = path.Join(u.Path, s.cfg.Bucket, strings.TrimLeft(key, "/"))
+	} else {
+		u.Path = path.Join(u.Path, strings.TrimLeft(key, "/"))
+	}
 	payloadHash := sha256Hex(body)
 	var reader io.Reader
 	if body != nil {
