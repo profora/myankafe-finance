@@ -32,7 +32,9 @@ export default function Users(){
     ]).then(([u,m])=>{
       setUsers(u.items);
       setMembers(m.items);
-      setAssign(a=>({...a,user_id:a.user_id||u.items[0]?.id||""}));setReset(a=>({...a,user_id:a.user_id||u.items[0]?.id||""}));
+      const activeUsers=u.items.filter(x=>x.status==="ACTIVE");
+      setAssign(a=>({...a,user_id:activeUsers.some(x=>x.id===a.user_id)?a.user_id:(activeUsers[0]?.id||"")}));
+      setReset(a=>({...a,user_id:u.items.some(x=>x.id===a.user_id)?a.user_id:(u.items[0]?.id||"")}));
     }).catch(e=>setErr(e instanceof Error?e.message:String(e)));
   };
 
@@ -142,7 +144,7 @@ export default function Users(){
         <div className="field">
           <label>User</label>
           <select value={assign.user_id} onChange={e=>setAssign({...assign,user_id:e.target.value})}>
-            {users.map(x=><option key={x.id} value={x.id}>{x.display_name} · {x.username}</option>)}
+            {users.filter(x=>x.status==="ACTIVE").map(x=><option key={x.id} value={x.id}>{x.display_name} · {x.username}</option>)}
           </select>
         </div>
         <div className="field">
