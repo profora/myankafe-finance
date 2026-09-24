@@ -34,7 +34,7 @@ export default function LoginPage(){
 
   return <main className="login-page finance-login-page">
     <section className="login-brand-panel">
-      <div className="brand-mark-hero" aria-hidden>MK</div>
+      <img className="brand-logo-hero" src="/brand/chieftain-logo.webp" alt="Chieftain Chin Coffee"/>
       <div>
         <div className="login-kicker">MyanKafe · Finance workspace</div>
         <h1>MyanKafe Finance</h1>
