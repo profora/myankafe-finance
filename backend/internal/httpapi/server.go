@@ -29,6 +29,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 	})
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(auth.Middleware(cfg.AuthMode))
+		r.Use(s.auditRequests)
 		r.Get("/entities", s.listEntities)
 		r.Route("/entities/{entity}", func(r chi.Router) {
 			r.Use(s.entityAccess)
@@ -39,6 +40,8 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 			r.Get("/transactions", s.listTransactions)
 			r.Post("/transactions", s.createTransaction)
 			r.Post("/transactions/{tx}/post", s.postTransaction)
+			r.Get("/audit-events", s.listAuditEvents)
+
 			r.Get("/accounting-lock", s.getLock)
 			r.Post("/accounting-lock", s.lock)
 			r.Post("/accounting-lock/unlock", s.unlock)
