@@ -30,12 +30,12 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(auth.Middleware(cfg.AuthMode))
 		r.Use(s.auditRequests)
-		r.Get("/entities", s.listEntities)
+		r.Get("/entities", s.listEntities)\n\t\tr.Post("/inter-entity-transactions", s.createInterEntityExpense)
 		r.Route("/entities/{entity}", func(r chi.Router) {
 			r.Use(s.entityAccess)
 			r.Get("/accounts", s.listAccounts)
 			r.Post("/accounts", s.createAccount)
-			r.Get("/contacts", s.listContacts)\n\t\t\tr.Post("/contacts", s.createContact)\n\n\t\t\tr.Get("/financial-accounts", s.listFinancialAccounts)
+			r.Get("/inter-entity-mappings", s.listInterEntityMappings)\n\t\t\tr.Put("/inter-entity-mappings/{counterparty}", s.upsertInterEntityMapping)\n\n\t\t\tr.Get("/contacts", s.listContacts)\n\t\t\tr.Post("/contacts", s.createContact)\n\n\t\t\tr.Get("/financial-accounts", s.listFinancialAccounts)
 			r.Post("/financial-accounts", s.createFinancialAccount)
 			r.Get("/transactions", s.listTransactions)
 			r.Post("/transactions", s.createTransaction)
