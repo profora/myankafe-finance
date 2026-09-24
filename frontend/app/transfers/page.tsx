@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 import type { FinancialAccount } from "@/components/types";
 
@@ -10,7 +11,7 @@ export default function Transfers(){
   const [accounts,setAccounts]=useState<FinancialAccount[]>([]);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
-  const [form,setForm]=useState({Date:new Date().toISOString().slice(0,10),FromFinancialAccountPublicID:"",ToFinancialAccountPublicID:"",FromAmount:"",ToAmount:"",Description:""});
+  const [form,setForm]=useState({Date:dateInTimeZone(entity?.Timezone??"Asia/Yangon"),FromFinancialAccountPublicID:"",ToFinancialAccountPublicID:"",FromAmount:"",ToAmount:"",Description:""});
 
   useEffect(()=>{if(entity)api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`).then(x=>{setAccounts(x.items);setForm(v=>({...v,FromFinancialAccountPublicID:x.items[0]?.PublicID||"",ToFinancialAccountPublicID:x.items[1]?.PublicID||""}))}).catch(e=>setError(e.message))},[entity]);
 
