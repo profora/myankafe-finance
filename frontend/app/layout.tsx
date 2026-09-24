@@ -5,7 +5,7 @@ export const metadata = {
   title: "MyanKafe Finance",
   description: "Multi-entity double-entry finance platform",
   icons: {
-    icon: [{ url: "/brand/logo-head.svg", type: "image/svg+xml" }],
+    icon: [{ url: "/brand/mk-mark.svg", type: "image/svg+xml" }],
   },
 };
 
