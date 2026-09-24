@@ -13,8 +13,11 @@ Authenticated:
 - `GET /auth/me`
 - `POST /auth/logout`
 - `POST /auth/change-password`
+- `GET /auth/sessions`
+- `POST /auth/sessions/revoke-others`
+- `DELETE /auth/sessions/{session_ulid}`
 
-Normal web authentication uses an HttpOnly session cookie. Opaque Bearer session tokens are also accepted. The response from login includes the session token for future native-client use; browser code should rely on the HttpOnly cookie.
+Normal web authentication uses an HttpOnly session cookie. Opaque Bearer session tokens are also accepted. Browser login uses only the HttpOnly cookie. A raw session token is returned only when the client explicitly requests Bearer transport with `X-Session-Transport: bearer`.
 
 Development-only auth is available only when the backend is explicitly configured with `AUTH_MODE=dev`:
 
@@ -103,11 +106,13 @@ Transaction attachments are private R2 objects.
 
 - `GET /transactions/{transaction_ulid}/attachments`
 - `POST /transactions/{transaction_ulid}/attachments` — multipart field `files`, up to 10 per request
-- `GET /transactions/{transaction_ulid}/attachments/{attachment_ulid}/content`
+- `PUT /transactions/{transaction_ulid}/attachments/reorder`
+- `DELETE /transactions/{transaction_ulid}/attachments/{attachment_ulid}` — audited soft-removal plus best-effort object cleanup
+- `GET /transactions/{transaction_ulid}/attachments/{attachment_ulid}/content` — authenticated streaming content
 
 Current per-file limit defaults to 20 MB and is configurable with `ATTACHMENT_MAX_MB`. A transaction may have at most 50 active attachments.
 
-Supported upload types currently include JPEG, PNG, WebP, GIF, PDF, text, CSV, DOCX, and XLSX. Images/PDFs are served inline; other supported types download as attachments.
+Supported upload types currently include JPEG, PNG, WebP, GIF, PDF, text, CSV, DOCX, and XLSX. Images/PDF/text/CSV are previewable inline; other supported types download as attachments.
 
 ### Inter-entity
 
@@ -139,4 +144,5 @@ Only OWNER can unlock.
 
 Outside the API auth boundary:
 
-- `GET /health`
+- `GET /health` — process liveness
+- `GET /ready` — PostgreSQL readiness and attachment-storage configuration state
