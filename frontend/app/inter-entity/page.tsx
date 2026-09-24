@@ -54,9 +54,9 @@ export default function InterEntity(){
     finally{setBusy(false)}
   }
 
-  const dueFrom=ownAccounts.filter(a=>a.Postable&&a.Type==="ASSET");
-  const dueTo=ownAccounts.filter(a=>a.Postable&&a.Type==="LIABILITY");
-  const expenses=cpAccounts.filter(a=>a.Postable&&a.Type==="EXPENSE");
+  const dueFrom=ownAccounts.filter(a=>a.Active&&a.Postable&&a.Type==="ASSET");
+  const dueTo=ownAccounts.filter(a=>a.Active&&a.Postable&&a.Type==="LIABILITY");
+  const expenses=cpAccounts.filter(a=>a.Active&&a.Postable&&a.Type==="EXPENSE");
 
   return <>
     <div className="page-head"><div><h1>Inter-Entity</h1><p>Atomic due-to / due-from accounting across entities.</p></div></div>
