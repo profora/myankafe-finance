@@ -97,9 +97,11 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 
 				r.Get("/financial-accounts", s.listFinancialAccounts)
 				r.Post("/financial-accounts", s.createFinancialAccount)
+				r.Put("/financial-accounts/{financialAccount}", s.updateFinancialAccount)
 
 				r.Get("/contacts", s.listContacts)
 				r.Post("/contacts", s.createContact)
+				r.Put("/contacts/{contact}", s.updateContact)
 
 				r.Get("/exchange-rates", s.listExchangeRates)
 				r.Post("/exchange-rates", s.createExchangeRate)
