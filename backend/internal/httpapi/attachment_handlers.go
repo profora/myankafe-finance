@@ -100,19 +100,33 @@ func (s *Server) transactionAttachmentContent(w http.ResponseWriter,r *http.Requ
 	}
 	obj,err:=s.Store.TransactionAttachmentObject(r.Context(),a.Entity.ID,chi.URLParam(r,"tx"),chi.URLParam(r,"attachment"))
 	if err!=nil{fail(w,http.StatusNotFound,err);return}
-	body,storedType,err:=s.AttachmentStore.Get(r.Context(),obj.StorageKey)
+	stream,err:=s.AttachmentStore.Open(r.Context(),obj.StorageKey)
 	if err!=nil{fail(w,http.StatusBadGateway,err);return}
+	defer stream.Body.Close()
+	if stream.ContentLength>=0&&stream.ContentLength!=obj.SizeBytes{
+		fail(w,http.StatusBadGateway,errors.New("attachment object size does not match stored metadata"))
+		return
+	}
 	contentType:=obj.MimeType
-	if strings.TrimSpace(contentType)==""{contentType=storedType}
+	if strings.TrimSpace(contentType)==""{contentType=stream.ContentType}
 	w.Header().Set("Content-Type",contentType)
-	w.Header().Set("Content-Length",fmt.Sprintf("%d",len(body)))
+	w.Header().Set("Content-Length",fmt.Sprintf("%d",obj.SizeBytes))
 	w.Header().Set("Cache-Control","private, max-age=300")
 	w.Header().Set("X-Content-Type-Options","nosniff")
 	disposition:="attachment"
 	if strings.HasPrefix(contentType,"image/")||contentType=="application/pdf"{disposition="inline"}
 	w.Header().Set("Content-Disposition",mime.FormatMediaType(disposition,map[string]string{"filename":obj.OriginalFilename}))
 	w.WriteHeader(http.StatusOK)
-	_,_ = w.Write(body)
+	written,copyErr:=io.CopyN(w,stream.Body,obj.SizeBytes)
+	if copyErr!=nil||written!=obj.SizeBytes{
+		_ = s.Store.Audit(r.Context(),a.User,&a.Entity,"ATTACHMENT_STREAM_FAILED","TRANSACTION",nil,"FAILED",map[string]any{
+			"transaction_id":chi.URLParam(r,"tx"),
+			"attachment_id":obj.PublicID,
+			"expected_bytes":obj.SizeBytes,
+			"written_bytes":written,
+			"error":fmt.Sprint(copyErr),
+		})
+	}
 }
 
 func validatePreviewAttachmentContent(declared,detected string) error {
