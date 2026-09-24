@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
+import TransactionAttachments from "@/components/TransactionAttachments";
 
 type JournalLine={
   line_no:number;
@@ -83,6 +84,8 @@ export default function TransactionDetailPage(){
         <div className="card"><div className="muted">Contact</div><div style={{fontWeight:750,marginTop:8}}>{detail.contact?.name??"—"}</div></div>
         <div className="card"><div className="muted">Public ID</div><div style={{fontFamily:"monospace",fontSize:12,marginTop:8}}>{detail.id}</div></div>
       </div>
+
+      <TransactionAttachments entityID={entity!.PublicID} transactionID={detail.id}/>
 
       {(detail.original_transaction_id||detail.reversal_transaction_id||detail.void_reason)&&<div className="card" style={{marginTop:16}}>
         <h3>Correction history</h3>
