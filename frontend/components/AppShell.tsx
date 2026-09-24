@@ -7,7 +7,7 @@ import { EntityProvider, useEntity } from "./EntityContext";
 const nav = [
   ["/", "Dashboard"],
   ["/transactions", "Transactions"],
-  ["/transactions/new", "New Entry"],
+  ["/transactions/new", "New Entry"],\n  ["/transfers", "Transfers"],\n  ["/inter-entity", "Inter-Entity"],\n  ["/contacts", "Contacts"],
   ["/accounts", "Chart of Accounts"],
   ["/financial-accounts", "Cash / Bank"],
   ["/exchange-rates", "Exchange Rates"],
