@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/profora/myankafe-finance/backend/internal/repository/postgres"
 )
 
@@ -32,4 +34,25 @@ func (s *Server) createTransfer(w http.ResponseWriter,r *http.Request){
 	v,err:=s.Store.PostTransfer(r.Context(),a.User,a.Entity,in)
 	if err!=nil{fail(w,400,err);return}
 	write(w,201,v)
+}
+
+
+func (s *Server) updateContact(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if !requireRole(w,canOperateLedger(a.Role),"ledger operation access required"){return}
+	var in postgres.UpdateContactInput
+	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
+	v,err:=s.Store.UpdateContact(r.Context(),a.User,a.Entity,chi.URLParam(r,"contact"),in)
+	if err!=nil{fail(w,400,err);return}
+	write(w,200,v)
+}
+
+func (s *Server) updateFinancialAccount(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if !requireRole(w,canConfigureAccounting(a.Role),"financial account configuration requires OWNER, ADMIN, or ACCOUNTANT"){return}
+	var in postgres.UpdateFinancialAccountInput
+	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
+	v,err:=s.Store.UpdateFinancialAccount(r.Context(),a.User,a.Entity,chi.URLParam(r,"financialAccount"),in)
+	if err!=nil{fail(w,400,err);return}
+	write(w,200,v)
 }
