@@ -175,6 +175,33 @@ INSERT INTO audit_events(
 	return err
 }
 
+func (s *Store) ResetUserPassword(ctx context.Context,actor User,targetPublicID,passwordHash string) error {
+	if passwordHash==""{return fmt.Errorf("password hash is required")}
+	tx,err:=s.Pool.Begin(ctx);if err!=nil{return err}
+	defer tx.Rollback(ctx)
+
+	var targetID string
+	if err:=tx.QueryRow(ctx,`SELECT id::text FROM users WHERE public_id=$1 AND status='ACTIVE' FOR UPDATE`,targetPublicID).Scan(&targetID);err!=nil{return err}
+	if _,err:=tx.Exec(ctx,`
+INSERT INTO user_credentials(user_id,password_hash)
+VALUES($1,$2)
+ON CONFLICT(user_id) DO UPDATE
+SET password_hash=EXCLUDED.password_hash,
+    password_changed_at=now(),
+    updated_at=now()`,targetID,passwordHash);err!=nil{return err}
+	if _,err:=tx.Exec(ctx,`UPDATE user_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE user_id=$1 AND revoked_at IS NULL`,targetID);err!=nil{return err}
+
+	auditID,err:=ids.UUIDv7();if err!=nil{return err}
+	auditPublic,err:=ids.ULID();if err!=nil{return err}
+	after,err:=json.Marshal(map[string]any{"target_user_id":targetPublicID,"sessions_revoked":true});if err!=nil{return err}
+	if _,err:=tx.Exec(ctx,`
+INSERT INTO audit_events(
+ id,public_id,actor_type,actor_user_id,action,resource_type,resource_public_id,outcome,source,after_data
+) VALUES($1,$2,'USER',$3,'USER_PASSWORD_RESET','USER',$4,'SUCCESS','WEB',$5::jsonb)`,
+		auditID,auditPublic,actor.ID,targetPublicID,string(after));err!=nil{return err}
+	return tx.Commit(ctx)
+}
+
 func (s *Store) CreateOrUpdateUserPassword(ctx context.Context,username,passwordHash string) error {
 	var userID string
 	if err:=s.Pool.QueryRow(ctx,`SELECT id::text FROM users WHERE username=$1`,username).Scan(&userID);err!=nil{
