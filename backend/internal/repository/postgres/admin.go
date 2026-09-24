@@ -234,3 +234,49 @@ RETURNING id::text,public_id::text,code,name,entity_type,functional_currency_cod
 	if err:=tx.Commit(ctx);err!=nil{return Entity{},err}
 	return out,nil
 }
+
+
+func (s *Store) RevokeUserEntityAccess(ctx context.Context,actor User,targetUserPublicID string,e Entity) error {
+	tx,err:=s.Pool.Begin(ctx);if err!=nil{return err}
+	defer tx.Rollback(ctx)
+
+	var targetID,role string
+	if err:=tx.QueryRow(ctx,`
+SELECT u.id::text,r.code
+FROM users u
+JOIN user_entity_roles uer ON uer.user_id=u.id
+JOIN roles r ON r.id=uer.role_id
+WHERE u.public_id=$1
+  AND uer.entity_id=$2
+  AND uer.revoked_at IS NULL
+ORDER BY CASE r.code WHEN 'OWNER' THEN 1 WHEN 'ADMIN' THEN 2 WHEN 'ACCOUNTANT' THEN 3 WHEN 'BOOKKEEPER' THEN 4 ELSE 5 END
+LIMIT 1
+FOR UPDATE OF uer`,targetUserPublicID,e.ID).Scan(&targetID,&role);err!=nil{return err}
+
+	if role=="OWNER"{
+		var otherActiveOwners int
+		if err:=tx.QueryRow(ctx,`
+SELECT count(*)
+FROM user_entity_roles other
+JOIN roles r ON r.id=other.role_id
+JOIN users u ON u.id=other.user_id
+WHERE other.entity_id=$1
+  AND other.revoked_at IS NULL
+  AND r.code='OWNER'
+  AND u.status='ACTIVE'
+  AND other.user_id<>$2`,e.ID,targetID).Scan(&otherActiveOwners);err!=nil{return err}
+		if otherActiveOwners==0{return fmt.Errorf("cannot remove the last active OWNER from %s",e.Name)}
+	}
+
+	tag,err:=tx.Exec(ctx,`
+UPDATE user_entity_roles
+SET revoked_at=now()
+WHERE user_id=$1 AND entity_id=$2 AND revoked_at IS NULL`,targetID,e.ID)
+	if err!=nil{return err}
+	if tag.RowsAffected()==0{return fmt.Errorf("user has no active access to this entity")}
+
+	if err:=insertAuditTx(ctx,tx,actor,e,"USER_ENTITY_ACCESS_REVOKE","USER",targetUserPublicID,map[string]any{
+		"previous_role":role,
+	});err!=nil{return err}
+	return tx.Commit(ctx)
+}
