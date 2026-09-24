@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 import type { Account } from "@/components/types";
 
@@ -10,7 +11,7 @@ type Line={AccountPublicID:string;Debit:string;Credit:string;Description:string}
 export default function ManualJournal(){
   const {entity}=useEntity();
   const [accounts,setAccounts]=useState<Account[]>([]);
-  const [date,setDate]=useState(new Date().toISOString().slice(0,10));
+  const [date,setDate]=useState(dateInTimeZone(entity?.Timezone??"Asia/Yangon"));
   const [description,setDescription]=useState("");
   const [lines,setLines]=useState<Line[]>([
     {AccountPublicID:"",Debit:"",Credit:"",Description:""},
