@@ -1,59 +1,52 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { ApiError, clearDevUser, login } from "@/lib/api";
+import { FormEvent, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { api } from "@/lib/api";
 
 export default function LoginPage(){
+  const router=useRouter();
+  const params=useSearchParams();
   const [username,setUsername]=useState("");
   const [password,setPassword]=useState("");
-  const [error,setError]=useState("");
+  const [showPassword,setShowPassword]=useState(false);
   const [busy,setBusy]=useState(false);
+  const [error,setError]=useState("");
+
+  const expired=useMemo(()=>params.get("expired")==="1",[params]);
+  const next=useMemo(()=>{
+    const raw=params.get("next");
+    return raw&&raw.startsWith("/")&&!raw.startsWith("//")?raw:"/";
+  },[params]);
 
   async function submit(e:FormEvent){
     e.preventDefault();
     setBusy(true);setError("");
     try{
-      clearDevUser();
-      await login(username,password);
-      window.location.assign("/");
-    }catch(e){
-      if(e instanceof ApiError){
-        setError(e.status===401?"Invalid username or password.":e.message);
-      }else{
-        setError(e instanceof Error?e.message:String(e));
-      }
-    }finally{setBusy(false)}
+      await api("/auth/login",{method:"POST",body:JSON.stringify({username,password})});
+      router.replace(next);router.refresh();
+    }catch(err){setError(err instanceof Error?err.message:String(err))}
+    finally{setBusy(false)}
   }
 
-  return <div className="auth-card">
-    <div className="brand auth-brand">MyanKafe <span>Finance</span></div>
-    <div>
+  return <main className="login-page">
+    <div className="login-card">
+      <div className="brand login-brand">MyanKafe <span>Finance</span></div>
       <h1>Sign in</h1>
-      <p className="muted">Use your MyanKafe Finance username and password.</p>
+      <p className="muted">Access is limited to active finance users.</p>
+      {expired&&!error&&<div className="alert">Your session expired. Please sign in again.</div>}
+      {error&&<div className="alert error">{error}</div>}
+      <form className="form" onSubmit={submit}>
+        <div className="field"><label htmlFor="username">Username</label><input id="username" autoComplete="username" autoFocus required value={username} onChange={e=>setUsername(e.target.value)}/></div>
+        <div className="field">
+          <label htmlFor="password">Password</label>
+          <div className="password-row">
+            <input id="password" type={showPassword?"text":"password"} autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/>
+            <button type="button" className="secondary password-toggle" onClick={()=>setShowPassword(v=>!v)}>{showPassword?"Hide":"Show"}</button>
+          </div>
+        </div>
+        <button disabled={busy||!username||!password}>{busy?"Signing in…":"Sign in"}</button>
+      </form>
     </div>
-    {error&&<div className="alert error">{error}</div>}
-    <form className="form" onSubmit={submit}>
-      <div className="field">
-        <label>Username</label>
-        <input
-          autoFocus
-          autoComplete="username"
-          value={username}
-          onChange={e=>setUsername(e.target.value)}
-          placeholder="owner"
-        />
-      </div>
-      <div className="field">
-        <label>Password</label>
-        <input
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={e=>setPassword(e.target.value)}
-        />
-      </div>
-      <button type="submit" disabled={busy||!username.trim()||!password}>{busy?"Signing in…":"Sign in"}</button>
-    </form>
-    <p className="muted auth-footnote">Sessions are stored in an HttpOnly cookie. Development ULID login remains available at <a className="table-link" href="/dev-login">/dev-login</a> when the backend is running in dev auth mode.</p>
-  </div>;
+  </main>;
 }
