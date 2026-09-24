@@ -12,8 +12,7 @@ func (s *Server) createEntity(w http.ResponseWriter,r *http.Request){
 	u,err:=s.principal(r);if err!=nil{fail(w,401,err);return}
 	entities,err:=s.Store.ListEntities(r.Context(),u.ID);if err!=nil{fail(w,500,err);return}
 	if len(entities)>0{
-		isOwner:=false
-		for _,existing:=range entities{_,role,e:=s.Store.ResolveEntityAccess(r.Context(),u.ID,existing.PublicID);if e==nil&&role=="OWNER"{isOwner=true;break}}
+		isOwner,err:=s.ownerAnywhere(r,u);if err!=nil{fail(w,500,err);return}
 		if !isOwner{fail(w,403,errors.New("OWNER access required"));return}
 	}
 	var in postgres.CreateEntityInput
@@ -24,9 +23,7 @@ func (s *Server) createEntity(w http.ResponseWriter,r *http.Request){
 
 func (s *Server) listUsers(w http.ResponseWriter,r *http.Request){
 	u,err:=s.principal(r);if err!=nil{fail(w,401,err);return}
-	entities,err:=s.Store.ListEntities(r.Context(),u.ID);if err!=nil{fail(w,500,err);return}
-	isOwner:=false
-	for _,e:=range entities{_,role,err:=s.Store.ResolveEntityAccess(r.Context(),u.ID,e.PublicID);if err==nil&&role=="OWNER"{isOwner=true;break}}
+	isOwner,err:=s.ownerAnywhere(r,u);if err!=nil{fail(w,500,err);return}
 	if !isOwner{fail(w,403,errors.New("OWNER access required"));return}
 	v,err:=s.Store.ListUsers(r.Context());if err!=nil{fail(w,500,err);return}
 	write(w,200,map[string]any{"items":v})
@@ -34,9 +31,7 @@ func (s *Server) listUsers(w http.ResponseWriter,r *http.Request){
 
 func (s *Server) createUser(w http.ResponseWriter,r *http.Request){
 	u,err:=s.principal(r);if err!=nil{fail(w,401,err);return}
-	entities,err:=s.Store.ListEntities(r.Context(),u.ID);if err!=nil{fail(w,500,err);return}
-	isOwner:=false
-	for _,e:=range entities{_,role,err:=s.Store.ResolveEntityAccess(r.Context(),u.ID,e.PublicID);if err==nil&&role=="OWNER"{isOwner=true;break}}
+	isOwner,err:=s.ownerAnywhere(r,u);if err!=nil{fail(w,500,err);return}
 	if !isOwner{fail(w,403,errors.New("OWNER access required"));return}
 	var in postgres.CreateUserInput
 	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
