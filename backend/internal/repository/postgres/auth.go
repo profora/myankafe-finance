@@ -1,0 +1,116 @@
+package postgres
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/profora/myankafe-finance/backend/internal/ids"
+)
+
+type UserCredential struct {
+	User         User
+	PasswordHash string
+}
+
+type UserSession struct {
+	ID         string
+	UserID     string
+	ExpiresAt  time.Time
+	LastSeenAt time.Time
+}
+
+func (s *Store) CredentialByUsername(ctx context.Context, username string) (UserCredential, error) {
+	var out UserCredential
+	err := s.Pool.QueryRow(ctx, `
+SELECT u.id::text,u.public_id::text,u.username,u.display_name,uc.password_hash
+FROM users u
+JOIN user_credentials uc ON uc.user_id=u.id
+WHERE u.username=$1 AND u.status='ACTIVE'`, username).
+		Scan(&out.User.ID,&out.User.PublicID,&out.User.Username,&out.User.DisplayName,&out.PasswordHash)
+	return out, err
+}
+
+func (s *Store) CredentialByUserID(ctx context.Context, userID string) (string, error) {
+	var hash string
+	err := s.Pool.QueryRow(ctx, `SELECT password_hash FROM user_credentials WHERE user_id=$1`, userID).Scan(&hash)
+	return hash, err
+}
+
+func (s *Store) UpsertPasswordHash(ctx context.Context, userID, passwordHash string) error {
+	_, err := s.Pool.Exec(ctx, `
+INSERT INTO user_credentials(user_id,password_hash)
+VALUES($1,$2)
+ON CONFLICT(user_id) DO UPDATE
+SET password_hash=EXCLUDED.password_hash,
+    password_changed_at=now(),
+    updated_at=now()`, userID,passwordHash)
+	return err
+}
+
+func (s *Store) CreateSession(ctx context.Context,userID string,tokenHash []byte,userAgent,ip string,expiresAt time.Time)(UserSession,error){
+	id,err:=ids.UUIDv7();if err!=nil{return UserSession{},err}
+	var out UserSession
+	err=s.Pool.QueryRow(ctx,`
+INSERT INTO user_sessions(id,user_id,token_hash,user_agent,ip_address,expires_at)
+VALUES($1,$2,$3,NULLIF($4,''),NULLIF($5,'')::inet,$6)
+RETURNING id::text,user_id::text,expires_at,last_seen_at`,
+		id,userID,tokenHash,userAgent,ip,expiresAt).
+		Scan(&out.ID,&out.UserID,&out.ExpiresAt,&out.LastSeenAt)
+	return out,err
+}
+
+func (s *Store) ResolveSession(ctx context.Context,tokenHash []byte)(User,UserSession,error){
+	var u User
+	var sess UserSession
+	err:=s.Pool.QueryRow(ctx,`
+SELECT u.id::text,u.public_id::text,u.username,u.display_name,
+       us.id::text,us.user_id::text,us.expires_at,us.last_seen_at
+FROM user_sessions us
+JOIN users u ON u.id=us.user_id
+WHERE us.token_hash=$1
+  AND us.revoked_at IS NULL
+  AND us.expires_at>now()
+  AND u.status='ACTIVE'`,tokenHash).
+		Scan(&u.ID,&u.PublicID,&u.Username,&u.DisplayName,&sess.ID,&sess.UserID,&sess.ExpiresAt,&sess.LastSeenAt)
+	return u,sess,err
+}
+
+func (s *Store) TouchSession(ctx context.Context,sessionID string) error {
+	_,err:=s.Pool.Exec(ctx,`UPDATE user_sessions SET last_seen_at=now() WHERE id=$1 AND revoked_at IS NULL AND expires_at>now()`,sessionID)
+	return err
+}
+
+func (s *Store) RevokeSession(ctx context.Context,tokenHash []byte) error {
+	_,err:=s.Pool.Exec(ctx,`UPDATE user_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE token_hash=$1`,tokenHash)
+	return err
+}
+
+func (s *Store) RevokeAllSessions(ctx context.Context,userID string) error {
+	_,err:=s.Pool.Exec(ctx,`UPDATE user_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE user_id=$1 AND revoked_at IS NULL`,userID)
+	return err
+}
+
+func (s *Store) AuditAuth(ctx context.Context,userID *string,action,outcome string,metadata map[string]any) error {
+	id,err:=ids.UUIDv7();if err!=nil{return err}
+	pub,err:=ids.ULID();if err!=nil{return err}
+	body,err:=json.Marshal(metadata);if err!=nil{return err}
+	actorType:="ANONYMOUS"
+	var actor any
+	if userID!=nil&&*userID!=""{actorType="USER";actor=*userID}
+	_,err=s.Pool.Exec(ctx,`
+INSERT INTO audit_events(
+ id,public_id,actor_type,actor_user_id,action,resource_type,outcome,source,metadata
+) VALUES($1,$2,$3,$4,$5,'AUTH',$6,'WEB',$7::jsonb)`,
+		id,pub,actorType,actor,action,outcome,string(body))
+	return err
+}
+
+func (s *Store) CreateOrUpdateUserPassword(ctx context.Context,username,passwordHash string) error {
+	var userID string
+	if err:=s.Pool.QueryRow(ctx,`SELECT id::text FROM users WHERE username=$1`,username).Scan(&userID);err!=nil{
+		return fmt.Errorf("load user credential target: %w",err)
+	}
+	return s.UpsertPasswordHash(ctx,userID,passwordHash)
+}
