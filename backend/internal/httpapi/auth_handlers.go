@@ -132,12 +132,11 @@ func (s *Server) changePassword(w http.ResponseWriter,r *http.Request){
 	match,_,err:=auth.VerifyPassword(in.CurrentPassword,currentHash)
 	if err!=nil||!match{fail(w,401,errors.New("current password is incorrect"));return}
 	newHash,err:=auth.HashPassword(in.NewPassword);if err!=nil{fail(w,422,err);return}
-	if err:=s.Store.UpsertPasswordHash(r.Context(),u.ID,newHash);err!=nil{fail(w,500,errors.New("could not change password"));return}
-	if err:=s.Store.RevokeAllSessions(r.Context(),u.ID);err!=nil{fail(w,500,errors.New("could not revoke old sessions"));return}
 	rawToken,tokenHash,err:=auth.NewSessionToken();if err!=nil{fail(w,500,err);return}
-	session,err:=s.Store.CreateSession(r.Context(),u.ID,tokenHash,r.UserAgent(),clientIP(r),time.Now().UTC().Add(s.Config.AuthSessionTTL))
-	if err!=nil{fail(w,500,errors.New("could not create replacement session"));return}
-	_ = s.Store.AuditAuth(r.Context(),&u.ID,"AUTH_PASSWORD_CHANGED","SUCCESS",map[string]any{"session_id":session.ID})
+	session,err:=s.Store.ChangePasswordAndReplaceSessions(
+		r.Context(),u,newHash,tokenHash,r.UserAgent(),clientIP(r),time.Now().UTC().Add(s.Config.AuthSessionTTL),
+	)
+	if err!=nil{fail(w,500,errors.New("could not change password"));return}
 	s.setSessionCookie(w,rawToken,session.ExpiresAt)
 	write(w,200,map[string]any{"changed":true,"session_expires_at":session.ExpiresAt})
 }
