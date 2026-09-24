@@ -157,7 +157,7 @@ RETURNING id::text,public_id::text,user_id::text,expires_at,last_seen_at`,
 	if err != nil {
 		return UserSession{}, err
 	}
-	meta, err := json.Marshal(map[string]any{"session_id":session.ID})
+	meta, err := json.Marshal(map[string]any{"session_id":session.PublicID})
 	if err != nil {
 		return UserSession{}, err
 	}
