@@ -224,8 +224,30 @@ INSERT INTO exchange_rates(
 		t.Fatal(err)
 	}
 
-	seedJournalLine(t, ctx, tx, journalID, entityID, debitAccount, 1, "100", "0", rateID)
-	seedJournalLine(t, ctx, tx, journalID, entityID, creditAccount, 2, "0", "100", rateID)
+	if _, err := tx.Exec(ctx, `UPDATE transactions SET currency_code='USD',total_amount=1 WHERE id=$1`, transactionID); err != nil {
+		t.Fatal(err)
+	}
+	for lineNo, line := range []struct {
+		accountID string
+		debitUSD  string
+		creditUSD string
+		debitMMK  string
+		creditMMK string
+	}{
+		{debitAccount, "1", "0", "4000", "0"},
+		{creditAccount, "0", "1", "0", "4000"},
+	} {
+		if _, err := tx.Exec(ctx, `
+INSERT INTO journal_lines(
+  id,journal_entry_id,entity_id,line_no,account_id,
+  transaction_currency_code,transaction_debit_amount,transaction_credit_amount,
+  functional_currency_code,fx_rate_to_functional,debit_amount,credit_amount,exchange_rate_id
+) VALUES($1,$2,$3,$4,$5,'USD',$6,$7,'MMK',4000,$8,$9,$10)`,
+			mustUUID(t), journalID, entityID, lineNo+1, line.accountID,
+			line.debitUSD, line.creditUSD, line.debitMMK, line.creditMMK, rateID); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if _, err := tx.Exec(ctx, `UPDATE journal_entries SET status='POSTED' WHERE id=$1`, journalID); err != nil {
 		t.Fatal(err)
 	}
