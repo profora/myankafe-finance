@@ -112,3 +112,50 @@ The current development authentication header is intentionally non-production:
 `AUTH_MODE=dev` is rejected when `APP_ENV=production`.
 
 Production release must wire the real private admin identity boundary before deployment.
+
+
+## Role model
+
+Authorization is enforced server-side. UI visibility is not a security boundary.
+
+- **OWNER**
+  - full entity access
+  - create platform users and new entities
+  - configure accounting
+  - operate the ledger
+  - post manual journals
+  - reverse posted accounting
+  - lock and unlock accounting periods
+  - assign entity roles
+
+- **ADMIN**
+  - configure accounting
+  - operate the ledger
+  - view entity users and audit history
+  - cannot unlock periods
+  - cannot reverse posted accounting solely by being ADMIN
+  - cannot create platform users/entities unless also OWNER somewhere
+
+- **ACCOUNTANT**
+  - configure accounting
+  - operate the ledger
+  - post manual journals
+  - reverse posted accounting
+  - lock accounting periods
+  - view audit history
+  - cannot unlock periods
+
+- **BOOKKEEPER**
+  - create contacts
+  - create/post ordinary income and expense entries
+  - post account transfers and permitted inter-entity operations
+  - cannot configure COA, financial accounts, FX rates, or inter-entity mappings
+  - cannot reverse posted accounting
+  - cannot view audit history
+  - cannot lock/unlock periods
+
+- **VIEWER**
+  - read-only access to entity data and reports
+  - no ledger mutations
+
+A user with no entity assignment cannot self-create an entity. New entity creation requires the actor to already hold OWNER on at least one entity.
