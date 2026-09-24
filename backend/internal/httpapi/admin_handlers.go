@@ -78,3 +78,14 @@ func (s *Server) setUserRole(w http.ResponseWriter,r *http.Request){
 	v,err:=s.Store.SetUserEntityRole(r.Context(),a.User,in["user_id"],a.Entity,role);if err!=nil{fail(w,400,err);return}
 	write(w,200,v)
 }
+
+
+func (s *Server) setUserStatus(w http.ResponseWriter,r *http.Request){
+	u,err:=s.principal(r);if err!=nil{fail(w,401,err);return}
+	isOwner,err:=s.ownerAnywhere(r,u);if err!=nil{fail(w,500,err);return}
+	if !isOwner{fail(w,403,errors.New("OWNER access required"));return}
+	var in struct{Status string `json:"status"`}
+	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
+	if err:=s.Store.SetUserStatus(r.Context(),u,chi.URLParam(r,"user"),in.Status);err!=nil{fail(w,400,err);return}
+	write(w,200,map[string]any{"user_id":chi.URLParam(r,"user"),"status":in.Status})
+}
