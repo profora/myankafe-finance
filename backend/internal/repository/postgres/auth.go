@@ -92,6 +92,74 @@ func (s *Store) RevokeAllSessions(ctx context.Context,userID string) error {
 	return err
 }
 
+func (s *Store) ChangePasswordAndReplaceSessions(
+	ctx context.Context,
+	user User,
+	passwordHash string,
+	tokenHash []byte,
+	userAgent, ip string,
+	expiresAt time.Time,
+) (UserSession, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return UserSession{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `
+UPDATE user_credentials
+SET password_hash=$2,password_changed_at=now(),updated_at=now()
+WHERE user_id=$1`, user.ID, passwordHash); err != nil {
+		return UserSession{}, err
+	}
+	if _, err := tx.Exec(ctx, `
+UPDATE user_sessions
+SET revoked_at=COALESCE(revoked_at,now())
+WHERE user_id=$1 AND revoked_at IS NULL`, user.ID); err != nil {
+		return UserSession{}, err
+	}
+
+	sessionID, err := ids.UUIDv7()
+	if err != nil {
+		return UserSession{}, err
+	}
+	var session UserSession
+	if err := tx.QueryRow(ctx, `
+INSERT INTO user_sessions(id,user_id,token_hash,user_agent,ip_address,expires_at)
+VALUES($1,$2,$3,NULLIF($4,''),NULLIF($5,'')::inet,$6)
+RETURNING id::text,user_id::text,expires_at,last_seen_at`,
+		sessionID,user.ID,tokenHash,userAgent,ip,expiresAt).
+		Scan(&session.ID,&session.UserID,&session.ExpiresAt,&session.LastSeenAt); err != nil {
+		return UserSession{}, err
+	}
+
+	auditID, err := ids.UUIDv7()
+	if err != nil {
+		return UserSession{}, err
+	}
+	auditPublicID, err := ids.ULID()
+	if err != nil {
+		return UserSession{}, err
+	}
+	meta, err := json.Marshal(map[string]any{"session_id":session.ID})
+	if err != nil {
+		return UserSession{}, err
+	}
+	if _, err := tx.Exec(ctx, `
+INSERT INTO audit_events(
+ id,public_id,actor_type,actor_user_id,action,resource_type,resource_id,
+ outcome,source,metadata
+) VALUES($1,$2,'USER',$3,'AUTH_PASSWORD_CHANGED','USER',$3,'SUCCESS','WEB',$4::jsonb)`,
+		auditID,auditPublicID,user.ID,string(meta)); err != nil {
+		return UserSession{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return UserSession{}, err
+	}
+	return session, nil
+}
+
 func (s *Store) AuditAuth(ctx context.Context,userID *string,action,outcome string,metadata map[string]any) error {
 	id,err:=ids.UUIDv7();if err!=nil{return err}
 	pub,err:=ids.ULID();if err!=nil{return err}
