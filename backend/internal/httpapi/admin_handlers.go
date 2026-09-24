@@ -89,3 +89,14 @@ func (s *Server) setUserStatus(w http.ResponseWriter,r *http.Request){
 	if err:=s.Store.SetUserStatus(r.Context(),u,chi.URLParam(r,"user"),in.Status);err!=nil{fail(w,400,err);return}
 	write(w,200,map[string]any{"user_id":chi.URLParam(r,"user"),"status":in.Status})
 }
+
+
+func (s *Server) updateEntitySettings(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if a.Role!="OWNER"&&a.Role!="ADMIN"{fail(w,403,errors.New("OWNER or ADMIN required"));return}
+	var in postgres.UpdateEntitySettingsInput
+	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
+	v,err:=s.Store.UpdateEntitySettings(r.Context(),a.User,a.Entity,in)
+	if err!=nil{fail(w,400,err);return}
+	write(w,200,v)
+}
