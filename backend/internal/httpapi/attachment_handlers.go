@@ -109,9 +109,10 @@ func (s *Server) transactionAttachmentContent(w http.ResponseWriter,r *http.Requ
 	w.Header().Set("Content-Type",contentType)
 	w.Header().Set("Content-Length",fmt.Sprintf("%d",len(body)))
 	w.Header().Set("Cache-Control","private, max-age=300")
+	w.Header().Set("X-Content-Type-Options","nosniff")
 	disposition:="attachment"
 	if strings.HasPrefix(contentType,"image/")||contentType=="application/pdf"{disposition="inline"}
-	w.Header().Set("Content-Disposition",fmt.Sprintf(`%s; filename*=UTF-8''%s`,disposition,mime.QEncoding.Encode("UTF-8",obj.OriginalFilename)))
+	w.Header().Set("Content-Disposition",mime.FormatMediaType(disposition,map[string]string{"filename":obj.OriginalFilename}))
 	w.WriteHeader(http.StatusOK)
 	_,_ = w.Write(body)
 }
