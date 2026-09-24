@@ -7,134 +7,141 @@ PR: `#1 feat: V1 multi-entity accounting foundation`
 
 ### Backend and database
 
-- PostgreSQL 17 schema and Goose migrations
-- UUIDv7 internal IDs
-- canonical ULID public IDs
+- PostgreSQL 17 schema and Goose migrations through 00010
+- UUIDv7 internal IDs / canonical ULID public IDs
 - multi-entity books and per-entity roles
 - hierarchical Chart of Accounts
 - cash/bank/mobile-wallet/card/other financial accounts
 - contacts/payees/payers
-- income and expense entry with split categories
+- income/expense entry with split categories
 - deterministic double-entry posting
 - manual journals
-- same-entity account transfers
-- exchange-rate snapshots
+- same-entity transfers
+- stored exchange-rate snapshots
 - atomic inter-entity expense posting with due-to/due-from mappings
-- entity transaction locking
-- OWNER-only unlock
+- accounting-period locking; OWNER-only unlock
 - reversal-based correction of posted transactions
-- append-only business/request audit history
-- durable API idempotency support
+- append-only business/request/auth audit history
+- durable JSON mutation idempotency
 - dashboard and accounting reports
 - entity/user/role administration
-- database integrity triggers that enforce entity boundaries and posted immutability
+- Argon2id username/password credentials
+- opaque database-backed sessions, HttpOnly cookies, Bearer-session support
+- own-password change and OWNER password reset/session revocation
+- login rate limiting and anti-enumeration dummy password verification
+- private Cloudflare R2 transaction attachments
+- multi-file upload, ordered metadata, authenticated content streaming
+- searchable/filterable transaction list with journal-derived functional-currency totals and running net
+- database integrity triggers for entity boundaries, balance, lifecycle, locks, FX, and posted immutability
 
 ### Frontend
 
-Working Next.js admin screens exist for:
+Working Next.js screens/workflows include:
 
+- username/password login and logout
+- password change
 - dashboard
-- transactions and posting
-- new income/expense entry
-- transfers
-- inter-entity posting/mapping
+- searchable/filterable/paginated transaction list
+- New Transaction dropdown: income, expense, transfer, manual journal, inter-entity
+- transaction detail with actual journal debit/credit lines
+- new income/expense entry with multiple attachments
+- transfers with attachments
+- inter-entity posting/mapping with attachments on the initiating transaction
+- manual journals with attachments
+- private attachment gallery
+- fullscreen image preview with zoom, keyboard navigation and reset
+- inline PDF preview
 - contacts
-- Chart of Accounts
+- Chart of Accounts + account-ledger drill-down
 - financial accounts
 - exchange rates
-- manual journals
-- reports
+- accounting reports and date ranges
 - audit log
 - transaction locking
 - entity settings
-- user/entity-role settings
-- development identity selector
+- user/entity-role settings including initial passwords and OWNER reset
 
-## CI state
+## Validation
 
-GitHub Actions currently validates:
+GitHub Actions validates:
 
 - frontend TypeScript
 - Next.js production build
 - Go module resolution
-- fresh Goose migration of PostgreSQL 17
+- fresh Goose migrations on PostgreSQL 17
 - Go unit and PostgreSQL integration tests
 - production API Docker image build
 - production non-root web Docker image build
 
-Do not merge if those checks are red.
+Tests now cover:
+
+- journal balancing and posting guards
+- period locks
+- cross-entity boundaries
+- posted immutability
+- FX snapshot immutability/math
+- role authorization
+- idempotency claim/replay/concurrency plus HTTP replay behavior
+- reversal success and locked reversal rejection
+- inter-entity success and forced late-failure rollback
+- transaction search/running-total reversal semantics
+- attachment metadata ordering
+- Argon2/password/session-token helpers
+- R2 configuration/canonical-path helpers
+- username/password session lifecycle (login/me/logout) when the latest CI reaches that test
+
+Do not merge if CI is red.
 
 ## Tasks Cursor should do next
 
-1. Run a local formatting/dependency normalization pass and commit generated lock metadata:
-   - `gofmt -w backend`
-   - `cd backend && go mod tidy` and commit `go.sum`
-   - `cd frontend && npm install` and commit `package-lock.json`
-   - once lockfiles exist, change CI to `npm ci` and make `go mod tidy`/format checks fail on dirty output rather than mutating the runner checkout.
+1. **Dependency/format reproducibility**
+   - run `gofmt -w backend` and commit the result
+   - `cd backend && go mod tidy`; commit `go.sum`
+   - `cd frontend && npm install`; commit `package-lock.json`
+   - switch CI to `npm ci`
+   - make formatting and `go mod tidy` checks non-mutating/fail-on-diff
 
-2. Expand service-level integration coverage. Database integration tests already verify:
-   - posted unbalanced journal rejection,
-   - locked-period journal posting rejection,
-   - cross-entity transaction-split rejection,
-   - posted journal-line immutability,
-   - used FX snapshot immutability,
-   - transaction posting requires a posted journal.
+2. **Real R2 acceptance**
+   - configure a private production/staging R2 bucket
+   - validate upload, image/PDF preview, error handling, and object cleanup with real credentials
+   - confirm the chosen reverse-proxy request-size limits allow the configured attachment size
 
-   Add higher-level tests for:
-   - duplicate idempotency key cannot double-post,
-   - inter-entity pair is all-or-nothing,
-   - reversal preserves the original and produces the opposite journal,
-   - reversal inside a locked period is rejected,
-   - role authorization on accounting configuration/correction endpoints.
+3. **Production operations**
+   - secret management for PostgreSQL, bootstrap credentials, cookie/session configuration, and R2 keys
+   - TLS/reverse proxy
+   - `AUTH_COOKIE_SECURE=true`
+   - exact production `CORS_ORIGIN`
+   - PostgreSQL backups/PITR
+   - migration/deployment runbook
+   - structured logs/metrics and alerting
 
-3. Polish the admin UI without changing accounting semantics:
-   - stronger responsive layout,
-   - loading/skeleton states,
-   - confirmation dialog for unlock,
-   - better table pagination/filtering,
-   - user-friendly number/date formatting.
+4. **Polish without changing accounting semantics**
+   - responsive/mobile navigation (the current sidebar hides below 900px)
+   - loading/skeleton states
+   - confirmation dialog for accounting unlock
+   - richer table sorting/export if desired
+   - final accessibility/browser review
+   - visual polish of forms and attachment gallery
 
-   Already implemented before handoff:
-   - accessible reversal dialog with explicit reversal date/reason,
-   - transaction detail/journal inspection page,
-   - account-ledger drill-down from COA/report/transaction rows,
-   - report date-range controls,
-   - entity-timezone date defaults,
-   - entity fiscal-year reporting defaults.
+5. **Optional future integrations**
+   - Royal Masterpiece ingestion connector using integration events/external references
+   - bank-feed ingestion
+   - recurring/budgets (Phase 2)
+   - more advanced approvals if needed
 
-4. Production authentication:
-   - replace the dev header boundary with the chosen private admin authentication mechanism,
-   - retain the existing per-entity authorization checks,
-   - never permit `AUTH_MODE=dev` in production.
+## Do not reimplement
 
-5. Production operations:
-   - secret management,
-   - TLS/reverse proxy,
-   - PostgreSQL backups/PITR,
-   - migration runbook,
-   - structured logs/metrics,
-   - object storage before implementing real receipt upload bytes.
-
-## Deferred intentionally
-
-These are not blockers for the accounting foundation and should not be improvised during UI polishing:
-
-- real receipt/object upload storage
-- Royal Masterpiece ingestion connector
-- automatic bank feed ingestion
-- statutory consolidated financial statements
-- tax filing automation
-- advanced approval workflows
-
-The schema already contains integration event/idempotency foundations and attachment metadata for future work.
+Authentication and R2 receipt storage are no longer placeholders. Do not replace them casually during UI polishing. The patterns were adapted from `profora/rm-floral-platform`.
 
 ## Accounting rules Cursor must not weaken
 
 - Never edit/delete posted journal lines.
-- Never "fix" posted accounting in place; reverse and repost.
+- Never fix posted accounting in place; reverse and repost.
 - Never expose internal UUIDs as the normal public API identity.
 - Never allow an entity to post another entity's account/financial account/contact.
 - Never bypass entity lock validation.
 - Never make unlock available to roles other than OWNER.
 - Never split inter-entity posting into independent commits.
 - Never use live/latest FX retroactively in historical reports; preserve stored snapshots.
+- Keep R2 credentials backend-only.
+- Do not expose raw stored session-token hashes or password hashes.
