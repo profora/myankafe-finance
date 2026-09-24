@@ -3,14 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
-import type { Account, FinancialAccount } from "@/components/types";\ntype Contact={id:string;display_name:string;contact_type:string};
+import type { Account, FinancialAccount } from "@/components/types";
+type Contact={id:string;display_name:string;contact_type:string};
 
 type Split={AccountPublicID:string;Amount:string;Description:string};
 
 export default function NewTransaction(){
   const {entity}=useEntity();
   const [accounts,setAccounts]=useState<Account[]>([]);
-  const [financial,setFinancial]=useState<FinancialAccount[]>([]);\n  const [contacts,setContacts]=useState<Contact[]>([]);\n  const [contact,setContact]=useState("");
+  const [financial,setFinancial]=useState<FinancialAccount[]>([]);
+  const [contacts,setContacts]=useState<Contact[]>([]);
+  const [contact,setContact]=useState("");
   const [type,setType]=useState("EXPENSE");
   const [date,setDate]=useState(new Date().toISOString().slice(0,10));
   const [description,setDescription]=useState("");
