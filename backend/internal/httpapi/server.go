@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -15,12 +16,23 @@ import (
 )
 
 type Server struct {
-	Store  *postgres.Store
-	Config config.Config
+	Store             *postgres.Store
+	Config            config.Config
+	LoginLimiter      *auth.Limiter
+	DummyPasswordHash string
 }
 
 func New(store *postgres.Store, cfg config.Config) http.Handler {
-	s := &Server{Store: store, Config: cfg}
+	dummyHash, err := auth.HashPassword("not-a-real-user-password")
+	if err != nil {
+		panic("initialize password verifier: " + err.Error())
+	}
+	s := &Server{
+		Store: store,
+		Config: cfg,
+		LoginLimiter: auth.NewLimiter(15 * time.Minute),
+		DummyPasswordHash: dummyHash,
+	}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer)
 	r.Use(cors(cfg.CORSOrigin))
@@ -30,61 +42,69 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(auth.Middleware(cfg.AuthMode))
-		r.Use(s.auditRequests)
-		r.Use(s.idempotency)
+		r.Post("/auth/login", s.login)
 
-		r.Get("/entities", s.listEntities)
-		r.Post("/entities", s.createEntity)
-		r.Get("/users", s.listUsers)
-		r.Post("/users", s.createUser)
-		r.Post("/inter-entity-transactions", s.createInterEntityExpense)
-		r.Get("/dashboard/combined", s.combinedDashboard)
+		r.Group(func(r chi.Router) {
+			r.Use(s.requireAuth)
+			r.Use(s.auditRequests)
+			r.Use(s.idempotency)
 
-		r.Route("/entities/{entity}", func(r chi.Router) {
-			r.Use(s.entityAccess)
+			r.Get("/auth/me", s.me)
+			r.Post("/auth/logout", s.logout)
+			r.Post("/auth/change-password", s.changePassword)
 
-			r.Get("/dashboard", s.dashboard)
-			r.Get("/reports/profit-loss", s.profitLoss)
-			r.Get("/reports/trial-balance", s.trialBalance)
-			r.Get("/reports/balance-sheet", s.balanceSheet)
-			r.Get("/reports/general-ledger", s.generalLedger)
-			r.Get("/reports/account-ledger", s.accountLedger)
-			r.Get("/reports/cash-movement", s.cashMovement)
-			r.Get("/reports/inter-entity-balances", s.interEntityBalances)
+			r.Get("/entities", s.listEntities)
+			r.Post("/entities", s.createEntity)
+			r.Get("/users", s.listUsers)
+			r.Post("/users", s.createUser)
+			r.Post("/inter-entity-transactions", s.createInterEntityExpense)
+			r.Get("/dashboard/combined", s.combinedDashboard)
 
-			r.Get("/accounts", s.listAccounts)
-			r.Post("/accounts", s.createAccount)
+			r.Route("/entities/{entity}", func(r chi.Router) {
+				r.Use(s.entityAccess)
 
-			r.Get("/financial-accounts", s.listFinancialAccounts)
-			r.Post("/financial-accounts", s.createFinancialAccount)
+				r.Get("/dashboard", s.dashboard)
+				r.Get("/reports/profit-loss", s.profitLoss)
+				r.Get("/reports/trial-balance", s.trialBalance)
+				r.Get("/reports/balance-sheet", s.balanceSheet)
+				r.Get("/reports/general-ledger", s.generalLedger)
+				r.Get("/reports/account-ledger", s.accountLedger)
+				r.Get("/reports/cash-movement", s.cashMovement)
+				r.Get("/reports/inter-entity-balances", s.interEntityBalances)
 
-			r.Get("/contacts", s.listContacts)
-			r.Post("/contacts", s.createContact)
+				r.Get("/accounts", s.listAccounts)
+				r.Post("/accounts", s.createAccount)
 
-			r.Get("/exchange-rates", s.listExchangeRates)
-			r.Post("/exchange-rates", s.createExchangeRate)
+				r.Get("/financial-accounts", s.listFinancialAccounts)
+				r.Post("/financial-accounts", s.createFinancialAccount)
 
-			r.Get("/transactions", s.listTransactions)
-			r.Get("/transactions/{tx}", s.transactionDetail)
-			r.Post("/transactions", s.createTransaction)
-			r.Post("/transactions/{tx}/post", s.postTransaction)
-			r.Post("/transactions/{tx}/reverse", s.reverseTransaction)
+				r.Get("/contacts", s.listContacts)
+				r.Post("/contacts", s.createContact)
 
-			r.Post("/transfers", s.createTransfer)
-			r.Post("/manual-journals", s.manualJournal)
+				r.Get("/exchange-rates", s.listExchangeRates)
+				r.Post("/exchange-rates", s.createExchangeRate)
 
-			r.Get("/inter-entity-mappings", s.listInterEntityMappings)
-			r.Put("/inter-entity-mappings/{counterparty}", s.upsertInterEntityMapping)
+				r.Get("/transactions", s.listTransactions)
+				r.Get("/transactions/{tx}", s.transactionDetail)
+				r.Post("/transactions", s.createTransaction)
+				r.Post("/transactions/{tx}/post", s.postTransaction)
+				r.Post("/transactions/{tx}/reverse", s.reverseTransaction)
 
-			r.Get("/users", s.listEntityUsers)
-			r.Put("/users/role", s.setUserRole)
+				r.Post("/transfers", s.createTransfer)
+				r.Post("/manual-journals", s.manualJournal)
 
-			r.Get("/audit-events", s.listAuditEvents)
+				r.Get("/inter-entity-mappings", s.listInterEntityMappings)
+				r.Put("/inter-entity-mappings/{counterparty}", s.upsertInterEntityMapping)
 
-			r.Get("/accounting-lock", s.getLock)
-			r.Post("/accounting-lock", s.lock)
-			r.Post("/accounting-lock/unlock", s.unlock)
+				r.Get("/users", s.listEntityUsers)
+				r.Put("/users/role", s.setUserRole)
+
+				r.Get("/audit-events", s.listAuditEvents)
+
+				r.Get("/accounting-lock", s.getLock)
+				r.Post("/accounting-lock", s.lock)
+				r.Post("/accounting-lock/unlock", s.unlock)
+			})
 		})
 	})
 
@@ -286,6 +306,7 @@ func cors(origin string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization,Content-Type,Idempotency-Key")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
 			if r.Method == http.MethodOptions {
