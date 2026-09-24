@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
+import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
 import type { FinancialAccount } from "@/components/types";
 
@@ -11,14 +12,27 @@ export default function Transfers(){
   const [accounts,setAccounts]=useState<FinancialAccount[]>([]);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
+  const [attachments,setAttachments]=useState<File[]>([]);
+  const [busy,setBusy]=useState(false);
   const [form,setForm]=useState({Date:dateInTimeZone(entity?.Timezone??"Asia/Yangon"),FromFinancialAccountPublicID:"",ToFinancialAccountPublicID:"",FromAmount:"",ToAmount:"",Description:""});
 
   useEffect(()=>{if(entity)api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`).then(x=>{setAccounts(x.items);setForm(v=>({...v,FromFinancialAccountPublicID:x.items[0]?.PublicID||"",ToFinancialAccountPublicID:x.items[1]?.PublicID||""}))}).catch(e=>setError(e.message))},[entity]);
 
   async function submit(){
-    if(!entity)return;setError("");setMessage("");
-    try{const v=await api<{id:string}>(`/entities/${entity.PublicID}/transfers`,{method:"POST",body:JSON.stringify(form)});setMessage(`Transfer posted: ${v.id}`);setForm(v=>({...v,FromAmount:"",ToAmount:"",Description:""}))}
-    catch(e){setError(e instanceof Error?e.message:String(e))}
+    if(!entity)return;setError("");setMessage("");setBusy(true);
+    try{
+      const v=await api<{id:string}>(`/entities/${entity.PublicID}/transfers`,{method:"POST",body:JSON.stringify(form)});
+      if(attachments.length){
+        try{await uploadTransactionAttachments(entity.PublicID,v.id,attachments)}
+        catch(uploadErr){
+          setMessage(`Transfer posted: ${v.id}`);
+          setError(`The transfer was posted, but attachment upload failed. You can add the files from the transaction detail page. ${uploadErr instanceof Error?uploadErr.message:String(uploadErr)}`);
+          return;
+        }
+      }
+      window.location.assign(`/transactions/${v.id}`);
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setBusy(false)}
   }
 
   const from=accounts.find(x=>x.PublicID===form.FromFinancialAccountPublicID);
@@ -37,7 +51,8 @@ export default function Transfers(){
         <div className="field"><label>To amount ({to?.Currency??"—"})</label><input inputMode="decimal" value={form.ToAmount} onChange={e=>setForm({...form,ToAmount:e.target.value})}/></div>
       </div>
       {from&&to&&from.Currency!==to.Currency&&<div className="alert">Cross-currency transfers use stored rates. The entered source/destination amounts must translate to the same functional value in V1.</div>}
-      <button disabled={!form.Description||!form.FromAmount||!form.ToAmount||form.FromFinancialAccountPublicID===form.ToFinancialAccountPublicID} onClick={submit}>Post transfer</button>
+      <div className="field"><label>Attachments</label><input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,text/csv,.docx,.xlsx" onChange={e=>setAttachments(Array.from(e.target.files??[]))}/><span className="muted">{attachments.length?attachments.map(x=>x.name).join(", "):"Optional receipts or transfer confirmations."}</span></div>
+      <button disabled={busy||!form.Description||!form.FromAmount||!form.ToAmount||form.FromFinancialAccountPublicID===form.ToFinancialAccountPublicID} onClick={submit}>{busy?"Posting…":"Post transfer"}</button>
     </div>
   </>;
 }
