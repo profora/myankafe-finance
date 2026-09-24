@@ -51,7 +51,7 @@ func (s *Server) listExchangeRates(w http.ResponseWriter,r *http.Request){
 }
 
 func (s *Server) createExchangeRate(w http.ResponseWriter,r *http.Request){
-	a:=getAccess(r);if a.Role=="VIEWER"{fail(w,403,errors.New("forbidden"));return}
+	a:=getAccess(r);if !requireRole(w,canConfigureAccounting(a.Role),"exchange-rate configuration requires OWNER, ADMIN, or ACCOUNTANT"){return}
 	var in map[string]string;if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
 	v,err:=s.Store.CreateExchangeRate(r.Context(),a.User,a.Entity,in["rate_date"],in["from_currency"],in["to_currency"],in["rate"],in["source"],in["source_reference"])
 	if err!=nil{fail(w,400,err);return};write(w,201,v)
