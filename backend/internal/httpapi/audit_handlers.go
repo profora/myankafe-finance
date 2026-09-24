@@ -7,6 +7,9 @@ import (
 
 func (s *Server) listAuditEvents(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
+	if !requireRole(w, canConfigureAccounting(a.Role), "audit access requires OWNER, ADMIN, or ACCOUNTANT") {
+		return
+	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	v, err := s.Store.ListAuditEvents(r.Context(), a.Entity.ID, limit)
 	if err != nil {
