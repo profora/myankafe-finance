@@ -17,7 +17,7 @@ func (s *Server) listContacts(w http.ResponseWriter,r *http.Request){
 
 func (s *Server) createContact(w http.ResponseWriter,r *http.Request){
 	a:=getAccess(r)
-	if a.Role=="VIEWER"{fail(w,403,errors.New("forbidden"));return}
+	if !requireRole(w,canOperateLedger(a.Role),"ledger operation access required"){return}
 	var in map[string]string
 	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
 	v,err:=s.Store.CreateContact(r.Context(),a.User,a.Entity,in["contact_type"],in["display_name"],in["phone"],in["email"],in["notes"])
@@ -27,7 +27,7 @@ func (s *Server) createContact(w http.ResponseWriter,r *http.Request){
 
 func (s *Server) createTransfer(w http.ResponseWriter,r *http.Request){
 	a:=getAccess(r)
-	if a.Role=="VIEWER"{fail(w,403,errors.New("forbidden"));return}
+	if !requireRole(w,canOperateLedger(a.Role),"ledger operation access required"){return}
 	var in postgres.TransferInput
 	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
 	v,err:=s.Store.PostTransfer(r.Context(),a.User,a.Entity,in)
