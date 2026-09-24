@@ -90,11 +90,17 @@ Do not merge if those checks are red.
 3. Polish the admin UI without changing accounting semantics:
    - stronger responsive layout,
    - loading/skeleton states,
-   - accessible dialogs instead of `window.prompt`,
-   - confirmation dialog for reversal/unlock,
+   - confirmation dialog for unlock,
    - better table pagination/filtering,
-   - account-ledger drill-down from COA/report rows,
    - user-friendly number/date formatting.
+
+   Already implemented before handoff:
+   - accessible reversal dialog with explicit reversal date/reason,
+   - transaction detail/journal inspection page,
+   - account-ledger drill-down from COA/report/transaction rows,
+   - report date-range controls,
+   - entity-timezone date defaults,
+   - entity fiscal-year reporting defaults.
 
 4. Production authentication:
    - replace the dev header boundary with the chosen private admin authentication mechanism,
