@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
-import type { Account, FinancialAccount } from "@/components/types";
+import type { Account, FinancialAccount, Transaction } from "@/components/types";
 type Contact={id:string;display_name:string;contact_type:string};
 
 type Split={AccountPublicID:string;Amount:string;Description:string};
