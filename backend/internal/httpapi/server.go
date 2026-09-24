@@ -56,6 +56,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(s.bodyLimit)
 		r.Use(s.originGuard)
 		r.Post("/auth/login", s.login)
 
