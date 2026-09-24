@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/profora/myankafe-finance/backend/internal/auth"
 	"github.com/profora/myankafe-finance/backend/internal/repository/postgres"
 )
 
@@ -30,9 +31,19 @@ func (s *Server) createUser(w http.ResponseWriter,r *http.Request){
 	u,err:=s.principal(r);if err!=nil{fail(w,401,err);return}
 	isOwner,err:=s.ownerAnywhere(r,u);if err!=nil{fail(w,500,err);return}
 	if !isOwner{fail(w,403,errors.New("OWNER access required"));return}
-	var in postgres.CreateUserInput
+	var in struct{
+		Username string
+		DisplayName string
+		Email string
+		Password string
+	}
 	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
-	v,err:=s.Store.CreateUser(r.Context(),u,in);if err!=nil{fail(w,400,err);return}
+	username,err:=auth.NormalizeUsername(in.Username);if err!=nil{fail(w,422,err);return}
+	if err:=auth.ValidatePassword(in.Password);err!=nil{fail(w,422,err);return}
+	passwordHash,err:=auth.HashPassword(in.Password);if err!=nil{fail(w,500,err);return}
+	v,err:=s.Store.CreateUser(r.Context(),u,postgres.CreateUserInput{
+		Username:username,DisplayName:in.DisplayName,Email:in.Email,
+	},passwordHash);if err!=nil{fail(w,400,err);return}
 	write(w,201,v)
 }
 
