@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/profora/myankafe-finance/backend/internal/accounting"
 	"github.com/profora/myankafe-finance/backend/internal/ids"
 )
