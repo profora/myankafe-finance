@@ -21,6 +21,8 @@ export default function Users(){
   const [showResetPassword,setShowResetPassword]=useState(false);
   const [statusTarget,setStatusTarget]=useState<User|null>(null);
   const [statusBusy,setStatusBusy]=useState(false);
+  const [accessTarget,setAccessTarget]=useState<Member|null>(null);
+  const [accessBusy,setAccessBusy]=useState(false);
 
   const load=()=>{
     setErr("");
@@ -68,6 +70,18 @@ export default function Users(){
       load();
     }catch(e){setErr(e instanceof Error?e.message:String(e))}
     finally{setStatusBusy(false)}
+  }
+
+  async function revokeEntityAccess(){
+    if(!entity||!accessTarget)return;
+    setAccessBusy(true);setErr("");setMsg("");
+    try{
+      await api(`/entities/${entity.PublicID}/users/${accessTarget.id}`,{method:"DELETE"});
+      setMsg(`Access removed from ${entity.Name}.`);
+      setAccessTarget(null);
+      load();
+    }catch(e){setErr(e instanceof Error?e.message:String(e))}
+    finally{setAccessBusy(false)}
   }
 
   async function resetPassword(){
@@ -183,8 +197,8 @@ export default function Users(){
     <div className="page-head"><div><h1 style={{fontSize:20}}>Access for {entity?.Name}</h1><p>Current active entity-role assignments.</p></div></div>
     <div className="table-wrap">
       <table>
-        <thead><tr><th>User</th><th>Username</th><th>Role</th><th>Email</th></tr></thead>
-        <tbody>{members.map(x=><tr key={x.id}><td>{x.display_name}</td><td>{x.username}</td><td>{x.role}</td><td>{x.email||"—"}</td></tr>)}</tbody>
+        <thead><tr><th>User</th><th>Username</th><th>Role</th><th>Email</th><th></th></tr></thead>
+        <tbody>{members.map(x=><tr key={x.id}><td>{x.display_name}</td><td>{x.username}</td><td>{x.role}</td><td>{x.email||"—"}</td><td><button className="danger compact" onClick={()=>setAccessTarget(x)}>Remove access</button></td></tr>)}</tbody>
       </table>
     </div>
 
@@ -201,6 +215,19 @@ export default function Users(){
       onConfirm={setUserStatus}
     >
       {statusTarget&&<p><strong>{statusTarget.display_name}</strong> · {statusTarget.username}</p>}
+    </ConfirmDialog>
+
+    <ConfirmDialog
+      open={Boolean(accessTarget)}
+      title="Remove entity access?"
+      description={`This revokes access to ${entity?.Name??"this entity"} only. The user account and access to other entities remain unchanged.`}
+      confirmLabel="Remove access"
+      danger
+      busy={accessBusy}
+      onCancel={()=>{if(!accessBusy)setAccessTarget(null)}}
+      onConfirm={revokeEntityAccess}
+    >
+      {accessTarget&&<p><strong>{accessTarget.display_name}</strong> · {accessTarget.role}</p>}
     </ConfirmDialog>
   </>;
 }
