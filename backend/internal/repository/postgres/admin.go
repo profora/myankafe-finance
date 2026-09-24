@@ -180,7 +180,7 @@ INSERT INTO audit_events(
   outcome,source,request_id,after_data
 ) VALUES(
   $1,$2,'USER',$3,'USER_STATUS_CHANGE','USER',$4,
-  'SUCCESS','API',$5,jsonb_build_object('status',$6)
+  'SUCCESS','API',$5,jsonb_build_object('status',$6::text)
 )`,auditID,auditPublicID,actor.ID,targetUserPublicID,fmt.Sprintf("req-%d",time.Now().UnixNano()),status);err!=nil{return err}
 
 	return tx.Commit(ctx)
