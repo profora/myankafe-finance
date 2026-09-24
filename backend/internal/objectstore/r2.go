@@ -79,7 +79,8 @@ func (s *R2Store) Get(ctx context.Context,key string)([]byte,string,error){
 		b,_:=io.ReadAll(io.LimitReader(resp.Body,4096))
 		return nil,"",fmt.Errorf("R2 GET failed: %s: %s",resp.Status,strings.TrimSpace(string(b)))
 	}
-	body,err:=io.ReadAll(resp.Body);if err!=nil{return nil,"",err}
+	body,err:=io.ReadAll(io.LimitReader(resp.Body,(100<<20)+1));if err!=nil{return nil,"",err}
+	if len(body)>100<<20{return nil,"",errors.New("R2 object exceeds 100 MB safety limit")}
 	ct:=strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"),";")[0])
 	if ct==""{ct=http.DetectContentType(body)}
 	return body,ct,nil
