@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/profora/myankafe-finance/backend/internal/auth"
 	"github.com/profora/myankafe-finance/backend/internal/config"
+	"github.com/profora/myankafe-finance/backend/internal/objectstore"
 	"github.com/profora/myankafe-finance/backend/internal/repository/postgres"
 )
 
@@ -20,6 +21,7 @@ type Server struct {
 	Config            config.Config
 	LoginLimiter      *auth.Limiter
 	DummyPasswordHash string
+	AttachmentStore   objectstore.Store
 }
 
 func New(store *postgres.Store, cfg config.Config) http.Handler {
@@ -27,11 +29,22 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 	if err != nil {
 		panic("initialize password verifier: " + err.Error())
 	}
+	attachmentStore, err := objectstore.NewR2Store(objectstore.R2Config{
+		Endpoint: cfg.R2Endpoint,
+		Bucket: cfg.R2Bucket,
+		Region: cfg.R2Region,
+		AccessKey: cfg.R2AccessKey,
+		SecretKey: cfg.R2SecretKey,
+	})
+	if err != nil {
+		panic("initialize R2 attachment store: " + err.Error())
+	}
 	s := &Server{
 		Store: store,
 		Config: cfg,
 		LoginLimiter: auth.NewLimiter(15 * time.Minute),
 		DummyPasswordHash: dummyHash,
+		AttachmentStore: attachmentStore,
 	}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer)
@@ -86,6 +99,9 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 
 				r.Get("/transactions", s.listTransactions)
 				r.Get("/transactions/{tx}", s.transactionDetail)
+				r.Get("/transactions/{tx}/attachments", s.listTransactionAttachments)
+				r.Post("/transactions/{tx}/attachments", s.uploadTransactionAttachments)
+				r.Get("/transactions/{tx}/attachments/{attachment}/content", s.transactionAttachmentContent)
 				r.Post("/transactions", s.createTransaction)
 				r.Post("/transactions/{tx}/post", s.postTransaction)
 				r.Post("/transactions/{tx}/reverse", s.reverseTransaction)
