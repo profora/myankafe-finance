@@ -34,6 +34,12 @@ jobs:
       - name: Resolve Go modules
         working-directory: backend
         run: go mod tidy
+      - name: Emit backend lockfile for repository bootstrap
+        run: |
+          echo "BEGIN_GO_SUM"
+          base64 -w0 backend/go.sum
+          echo
+          echo "END_GO_SUM"
       - name: Install Goose
         run: go install github.com/pressly/goose/v3/cmd/goose@v3.24.3
       - name: Fresh DB migrations
@@ -52,6 +58,12 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm install
+      - name: Emit frontend lockfile for repository bootstrap
+        run: |
+          echo "BEGIN_PACKAGE_LOCK"
+          base64 -w0 frontend/package-lock.json
+          echo
+          echo "END_PACKAGE_LOCK"
       - name: Typecheck
         working-directory: frontend
         run: npm run typecheck
