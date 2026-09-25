@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -158,7 +159,17 @@ FROM financial_accounts fa JOIN accounts a ON a.id=fa.account_id WHERE fa.entity
 
 type CreateFinancialAccountInput struct{ Code, Name, Kind, Currency, AccountPublicID, Institution, Reference string }
 
+var financialAccountCodeWhitespace = regexp.MustCompile(`\s+`)
+
+func NormalizeFinancialAccountCode(code string) string {
+	return strings.ToUpper(financialAccountCodeWhitespace.ReplaceAllString(code, "_"))
+}
+
 func (s *Store) CreateFinancialAccount(ctx context.Context, user User, e Entity, in CreateFinancialAccountInput) (FinancialAccount, error) {
+	in.Code = NormalizeFinancialAccountCode(in.Code)
+	if strings.Trim(in.Code, "_") == "" {
+		return FinancialAccount{}, fmt.Errorf("code is required")
+	}
 	var aid, typ string
 	var postable bool
 	if err := s.Pool.QueryRow(ctx, `SELECT id::text,account_type,is_postable FROM accounts WHERE entity_id=$1 AND public_id=$2 AND active=true AND active=true`, e.ID, in.AccountPublicID).Scan(&aid, &typ, &postable); err != nil {

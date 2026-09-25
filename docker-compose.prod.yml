@@ -2,11 +2,16 @@ name: myankafe-finance
 
 services:
   migrate:
-    image: ghcr.io/pressly/goose:3.24.3
+    build:
+      context: .
+      dockerfile: deploy/goose.Dockerfile
+    image: myankafe-finance-goose:3.24.3
     restart: "no"
     environment:
       GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: ${DATABASE_URL:?DATABASE_URL is required}
+      # Goose forwards the DSN to PostgreSQL. pgx pool parameters such as
+      # pool_max_conns are not server settings and must be omitted here.
+      GOOSE_DBSTRING: ${GOOSE_DATABASE_URL:?GOOSE_DATABASE_URL is required}
       GOOSE_MIGRATION_DIR: /migrations
     volumes:
       - ./backend/db/migrations:/migrations:ro

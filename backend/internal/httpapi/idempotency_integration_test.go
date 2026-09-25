@@ -102,3 +102,25 @@ func TestHTTPIdempotencyReplaysAndRejectsMismatchedReuse(t *testing.T) {
 		t.Fatalf("mismatched reuse executed downstream: %d", executions.Load())
 	}
 }
+
+func TestHTTPIdempotencyAcceptsEntityScopedURL(t *testing.T) {
+	store := testHTTPStore(t)
+	server := &Server{Store: store}
+	principal, err := ids.ULID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := auth.Middleware("dev")(server.idempotency(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		write(w, http.StatusOK, map[string]any{"ok": true})
+	})))
+	longPath := "/api/v1/entities/" + principal + "/transactions/" + principal + "/cancel"
+	req := httptest.NewRequest(http.MethodPost, longPath, bytes.NewBufferString(`{"reason":"duplicate entry"}`))
+	req.Header.Set("Authorization", "Bearer dev:"+principal)
+	req.Header.Set("Idempotency-Key", "long-scope")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
