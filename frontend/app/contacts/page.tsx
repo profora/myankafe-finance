@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
+import { canOperateLedger } from "@/lib/permissions";
 
 type Contact={
   id:string;
@@ -26,6 +27,7 @@ const blank:ContactForm={contact_type:"OTHER",display_name:"",phone:"",email:"",
 
 export default function Contacts(){
   const {entity}=useEntity();
+  const mayOperate=canOperateLedger(entity?.Role);
   const [items,setItems]=useState<Contact[]>([]);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
@@ -82,7 +84,7 @@ export default function Contacts(){
     {error&&<div className="alert error">{error}</div>}
     {message&&<div className="alert success">{message}</div>}
 
-    {editing&&<div className="card form" style={{marginBottom:16}}>
+    {mayOperate&&editing&&<div className="card form" style={{marginBottom:16}}>
       <div className="page-head" style={{marginBottom:0}}>
         <div><h1 style={{fontSize:20}}>Edit contact</h1><p>{editing.display_name}</p></div>
         <button className="secondary" onClick={()=>setEditing(null)}>Cancel</button>
@@ -98,7 +100,7 @@ export default function Contacts(){
       <div className="actions"><button disabled={busy||!edit.display_name.trim()} onClick={saveEdit}>{busy?"Saving…":"Save changes"}</button><span className="muted">Inactive contacts remain on historical transactions but cannot be selected for new entries.</span></div>
     </div>}
 
-    <div className="card form" style={{marginBottom:16}}>
+    {mayOperate&&<div className="card form" style={{marginBottom:16}}>
       <h3>New contact</h3>
       <div className="form-grid">
         <div className="field"><label>Name</label><input value={form.display_name} onChange={e=>setForm({...form,display_name:e.target.value})}/></div>
@@ -108,12 +110,14 @@ export default function Contacts(){
         <div className="field span-2"><label>Notes</label><input value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div>
       </div>
       <button disabled={busy||!form.display_name.trim()} onClick={create}>Create contact</button>
-    </div>
+    </div>}
+
+    {!mayOperate&&<div className="alert">Your VIEWER role can read contacts but cannot create or edit them.</div>}
 
     <div className="table-wrap"><table><thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id}>
       <td>{x.display_name}</td><td>{x.contact_type}</td><td>{x.phone||"—"}</td><td>{x.email||"—"}</td>
       <td><span className={`badge ${x.active?"POSTED":"VOIDED"}`}>{x.active?"ACTIVE":"INACTIVE"}</span></td>
-      <td><button className="secondary compact" onClick={()=>startEdit(x)}>Edit</button></td>
+      <td>{mayOperate?<button className="secondary compact" onClick={()=>startEdit(x)}>Edit</button>:<span className="muted">Read-only</span>}</td>
     </tr>)}</tbody></table></div>
   </>;
 }
