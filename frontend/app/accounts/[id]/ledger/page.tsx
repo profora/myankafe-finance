@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import type { Account } from "@/components/types";
+import { dateInTimeZone, fiscalYearStartInTimeZone } from "@/lib/date";
+import { downloadCsv, safeCsvFilename } from "@/lib/csv";
 
 type LedgerLine = {
   date:string;
@@ -19,19 +21,14 @@ type LedgerLine = {
   currency:string;
 };
 
-function firstOfYear(){
-  const d=new Date();
-  return `${d.getFullYear()}-01-01`;
-}
-
 export default function AccountLedgerPage(){
   const {entity}=useEntity();
   const params=useParams<{id:string}>();
   const accountID=Array.isArray(params.id)?params.id[0]:params.id;
   const [accounts,setAccounts]=useState<Account[]>([]);
   const [items,setItems]=useState<LedgerLine[]>([]);
-  const [from,setFrom]=useState(firstOfYear);
-  const [to,setTo]=useState(()=>new Date().toISOString().slice(0,10));
+  const [from,setFrom]=useState(()=>fiscalYearStartInTimeZone());
+  const [to,setTo]=useState(()=>dateInTimeZone());
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
 
@@ -50,7 +47,25 @@ export default function AccountLedgerPage(){
     finally{setLoading(false)}
   }
 
-  useEffect(()=>{load()},[entity,accountID]);
+  useEffect(()=>{
+    if(!entity)return;
+    setFrom(fiscalYearStartInTimeZone(entity.Timezone,entity.FiscalMonth,entity.FiscalDay));
+    setTo(dateInTimeZone(entity.Timezone));
+  },[entity?.PublicID]);
+
+  useEffect(()=>{load()},[entity?.PublicID,accountID]);
+
+  function exportLedger(){
+    const label=account?`${account.Code}-${account.Name}`:accountID;
+    downloadCsv(
+      safeCsvFilename(`${entity?.Name??"entity"}-${label}-ledger-${from}-to-${to}`),
+      ["Date","Journal","Transaction","Description","Debit","Credit","Running balance","Currency"],
+      items.map(x=>[
+        x.date,x.journal_id,x.transaction_id??"",x.description||x.journal_description,
+        x.debit,x.credit,x.running_balance,x.currency
+      ])
+    );
+  }
 
   return <>
     <div className="page-head">
@@ -59,6 +74,7 @@ export default function AccountLedgerPage(){
         <h1>{account ? `${account.Code} · ${account.Name}` : "Account Ledger"}</h1>
         <p>Running balance includes activity before the selected start date.</p>
       </div>
+      <button className="secondary compact" disabled={!items.length} onClick={exportLedger}>Export CSV</button>
     </div>
 
     {error&&<div className="alert error">{error}</div>}
