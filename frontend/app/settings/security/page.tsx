@@ -22,12 +22,15 @@ export default function SecuritySettings(){
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
   const [sessions,setSessions]=useState<Session[]>([]);
+  const [loadingSessions,setLoadingSessions]=useState(true);
 
   async function loadSessions(){
+    setLoadingSessions(true);
     try{
       const result=await api<{items:Session[]}>("/auth/sessions");
       setSessions(result.items);
     }catch(err){setError(err instanceof Error?err.message:String(err))}
+    finally{setLoadingSessions(false)}
   }
 
   useEffect(()=>{loadSessions()},[]);
@@ -77,33 +80,33 @@ export default function SecuritySettings(){
 
   return <>
     <div className="page-head"><div><h1>Security</h1><p>Password and active login sessions.</p></div></div>
-    {error&&<div className="alert error">{error}</div>}
-    {message&&<div className="alert success">{message}</div>}
+    {error&&<div className="alert error" role="alert">{error}</div>}
+    {message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
 
     <div className="grid security-grid">
       <div className="card">
         <h3>Change password</h3>
-        <form className="form" onSubmit={submit}>
+        <form className="form" aria-busy={busy} onSubmit={submit}>
           <div className="field"><label>Current password</label><input type="password" autoComplete="current-password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)}/></div>
           <div className="field"><label>New password</label><input type="password" autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)}/><span className="muted">Minimum 12 characters.</span></div>
           <div className="field"><label>Confirm new password</label><input type="password" autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)}/></div>
-          <button disabled={busy||!currentPassword||newPassword.length<12||newPassword!==confirm}>{busy?"Changing…":"Change password"}</button>
+          <button type="submit" disabled={busy||!currentPassword||newPassword.length<12||newPassword!==confirm}>{busy?"Changing…":"Change password"}</button>
         </form>
       </div>
 
       <div className="card">
         <div className="page-head" style={{marginBottom:12}}>
           <div><h3 style={{margin:0}}>Active sessions</h3><p style={{marginTop:4}}>Review devices signed into your finance account.</p></div>
-          <button className="secondary" disabled={sessionBusy==="others"||sessions.filter(x=>!x.current).length===0} onClick={revokeOthers}>{sessionBusy==="others"?"Revoking…":"Sign out other devices"}</button>
+          <button type="button" className="secondary" disabled={loadingSessions||sessionBusy==="others"||sessions.filter(x=>!x.current).length===0} onClick={revokeOthers}>{sessionBusy==="others"?"Revoking…":"Sign out other devices"}</button>
         </div>
-        <div className="session-list">
-          {sessions.length?sessions.map(session=><div className="session-row" key={session.id}>
+        <div className="session-list" aria-busy={loadingSessions}>
+          {loadingSessions&&!sessions.length?<div className="session-loading" role="status"><span className="skeleton skeleton-wide" aria-hidden="true"/><span className="skeleton skeleton-line" aria-hidden="true"/><span className="sr-only">Loading active sessions…</span></div>:sessions.length?sessions.map(session=><div className="session-row" key={session.id}>
             <div>
               <div><strong>{session.current?"This device":"Active session"}</strong>{session.current&&<span className="badge POSTED" style={{marginLeft:8}}>CURRENT</span>}</div>
               <div className="muted session-agent">{displayAgent(session.user_agent)}</div>
               <div className="muted">IP {session.ip_address??"unknown"} · Last active {new Date(session.last_seen_at).toLocaleString()} · Expires {new Date(session.expires_at).toLocaleString()}</div>
             </div>
-            <button className={session.current?"danger":"secondary"} disabled={Boolean(sessionBusy)} onClick={()=>revokeSession(session)}>{sessionBusy===session.id?"Revoking…":session.current?"Sign out":"Revoke"}</button>
+            <button type="button" className={session.current?"danger":"secondary"} disabled={Boolean(sessionBusy)} onClick={()=>revokeSession(session)}>{sessionBusy===session.id?"Revoking…":session.current?"Sign out":"Revoke"}</button>
           </div>):<div className="empty">No active sessions found.</div>}
         </div>
       </div>

@@ -25,17 +25,21 @@ export default function Locking(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
   const [error,setError]=useState("");
+  const [loading,setLoading]=useState(true);
 
-  const load=()=>{
+  const load=async()=>{
     if(!entity)return;
-    api<State>(`/entities/${entity.PublicID}/accounting-lock`)
-      .then(setState)
-      .catch(e=>setError(e instanceof Error?e.message:String(e)));
+    setLoading(true);
+    try{
+      setState(await api<State>(`/entities/${entity.PublicID}/accounting-lock`));
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setLoading(false)}
   };
 
   useEffect(()=>{
+    setState({});
     setMessage("");setError("");setDate("");setLockReason("");setUnlockReason("");setConfirmUnlock(false);
-    load();
+    void load();
   },[entity?.PublicID]);
 
   const current=state.locked_through??state.LockedThrough??null;
@@ -78,13 +82,13 @@ export default function Locking(){
       </div>
     </div>
 
-    {error&&<div className="alert error">{error}</div>}
-    {message&&<div className="alert success">{message}</div>}
+    {error&&<div className="alert error" role="alert">{error}</div>}
+    {message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
 
     <div className="grid locking-grid">
       <div className="card">
         <div className="muted">Current accounting status</div>
-        <div className="metric">{current?`Locked through ${current}`:"Open"}</div>
+        <div className="metric" aria-busy={loading}>{loading?<span className="skeleton skeleton-wide" aria-hidden="true"/>:(current?`Locked through ${current}`:"Open")}</div>
         <p className="muted">Posting, reversal, re-dating and other accounting changes on or before the locked-through date are rejected by both the API and PostgreSQL.</p>
       </div>
 
@@ -102,7 +106,7 @@ export default function Locking(){
           <textarea rows={3} value={lockReason} onChange={e=>setLockReason(e.target.value)} placeholder="Example: August 2026 month-end review completed"/>
         </div>
         <div className="actions">
-          <button disabled={busy||!date||!lockReason.trim()} onClick={lock}>{busy?"Working…":"Lock transactions"}</button>
+          <button type="button" disabled={loading||busy||!date||!lockReason.trim()} onClick={lock}>{busy?"Working…":"Lock transactions"}</button>
         </div>
       </div>}
 
@@ -116,7 +120,7 @@ export default function Locking(){
           <textarea rows={3} value={unlockReason} onChange={e=>setUnlockReason(e.target.value)} placeholder="Explain why the locked period must be reopened"/>
         </div>
         <div className="actions">
-          <button className="danger" disabled={busy||!current||!unlockReason.trim()} onClick={()=>setConfirmUnlock(true)}>Review unlock</button>
+          <button type="button" className="danger" disabled={loading||busy||!current||!unlockReason.trim()} onClick={()=>setConfirmUnlock(true)}>Review unlock</button>
         </div>
       </div>}
     </div>

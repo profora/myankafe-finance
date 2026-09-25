@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
+import TableStateRows from "@/components/TableStateRows";
 
 type Event={
   id:string;
@@ -75,7 +76,12 @@ export default function Audit(){
     finally{setLoading(false)}
   }
 
-  useEffect(()=>{load(true)},[entity?.PublicID,query.toString()]);
+  useEffect(()=>{
+    setItems([]);
+    setCount(0);
+    setHasMore(false);
+    void load(true);
+  },[entity?.PublicID,query.toString()]);
 
   function clear(){
     setSearch("");setAction("");setOutcome("");setFrom("");setTo("");
@@ -85,7 +91,7 @@ export default function Audit(){
     <div className="page-head">
       <div><h1>Audit Log</h1><p>Append-only business, security and request activity. Viewing this page is itself audited.</p></div>
     </div>
-    {error&&<div className="alert error">{error}</div>}
+    {error&&<div className="alert error" role="alert">{error}</div>}
 
     <div className="card transaction-filters" style={{marginBottom:16}}>
       <div className="transaction-filter-grid audit-filter-grid">
@@ -94,14 +100,14 @@ export default function Audit(){
         <div className="field"><label>Outcome</label><select value={outcome} onChange={e=>setOutcome(e.target.value)}><option value="">All</option><option>SUCCESS</option><option>FAILED</option><option>DENIED</option></select></div>
         <div className="field"><label>From</label><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></div>
         <div className="field"><label>To</label><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></div>
-        <div className="actions transaction-filter-actions"><button className="secondary" onClick={clear}>Clear filters</button>{loading&&<span className="muted">Refreshing…</span>}</div>
+        <div className="actions transaction-filter-actions"><button type="button" className="secondary" onClick={clear}>Clear filters</button>{loading&&<span className="muted">Refreshing…</span>}</div>
       </div>
     </div>
 
     <div className="list-summary"><span className="muted">{count.toLocaleString()} matching audit event{count===1?"":"s"}</span></div>
 
-    <div className="table-wrap">
-      {items.length?<table className="audit-table">
+    <div className="table-wrap" aria-busy={loading}>
+      <table className="audit-table">
         <thead><tr><th>Time</th><th>Action</th><th>Outcome</th><th>Resource</th><th>Actor</th><th>Source</th><th>Details</th></tr></thead>
         <tbody>{items.map(x=><tr key={x.id}>
           <td>{new Date(x.occurred_at).toLocaleString()}</td>
@@ -123,13 +129,13 @@ export default function Audit(){
               </div>
             </details>
           </td>
-        </tr>)}</tbody>
-      </table>:<div className="empty">{loading?"Loading audit events…":"No audit events match these filters."}</div>}
+        </tr>)}<TableStateRows loading={loading&&items.length===0} empty={!loading&&items.length===0} columns={7} emptyText="No audit events match these filters."/></tbody>
+      </table>
     </div>
 
     <div className="list-pagination">
       <span className="muted">Showing {items.length.toLocaleString()} of {count.toLocaleString()}</span>
-      {hasMore&&<button className="secondary" disabled={loading} onClick={()=>load(false)}>{loading?"Loading…":"Load more"}</button>}
+      {hasMore&&<button type="button" className="secondary" disabled={loading} onClick={()=>load(false)}>{loading?"Loading…":"Load more"}</button>}
     </div>
   </>;
 }

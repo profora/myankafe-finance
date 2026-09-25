@@ -69,9 +69,12 @@ export default function TransactionDetailPage(){
     finally{setLoading(false)}
   }
 
-  useEffect(()=>{load()},[entity?.PublicID,id]);
+  useEffect(()=>{
+    setDetail(null);
+    void load();
+  },[entity?.PublicID,id]);
 
-  if(loading&&!detail)return <div className="empty">Loading transaction…</div>;
+  if(loading&&!detail)return <div className="card detail-loading" role="status" aria-live="polite"><span className="skeleton skeleton-wide" aria-hidden="true"/><span className="skeleton skeleton-line" aria-hidden="true"/><span className="sr-only">Loading transaction…</span></div>;
 
   return <>
     <div className="page-head">
@@ -81,7 +84,7 @@ export default function TransactionDetailPage(){
         {detail&&<p>{detail.date} · {detail.type} · <span className={`badge ${detail.status}`}>{detail.status}</span></p>}
       </div>
     </div>
-    {error&&<div className="alert error">{error}</div>}
+    {error&&<div className="alert error" role="alert">{error}</div>}
     {detail&&<>
       {mayOperate&&detail.status==="DRAFT"&&<div className="card draft-management-card">
         <div>

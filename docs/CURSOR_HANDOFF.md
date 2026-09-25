@@ -177,3 +177,11 @@ Authentication and R2 receipt storage are no longer placeholders. Do not replace
 - Chart of Accounts, Contacts, Cash/Bank, Exchange Rates, and Users & Access now clear stale rows when entity context changes, announce errors/successes accessibly, and expose explicit loading/empty states
 - exchange-rate default date now follows the newly selected entity timezone immediately
 - password visibility toggles in user administration expose pressed state to assistive technology
+
+
+## 2026-09-25 read-state polish
+
+- account ledger and audit list now clear stale rows on entity/filter changes and use reusable accessible table loading/empty states
+- transaction detail clears prior-entity detail before reload and exposes a non-stale loading state
+- Security session listing, System diagnostics, and Transaction Locking now distinguish loading from empty/unavailable state and announce operational results/errors
+- mutation semantics and accounting authorization were not changed
