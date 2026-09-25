@@ -118,11 +118,12 @@ Do not merge if CI is red.
 4. **Polish without changing accounting semantics**
    - mobile navigation drawer is already implemented; do final device QA
    - loading/skeleton states
-   - confirmation dialog for accounting unlock
+   - accounting unlock confirmation is already implemented; preserve its OWNER-only audited flow
    - richer table sorting/export if desired
    - final accessibility/browser review
    - visual polish of forms and attachment gallery
    - preserve the supplied Chieftain logo; do not replace it with the old MK placeholder
+   - the Chieftain logo supplied by the user is the canonical Finance brand asset for sidebar, login and app icon
 
 5. **Optional future integrations**
    - Royal Masterpiece ingestion connector using integration events/external references
