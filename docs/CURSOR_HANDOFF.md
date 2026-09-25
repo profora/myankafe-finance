@@ -73,9 +73,12 @@ Working Next.js screens/workflows include:
 
 GitHub Actions validates:
 
+- committed `backend/go.sum` / `frontend/package-lock.json`
+- fail-on-diff Go formatting
+- fail-on-diff `go mod tidy -diff`
+- frontend install with `npm ci`
 - frontend TypeScript
 - Next.js production build
-- Go module resolution
 - fresh Goose migrations on PostgreSQL 17
 - Go unit and PostgreSQL integration tests
 - production API Docker image build
@@ -105,19 +108,12 @@ Do not merge if CI is red. CI run #772 passed the complete frontend/backend/cont
 
 ## Tasks Cursor should do next
 
-1. **Dependency/format reproducibility**
-   - run `gofmt -w backend` and commit the result
-   - `cd backend && go mod tidy`; commit `go.sum`
-   - `cd frontend && npm install`; commit `package-lock.json`
-   - switch CI to `npm ci`
-   - make formatting and `go mod tidy` checks non-mutating/fail-on-diff
-
-2. **Real R2 acceptance**
+1. **Real R2 acceptance**
    - configure a private production/staging R2 bucket
    - validate upload, image/PDF preview, error handling, and object cleanup with real credentials
    - confirm the chosen reverse-proxy request-size limits allow the configured attachment size
 
-3. **Production operations**
+2. **Production operations**
    - secret management for PostgreSQL, bootstrap credentials, cookie/session configuration, and R2 keys
    - TLS/reverse proxy
    - `AUTH_COOKIE_SECURE=true`
@@ -127,7 +123,7 @@ Do not merge if CI is red. CI run #772 passed the complete frontend/backend/cont
    - ship the already-structured JSON logs to the chosen log platform
    - scrape the already-implemented `/metrics` endpoint and configure alerting
 
-4. **Polish without changing accounting semantics**
+3. **Polish without changing accounting semantics**
    - mobile navigation drawer is already implemented; do final device QA
    - loading/skeleton states
    - accounting unlock confirmation is already implemented; preserve its OWNER-only audited flow
@@ -137,7 +133,7 @@ Do not merge if CI is red. CI run #772 passed the complete frontend/backend/cont
    - preserve the supplied Chieftain logo; do not replace it with the old MK placeholder
    - the Chieftain logo supplied by the user is the canonical Finance brand asset for sidebar, login and app icon
 
-5. **Optional future integrations**
+4. **Optional future integrations**
    - Royal Masterpiece ingestion connector using integration events/external references
    - bank-feed ingestion
    - recurring/budgets (Phase 2)
