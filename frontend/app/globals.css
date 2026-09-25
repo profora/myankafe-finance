@@ -45,3 +45,6 @@
 
 .system-metric{font-size:20px}.system-probe-card{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:18px}.system-probe-card h3{margin:0 0 5px}.system-probe-card p{margin:0;max-width:760px}
 @media(max-width:700px){.system-probe-card{align-items:stretch;flex-direction:column}.system-probe-card button{width:100%}}
+
+.report-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px}.report-title h3{margin:0}
+@media(max-width:600px){.report-title{align-items:flex-start;flex-direction:column}.report-title button{width:100%}}
