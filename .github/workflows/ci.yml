@@ -29,17 +29,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version: "1.23.x" }
-      - name: Format and emit drift for repository bootstrap
+      - name: Check formatting
         run: |
-          gofmt -l backend > /tmp/gofmt-files
-          gofmt -w backend
-          while IFS= read -r file; do
-            [ -z "$file" ] && continue
-            echo "BEGIN_GOFMT_FILE:$file"
-            base64 -w0 "$file"
-            echo
-            echo "END_GOFMT_FILE:$file"
-          done < /tmp/gofmt-files
+          files="$(gofmt -l backend)"
+          if [ -n "$files" ]; then
+            echo "The following Go files are not gofmt-clean:"
+            echo "$files"
+            exit 1
+          fi
       - name: Verify Go modules
         working-directory: backend
         run: go mod tidy -diff
