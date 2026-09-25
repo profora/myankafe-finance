@@ -8,6 +8,7 @@ import { useEntity } from "@/components/EntityContext";
 import type { FinancialAccount } from "@/components/types";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import TransactionEntryModal, { type QuickEntryKind } from "@/components/TransactionEntryModal";
+import { canCorrectPostedAccounting, canOperateLedger } from "@/lib/permissions";
 
 type TransactionRow={
   id:string;
@@ -53,6 +54,8 @@ function signedClass(v:string){
 
 export default function Transactions(){
   const {entity}=useEntity();
+  const mayOperate=canOperateLedger(entity?.Role);
+  const mayReverse=canCorrectPostedAccounting(entity?.Role);
   const [items,setItems]=useState<TransactionRow[]>([]);
   const [summary,setSummary]=useState<Omit<TransactionList,"items"|"has_more">>({count:0,income_total:"0",expense_total:"0",net_total:"0",functional_currency:"MMK"});
   const [hasMore,setHasMore]=useState(false);
@@ -166,7 +169,7 @@ export default function Transactions(){
         <h1>Transactions</h1>
         <p>Search, filter and enter daily transactions. Running totals are in the entity functional currency.</p>
       </div>
-      <div className="entry-actions">
+      {mayOperate&&<div className="entry-actions">
         <details className="entry-menu">
           <summary className="button">+ Add transaction <span aria-hidden>▾</span></summary>
           <div className="entry-menu-panel">
@@ -178,7 +181,7 @@ export default function Transactions(){
             <Link href="/manual-journal"><strong>Manual Journal</strong><span>Advanced debit / credit entry</span></Link>
           </div>
         </details>
-      </div>
+      </div>}
     </div>
 
     {error&&<div className="alert error">{error}</div>}
@@ -219,8 +222,8 @@ export default function Transactions(){
           <td className={signedClass(t.functional_effect)}>{Number(t.functional_effect).toLocaleString()} {summary.functional_currency}</td>
           <td className={signedClass(t.running_net)}><strong>{Number(t.running_net).toLocaleString()}</strong> {summary.functional_currency}</td>
           <td><div className="actions compact-actions">
-            {t.status==="DRAFT"&&<button disabled={busy===t.id} onClick={()=>post(t.id)}>{busy===t.id?"Posting…":"Post"}</button>}
-            {t.status==="POSTED"&&<button className="danger" disabled={busy===t.id} onClick={()=>{setReverseID(t.id);setReverseReason("");setReverseDate(dateInTimeZone(entity?.Timezone??"Asia/Yangon"))}}>Reverse</button>}
+            {mayOperate&&t.status==="DRAFT"&&<button disabled={busy===t.id} onClick={()=>post(t.id)}>{busy===t.id?"Posting…":"Post"}</button>}
+            {mayReverse&&t.status==="POSTED"&&<button className="danger" disabled={busy===t.id} onClick={()=>{setReverseID(t.id);setReverseReason("");setReverseDate(dateInTimeZone(entity?.Timezone??"Asia/Yangon"))}}>Reverse</button>}
           </div></td>
         </tr>)}</tbody>
       </table>:<div className="empty">{loading?"Loading transactions…":"No transactions match these filters."}</div>}
@@ -228,7 +231,7 @@ export default function Transactions(){
 
     {hasMore&&<div className="load-more"><button className="secondary" disabled={loading} onClick={()=>load(false)}>{loading?"Loading…":"Load more"}</button></div>}
 
-    <TransactionEntryModal open={Boolean(entryKind)} kind={entryKind} entity={entity??null} onClose={()=>setEntryKind(null)} onSaved={()=>load(true)}/>
+    {mayOperate&&<TransactionEntryModal open={Boolean(entryKind)} kind={entryKind} entity={entity??null} onClose={()=>setEntryKind(null)} onSaved={()=>load(true)}/>} 
 
     <ConfirmDialog
       open={Boolean(reverseID)}
