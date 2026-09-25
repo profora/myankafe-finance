@@ -1,3 +1,5 @@
+export type EntityRole = "OWNER" | "ADMIN" | "ACCOUNTANT" | "BOOKKEEPER" | "VIEWER";
+
 export type Entity = {
   ID: string;
   PublicID: string;
@@ -6,6 +8,7 @@ export type Entity = {
   Type: string;
   FunctionalCurrency: string;
   Timezone: string;
+  Role: EntityRole;
   FiscalMonth: number;
   FiscalDay: number;
 };
