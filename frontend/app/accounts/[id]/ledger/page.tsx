@@ -34,26 +34,31 @@ export default function AccountLedgerPage(){
 
   const account=useMemo(()=>accounts.find(x=>x.PublicID===accountID),[accounts,accountID]);
 
-  async function load(){
+  async function loadRange(rangeFrom:string,rangeTo:string){
     if(!entity||!accountID)return;
     setLoading(true);setError("");
     try{
       const [coa,ledger]=await Promise.all([
         api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
-        api<{items:LedgerLine[]}>(`/entities/${entity.PublicID}/reports/account-ledger?account_id=${encodeURIComponent(accountID)}&from=${from}&to=${to}&limit=2000`)
+        api<{items:LedgerLine[]}>(`/entities/${entity.PublicID}/reports/account-ledger?account_id=${encodeURIComponent(accountID)}&from=${rangeFrom}&to=${rangeTo}&limit=2000`)
       ]);
       setAccounts(coa.items);setItems(ledger.items);
     }catch(e){setError(e instanceof Error?e.message:String(e))}
     finally{setLoading(false)}
   }
 
+  async function load(){
+    await loadRange(from,to);
+  }
+
   useEffect(()=>{
     if(!entity)return;
-    setFrom(fiscalYearStartInTimeZone(entity.Timezone,entity.FiscalMonth,entity.FiscalDay));
-    setTo(dateInTimeZone(entity.Timezone));
-  },[entity?.PublicID]);
-
-  useEffect(()=>{load()},[entity?.PublicID,accountID]);
+    const nextFrom=fiscalYearStartInTimeZone(entity.Timezone,entity.FiscalMonth,entity.FiscalDay);
+    const nextTo=dateInTimeZone(entity.Timezone);
+    setFrom(nextFrom);
+    setTo(nextTo);
+    void loadRange(nextFrom,nextTo);
+  },[entity?.PublicID,accountID]);
 
   function exportLedger(){
     const label=account?`${account.Code}-${account.Name}`:accountID;
