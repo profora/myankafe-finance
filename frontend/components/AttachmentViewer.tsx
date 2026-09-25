@@ -18,6 +18,7 @@ export default function AttachmentViewer({entityID,transactionID,attachments,ind
   const [zoom,setZoom]=useState(1);
   const [pan,setPan]=useState<Pan>({x:0,y:0});
   const [dragging,setDragging]=useState(false);
+  const dialogRef=useRef<HTMLDivElement>(null);
   const dragRef=useRef<{pointerId:number;startX:number;startY:number;panX:number;panY:number}|null>(null);
   const current=index==null?null:attachments[index]??null;
   const kind=current?previewKind(current.mime_type):"file";
@@ -38,7 +39,10 @@ export default function AttachmentViewer({entityID,transactionID,attachments,ind
     });
   }
 
-  useEffect(()=>{resetView()},[current?.id]);
+  useEffect(()=>{
+    resetView();
+    if(current)requestAnimationFrame(()=>dialogRef.current?.focus());
+  },[current?.id]);
   useEffect(()=>{
     if(index==null)return;
     const onKey=(e:KeyboardEvent)=>{
@@ -55,21 +59,21 @@ export default function AttachmentViewer({entityID,transactionID,attachments,ind
 
   if(index==null||!current)return null;
 
-  return <div className="attachment-viewer" role="dialog" aria-modal="true" aria-label={current.original_filename} onClick={onClose}>
+  return <div ref={dialogRef} tabIndex={-1} className="attachment-viewer" role="dialog" aria-modal="true" aria-label={`Attachment preview: ${current.original_filename}`} onClick={onClose}>
     <div className="attachment-viewer-toolbar" onClick={e=>e.stopPropagation()}>
       <div className="attachment-viewer-name">{current.original_filename}</div>
       <div className="actions">
         {kind==="image"&&<>
-          <button className="viewer-button" onClick={()=>changeZoom(z=>z-.25)}>−</button>
-          <button className="viewer-button" onClick={resetView}>{Math.round(zoom*100)}%</button>
-          <button className="viewer-button" onClick={()=>changeZoom(z=>z+.25)}>+</button>
+          <button type="button" className="viewer-button" aria-label="Zoom out" onClick={()=>changeZoom(z=>z-.25)}>−</button>
+          <button type="button" className="viewer-button" aria-label="Reset zoom" onClick={resetView}>{Math.round(zoom*100)}%</button>
+          <button type="button" className="viewer-button" aria-label="Zoom in" onClick={()=>changeZoom(z=>z+.25)}>+</button>
         </>}
         <a className="button viewer-button" href={src} target="_blank" rel="noreferrer">Open</a>
-        <button className="viewer-button" onClick={onClose}>Close</button>
+        <button type="button" className="viewer-button" onClick={onClose}>Close</button>
       </div>
     </div>
 
-    <button className="attachment-nav attachment-prev" disabled={index===0} onClick={e=>{e.stopPropagation();onIndexChange(index-1)}} aria-label="Previous attachment">‹</button>
+    <button type="button" className="attachment-nav attachment-prev" disabled={index===0} onClick={e=>{e.stopPropagation();onIndexChange(index-1)}} aria-label="Previous attachment">‹</button>
     <div className="attachment-viewer-stage" onClick={e=>e.stopPropagation()} onWheel={e=>{
       if(kind!=="image")return;
       e.preventDefault();
@@ -104,7 +108,7 @@ export default function AttachmentViewer({entityID,transactionID,attachments,ind
       {(kind==="pdf"||kind==="text")&&<iframe src={src} title={current.original_filename}/>}
       {kind==="file"&&<div className="attachment-file-fallback"><strong>{current.original_filename}</strong><p>This file type is not previewed in-browser.</p><a className="button" href={src} target="_blank" rel="noreferrer">Open file</a></div>}
     </div>
-    <button className="attachment-nav attachment-next" disabled={index===attachments.length-1} onClick={e=>{e.stopPropagation();onIndexChange(index+1)}} aria-label="Next attachment">›</button>
+    <button type="button" className="attachment-nav attachment-next" disabled={index===attachments.length-1} onClick={e=>{e.stopPropagation();onIndexChange(index+1)}} aria-label="Next attachment">›</button>
     <div className="attachment-viewer-count">{index+1} / {attachments.length}</div>
   </div>;
 }

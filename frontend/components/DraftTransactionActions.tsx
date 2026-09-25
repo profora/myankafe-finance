@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Account, Entity, FinancialAccount } from "@/components/types";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -35,11 +35,14 @@ type EditableSplit={AccountPublicID:string;Amount:string;Description:string};
 
 export default function DraftTransactionActions({entity,draft,onChanged}:Props){
   const editRef=useRef<HTMLDialogElement>(null);
+  const editTitleID=useId();
+  const editDescriptionID=useId();
   const [editOpen,setEditOpen]=useState(false);
   const [postOpen,setPostOpen]=useState(false);
   const [cancelOpen,setCancelOpen]=useState(false);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
+  const [loadingRefs,setLoadingRefs]=useState(false);
 
   const [accounts,setAccounts]=useState<Account[]>([]);
   const [financial,setFinancial]=useState<FinancialAccount[]>([]);
@@ -62,22 +65,27 @@ export default function DraftTransactionActions({entity,draft,onChanged}:Props){
 
   useEffect(()=>{
     if(!editOpen)return;
+    let cancelled=false;
+    setLoadingRefs(true);
     setDate(draft.date);
     setDescription(draft.description);
     setFinancialID(draft.financial_account?.id??"");
     setContactID(draft.contact?.id??"");
     setSplits(draft.splits.map(x=>({AccountPublicID:x.account_id,Amount:x.amount,Description:x.description})));
-    setError("");
+    setAccounts([]);setFinancial([]);setContacts([]);setError("");
     Promise.all([
       api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
       api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
       api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`)
     ]).then(([a,f,c])=>{
+      if(cancelled)return;
       setAccounts(a.items);
       setFinancial(f.items.filter(x=>x.Active));
       setContacts(c.items.filter(x=>x.active));
-    }).catch(e=>setError(e instanceof Error?e.message:String(e)));
-  },[editOpen,draft.id]);
+    }).catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
+      .finally(()=>{if(!cancelled)setLoadingRefs(false)});
+    return()=>{cancelled=true};
+  },[editOpen,draft.id,entity.PublicID]);
 
   const eligibleAccounts=useMemo(
     ()=>accounts.filter(x=>x.Active&&x.Postable&&x.Type===draft.type),
@@ -85,7 +93,7 @@ export default function DraftTransactionActions({entity,draft,onChanged}:Props){
   );
   const selectedFinancial=financial.find(x=>x.PublicID===financialID);
   const total=splits.reduce((sum,x)=>sum+(Number(x.Amount)||0),0);
-  const ready=Boolean(
+  const ready=!loadingRefs&&Boolean(
     date&&description.trim()&&financialID&&splits.length&&
     splits.every(x=>x.AccountPublicID&&Number(x.Amount)>0)
   );
@@ -146,37 +154,37 @@ export default function DraftTransactionActions({entity,draft,onChanged}:Props){
   }
 
   return <>
-    {error&&<div className="alert error">{error}</div>}
+    {error&&<div className="alert error" role="alert">{error}</div>}
     <div className="actions draft-actions">
-      <button className="secondary" onClick={()=>setEditOpen(true)}>Edit draft</button>
-      <button onClick={()=>setPostOpen(true)}>Post draft</button>
-      <button className="danger" onClick={()=>setCancelOpen(true)}>Cancel draft</button>
+      <button type="button" className="secondary" onClick={()=>setEditOpen(true)}>Edit draft</button>
+      <button type="button" onClick={()=>setPostOpen(true)}>Post draft</button>
+      <button type="button" className="danger" onClick={()=>setCancelOpen(true)}>Cancel draft</button>
     </div>
 
-    <dialog ref={editRef} className="dialog entry-dialog" onCancel={e=>{e.preventDefault();closeEdit()}}>
+    <dialog ref={editRef} className="dialog entry-dialog" aria-labelledby={editTitleID} aria-describedby={editDescriptionID} aria-busy={loadingRefs||busy} onCancel={e=>{e.preventDefault();closeEdit()}}>
       <div className="dialog-card">
         <div className="page-head compact-head">
-          <div><h2>Edit draft</h2><p>Changes remain non-accounting until this draft is posted.</p></div>
-          <button className="secondary" disabled={busy} onClick={closeEdit}>Close</button>
+          <div><h2 id={editTitleID}>Edit draft</h2><p id={editDescriptionID}>Changes remain non-accounting until this draft is posted.</p></div>
+          <button type="button" className="secondary" disabled={busy} onClick={closeEdit}>Close</button>
         </div>
-        {error&&<div className="alert error">{error}</div>}
+        {error&&<div className="alert error" role="alert">{error}</div>}
         <div className="form">
           <div className="form-grid">
             <div className="field"><label>Type</label><input value={draft.type} disabled/></div>
             <div className="field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
-            <div className="field"><label>{draft.type==="EXPENSE"?"Paid from":"Received into"}</label><select value={financialID} onChange={e=>setFinancialID(e.target.value)}>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
-            <div className="field"><label>{draft.type==="EXPENSE"?"Payee":"Payer"} <span className="muted">(optional)</span></label><select value={contactID} onChange={e=>setContactID(e.target.value)}><option value="">None</option>{contacts.map(x=><option key={x.id} value={x.id}>{x.display_name}</option>)}</select></div>
+            <div className="field"><label>{draft.type==="EXPENSE"?"Paid from":"Received into"}</label><select value={financialID} disabled={loadingRefs} onChange={e=>setFinancialID(e.target.value)}><option value="">{loadingRefs?"Loading accounts…":"Choose…"}</option>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
+            <div className="field"><label>{draft.type==="EXPENSE"?"Payee":"Payer"} <span className="muted">(optional)</span></label><select value={contactID} disabled={loadingRefs} onChange={e=>setContactID(e.target.value)}><option value="">{loadingRefs?"Loading contacts…":"None"}</option>{contacts.map(x=><option key={x.id} value={x.id}>{x.display_name}</option>)}</select></div>
             <div className="field span-2"><label>Description</label><input value={description} onChange={e=>setDescription(e.target.value)}/></div>
           </div>
 
           <div>
-            <div className="page-head compact-head"><div><h2 style={{fontSize:18}}>Splits</h2></div><button className="secondary" onClick={()=>setSplits(x=>[...x,{AccountPublicID:eligibleAccounts[0]?.PublicID??"",Amount:"",Description:""}])}>+ Split</button></div>
+            <div className="page-head compact-head"><div><h2 style={{fontSize:18}}>Splits</h2></div><button type="button" className="secondary" disabled={loadingRefs} onClick={()=>setSplits(x=>[...x,{AccountPublicID:eligibleAccounts[0]?.PublicID??"",Amount:"",Description:""}])}>+ Split</button></div>
             <div className="form">
               {splits.map((split,index)=><div className="split-row" key={index}>
-                <div className="field"><label>Account</label><select value={split.AccountPublicID} onChange={e=>updateSplit(index,"AccountPublicID",e.target.value)}>{eligibleAccounts.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
+                <div className="field"><label>Account</label><select value={split.AccountPublicID} disabled={loadingRefs} onChange={e=>updateSplit(index,"AccountPublicID",e.target.value)}><option value="">{loadingRefs?"Loading accounts…":"Choose…"}</option>{eligibleAccounts.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
                 <div className="field"><label>Amount</label><input inputMode="decimal" value={split.Amount} onChange={e=>updateSplit(index,"Amount",e.target.value)}/></div>
                 <div className="field"><label>Line description</label><input value={split.Description} onChange={e=>updateSplit(index,"Description",e.target.value)}/></div>
-                <button className="danger compact" disabled={splits.length===1} onClick={()=>setSplits(x=>x.filter((_,i)=>i!==index))}>Remove</button>
+                <button type="button" className="danger compact" disabled={splits.length===1} onClick={()=>setSplits(x=>x.filter((_,i)=>i!==index))}>Remove</button>
               </div>)}
             </div>
           </div>
@@ -184,7 +192,7 @@ export default function DraftTransactionActions({entity,draft,onChanged}:Props){
           <div className="actions modal-actions">
             <span className="muted">Total {total.toLocaleString()} {selectedFinancial?.Currency??draft.currency}</span>
             <span style={{flex:1}}/>
-            <button disabled={busy||!ready} onClick={save}>{busy?"Saving…":"Save draft changes"}</button>
+            <button type="button" disabled={busy||!ready} onClick={save}>{busy?"Saving…":"Save draft changes"}</button>
           </div>
         </div>
       </div>

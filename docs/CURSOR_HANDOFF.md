@@ -201,3 +201,10 @@ Authentication and R2 receipt storage are no longer placeholders. Do not replace
 - entity context now exposes loading state and automatically falls back only to a valid accessible entity after reloads/role changes
 - entity selector disables itself while entity access is loading and clearly distinguishes loading from no-access state
 - all accounting report panels clear prior-entity values before reload, show accessible loading/empty rows, and disable CSV export until the selected entity's report data is ready
+
+
+## 2026-09-25 attachment/draft editor hardening
+
+- transaction attachment lists now clear prior-transaction thumbnails before loading a new transaction and expose explicit loading/error state
+- attachment preview receives focus when opened and has labelled zoom/navigation controls
+- draft transaction editor now reloads accounts/contacts/financial accounts with cancellation protection, disables save until references are ready, and has labelled dialog semantics

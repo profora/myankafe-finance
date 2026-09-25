@@ -20,15 +20,26 @@ export default function TransactionAttachments({entityID,transactionID,canUpload
   const [items,setItems]=useState<TransactionAttachment[]>([]);
   const [viewerIndex,setViewerIndex]=useState<number|null>(null);
   const [busy,setBusy]=useState(false);
+  const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [deleteTarget,setDeleteTarget]=useState<TransactionAttachment|null>(null);
   const inputRef=useRef<HTMLInputElement>(null);
 
   async function load(){
+    setLoading(true);
     try{const x=await listTransactionAttachments(entityID,transactionID);setItems(x.items)}
     catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setLoading(false)}
   }
-  useEffect(()=>{load()},[entityID,transactionID]);
+  useEffect(()=>{
+    let cancelled=false;
+    setItems([]);setViewerIndex(null);setDeleteTarget(null);setError("");setLoading(true);
+    listTransactionAttachments(entityID,transactionID)
+      .then(x=>{if(!cancelled)setItems(x.items)})
+      .catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
+      .finally(()=>{if(!cancelled)setLoading(false)});
+    return()=>{cancelled=true};
+  },[entityID,transactionID]);
 
   async function selectFiles(e:ChangeEvent<HTMLInputElement>){
     const files=Array.from(e.target.files??[]);
@@ -73,15 +84,15 @@ export default function TransactionAttachments({entityID,transactionID,canUpload
       <div><h1 style={{fontSize:20}}>Attachments</h1><p>Receipts, invoices, images, PDFs and supporting files.</p></div>
       {canUpload&&<>
         <input ref={inputRef} hidden type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,text/csv,.docx,.xlsx" onChange={selectFiles}/>
-        <button disabled={busy} onClick={()=>inputRef.current?.click()}>{busy?"Working…":"Attach files"}</button>
+        <button type="button" disabled={busy||loading} onClick={()=>inputRef.current?.click()}>{busy?"Working…":"Attach files"}</button>
       </>}
     </div>
-    {error&&<div className="alert error">{error}</div>}
-    {items.length?<div className="attachment-grid">{items.map((item,index)=>{
+    {error&&<div className="alert error" role="alert">{error}</div>}
+    {loading&&!items.length?<div className="attachment-loading" role="status"><span className="skeleton skeleton-wide" aria-hidden="true"/><span className="skeleton skeleton-line" aria-hidden="true"/><span className="sr-only">Loading attachments…</span></div>:items.length?<div className="attachment-grid">{items.map((item,index)=>{
       const kind=previewKind(item.mime_type);
       const src=attachmentContentUrl(entityID,transactionID,item.id);
       return <article key={item.id} className="attachment-card">
-        <button className="attachment-preview-button" onClick={()=>setViewerIndex(index)}>
+        <button type="button" className="attachment-preview-button" onClick={()=>setViewerIndex(index)}>
           <div className="attachment-thumb">
             {kind==="image"?<img src={src} alt=""/>:<span>{kind==="pdf"?"PDF":"FILE"}</span>}
           </div>
@@ -91,9 +102,9 @@ export default function TransactionAttachments({entityID,transactionID,canUpload
           </div>
         </button>
         {canManage&&<div className="attachment-card-actions">
-          <button className="secondary compact" disabled={busy||index===0} onClick={()=>move(index,-1)} aria-label="Move attachment earlier">←</button>
+          <button type="button" className="secondary compact" disabled={busy||index===0} onClick={()=>move(index,-1)} aria-label="Move attachment earlier">←</button>
           <button className="secondary compact" disabled={busy||index===items.length-1} onClick={()=>move(index,1)} aria-label="Move attachment later">→</button>
-          <button className="danger compact" disabled={busy} onClick={()=>setDeleteTarget(item)}>Remove</button>
+          <button type="button" className="danger compact" disabled={busy} onClick={()=>setDeleteTarget(item)}>Remove</button>
         </div>}
       </article>;
     })}</div>:<div className="empty attachment-empty">No attachments yet.</div>}
