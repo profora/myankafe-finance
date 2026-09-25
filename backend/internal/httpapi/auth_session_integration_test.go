@@ -58,11 +58,11 @@ VALUES($1,$2)`, internalID, hash); err != nil {
 
 func passwordRouter(store *postgres.Store) http.Handler {
 	return New(store, config.Config{
-		AppEnv:          "development",
-		AuthMode:        "password",
-		CORSOrigin:      "http://localhost:3000",
-		AuthCookieName:  "finance_test_session",
-		AuthSessionTTL:  time.Hour,
+		AppEnv:             "development",
+		AuthMode:           "password",
+		CORSOrigin:         "http://localhost:3000",
+		AuthCookieName:     "finance_test_session",
+		AuthSessionTTL:     time.Hour,
 		AttachmentMaxBytes: 20 << 20,
 	})
 }
@@ -141,7 +141,6 @@ func TestPasswordLoginRejectsWrongPassword(t *testing.T) {
 		t.Fatalf("wrong-password status=%d body=%s", login.Code, login.Body.String())
 	}
 }
-
 
 func TestPasswordChangeRotatesSessionsAndCredential(t *testing.T) {
 	store := testHTTPStore(t)

@@ -268,7 +268,7 @@ func TestReversalInsideLockedPeriodIsRejectedWithoutMutation(t *testing.T) {
 		Description:              "Locked reversal test",
 		FinancialAccountPublicID: financialAccount,
 		Currency:                 "MMK",
-		Splits: []SplitInput{{AccountPublicID: expenseAccount, Amount: "5000"}},
+		Splits:                   []SplitInput{{AccountPublicID: expenseAccount, Amount: "5000"}},
 	})
 	if err != nil {
 		t.Fatal(err)

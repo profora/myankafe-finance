@@ -16,7 +16,7 @@ func TestCreateDraftRejectsLockedDate(t *testing.T) {
 		Description:              "must be rejected",
 		FinancialAccountPublicID: financialAccount,
 		Currency:                 "MMK",
-		Splits: []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000"}},
+		Splits:                   []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000"}},
 	})
 	if err == nil {
 		t.Fatal("expected draft creation inside locked period to fail")
@@ -33,7 +33,7 @@ func TestUpdateDraftTransactionReplacesAccountingInput(t *testing.T) {
 		Description:              "original draft",
 		FinancialAccountPublicID: financialAccount,
 		Currency:                 "MMK",
-		Splits: []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000", Description: "old"}},
+		Splits:                   []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000", Description: "old"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +82,7 @@ func TestUpdatePostedTransactionIsRejected(t *testing.T) {
 		Description:              "posted source",
 		FinancialAccountPublicID: financialAccount,
 		Currency:                 "MMK",
-		Splits: []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000"}},
+		Splits:                   []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +97,7 @@ func TestUpdatePostedTransactionIsRejected(t *testing.T) {
 		Description:              "illegal edit",
 		FinancialAccountPublicID: financialAccount,
 		Currency:                 "MMK",
-		Splits: []SplitInput{{AccountPublicID: expenseAccount, Amount: "2000"}},
+		Splits:                   []SplitInput{{AccountPublicID: expenseAccount, Amount: "2000"}},
 	})
 	if err == nil {
 		t.Fatal("expected posted transaction edit to fail")
@@ -114,7 +114,7 @@ func TestCancelDraftPreservesRecordAndAuditState(t *testing.T) {
 		Description:              "cancel me",
 		FinancialAccountPublicID: financialAccount,
 		Currency:                 "MMK",
-		Splits: []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000"}},
+		Splits:                   []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -157,7 +157,7 @@ func TestCancelDraftRejectsNewlyLockedDate(t *testing.T) {
 		Description:              "draft before close",
 		FinancialAccountPublicID: financialAccount,
 		Currency:                 "MMK",
-		Splits: []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000"}},
+		Splits:                   []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000"}},
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -116,18 +116,18 @@ ORDER BY jl.line_no`, journalInternal)
 				return nil, err
 			}
 			lines = append(lines, map[string]any{
-				"line_no": lineNo,
-				"account": map[string]any{"id": accountID, "code": code, "name": name},
-				"financial_account": map[string]any{"id": faID, "name": faName},
-				"description": lineDescription,
+				"line_no":              lineNo,
+				"account":              map[string]any{"id": accountID, "code": code, "name": name},
+				"financial_account":    map[string]any{"id": faID, "name": faName},
+				"description":          lineDescription,
 				"transaction_currency": txCurrency,
-				"transaction_debit": txDebit,
-				"transaction_credit": txCredit,
-				"functional_currency": funcCurrency,
-				"fx_rate": fxRate,
-				"debit": debit,
-				"credit": credit,
-				"exchange_rate_id": exchangeRateID,
+				"transaction_debit":    txDebit,
+				"transaction_credit":   txCredit,
+				"functional_currency":  funcCurrency,
+				"fx_rate":              fxRate,
+				"debit":                debit,
+				"credit":               credit,
+				"exchange_rate_id":     exchangeRateID,
 			})
 		}
 		lineRows.Close()
@@ -136,32 +136,32 @@ ORDER BY jl.line_no`, journalInternal)
 		}
 
 		journals = append(journals, map[string]any{
-			"id": journalPublic,
-			"date": journalDate,
-			"description": journalDescription,
-			"status": journalStatus,
+			"id":                  journalPublic,
+			"date":                journalDate,
+			"description":         journalDescription,
+			"status":              journalStatus,
 			"functional_currency": functionalCurrency,
-			"posted_at": journalPostedAt,
-			"lines": lines,
+			"posted_at":           journalPostedAt,
+			"lines":               lines,
 		})
 	}
 
 	return map[string]any{
-		"id": id,
-		"type": typ,
-		"status": status,
-		"date": date,
-		"description": description,
-		"currency": currency,
-		"total": total,
-		"contact": map[string]any{"id": contactID, "name": contactName},
-		"financial_account": map[string]any{"id": financialID, "name": financialName},
+		"id":                      id,
+		"type":                    typ,
+		"status":                  status,
+		"date":                    date,
+		"description":             description,
+		"currency":                currency,
+		"total":                   total,
+		"contact":                 map[string]any{"id": contactID, "name": contactName},
+		"financial_account":       map[string]any{"id": financialID, "name": financialName},
 		"original_transaction_id": originalID,
 		"reversal_transaction_id": reversalID,
-		"posted_at": postedAt,
-		"voided_at": voidedAt,
-		"void_reason": voidReason,
-		"splits": splits,
-		"journals": journals,
+		"posted_at":               postedAt,
+		"voided_at":               voidedAt,
+		"void_reason":             voidReason,
+		"splits":                  splits,
+		"journals":                journals,
 	}, nil
 }

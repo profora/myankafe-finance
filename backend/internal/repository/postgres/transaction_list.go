@@ -42,12 +42,18 @@ type TransactionListResult struct {
 	HasMore            bool                  `json:"has_more"`
 }
 
-func (s *Store) ListTransactionsFiltered(ctx context.Context,entityID string,f TransactionListFilter)(TransactionListResult,error){
-	if f.Limit<=0{f.Limit=100}
-	if f.Limit>500{f.Limit=500}
-	if f.Offset<0{f.Offset=0}
+func (s *Store) ListTransactionsFiltered(ctx context.Context, entityID string, f TransactionListFilter) (TransactionListResult, error) {
+	if f.Limit <= 0 {
+		f.Limit = 100
+	}
+	if f.Limit > 500 {
+		f.Limit = 500
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
 
-	rows,err:=s.Pool.Query(ctx,`
+	rows, err := s.Pool.Query(ctx, `
 WITH filtered AS (
   SELECT t.id,t.public_id,t.transaction_type,t.status,t.transaction_date,t.description,
          t.currency_code,t.total_amount,t.created_at,
@@ -128,32 +134,40 @@ FROM enriched e
 JOIN entities ent ON ent.id=$1
 ORDER BY e.transaction_date DESC,e.created_at DESC,e.public_id DESC
 LIMIT $8 OFFSET $9`,
-		entityID,f.Status,f.Type,f.From,f.To,f.FinancialAccountID,f.Search,f.Limit,f.Offset)
-	if err!=nil{return TransactionListResult{},err}
+		entityID, f.Status, f.Type, f.From, f.To, f.FinancialAccountID, f.Search, f.Limit, f.Offset)
+	if err != nil {
+		return TransactionListResult{}, err
+	}
 	defer rows.Close()
 
-	out:=TransactionListResult{Items:[]TransactionListItem{},IncomeTotal:"0",ExpenseTotal:"0",NetTotal:"0"}
-	for rows.Next(){
+	out := TransactionListResult{Items: []TransactionListItem{}, IncomeTotal: "0", ExpenseTotal: "0", NetTotal: "0"}
+	for rows.Next() {
 		var item TransactionListItem
 		var totalCount int
-		var income,expense,net,functionalCurrency string
-		if err:=rows.Scan(
-			&item.PublicID,&item.Type,&item.Status,&item.Date,&item.Description,
-			&item.Currency,&item.Total,&item.ContactName,&item.FinancialAccountID,&item.FinancialAccount,
-			&item.FunctionalEffect,&item.RunningNet,&item.AttachmentCount,
-			&totalCount,&income,&expense,&net,&functionalCurrency,
-		);err!=nil{return TransactionListResult{},err}
-		out.Items=append(out.Items,item)
-		out.Count=totalCount
-		out.IncomeTotal=income
-		out.ExpenseTotal=expense
-		out.NetTotal=net
-		out.FunctionalCurrency=functionalCurrency
+		var income, expense, net, functionalCurrency string
+		if err := rows.Scan(
+			&item.PublicID, &item.Type, &item.Status, &item.Date, &item.Description,
+			&item.Currency, &item.Total, &item.ContactName, &item.FinancialAccountID, &item.FinancialAccount,
+			&item.FunctionalEffect, &item.RunningNet, &item.AttachmentCount,
+			&totalCount, &income, &expense, &net, &functionalCurrency,
+		); err != nil {
+			return TransactionListResult{}, err
+		}
+		out.Items = append(out.Items, item)
+		out.Count = totalCount
+		out.IncomeTotal = income
+		out.ExpenseTotal = expense
+		out.NetTotal = net
+		out.FunctionalCurrency = functionalCurrency
 	}
-	if err:=rows.Err();err!=nil{return TransactionListResult{},err}
-	if out.FunctionalCurrency==""{
-		if err:=s.Pool.QueryRow(ctx,`SELECT functional_currency_code FROM entities WHERE id=$1`,entityID).Scan(&out.FunctionalCurrency);err!=nil{return TransactionListResult{},fmt.Errorf("load entity currency: %w",err)}
+	if err := rows.Err(); err != nil {
+		return TransactionListResult{}, err
 	}
-	out.HasMore=f.Offset+len(out.Items)<out.Count
-	return out,nil
+	if out.FunctionalCurrency == "" {
+		if err := s.Pool.QueryRow(ctx, `SELECT functional_currency_code FROM entities WHERE id=$1`, entityID).Scan(&out.FunctionalCurrency); err != nil {
+			return TransactionListResult{}, fmt.Errorf("load entity currency: %w", err)
+		}
+	}
+	out.HasMore = f.Offset+len(out.Items) < out.Count
+	return out, nil
 }

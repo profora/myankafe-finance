@@ -32,9 +32,9 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 		panic("initialize password verifier: " + err.Error())
 	}
 	attachmentStore, err := objectstore.NewR2Store(objectstore.R2Config{
-		Endpoint: cfg.R2Endpoint,
-		Bucket: cfg.R2Bucket,
-		Region: cfg.R2Region,
+		Endpoint:  cfg.R2Endpoint,
+		Bucket:    cfg.R2Bucket,
+		Region:    cfg.R2Region,
 		AccessKey: cfg.R2AccessKey,
 		SecretKey: cfg.R2SecretKey,
 	})
@@ -42,12 +42,12 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 		panic("initialize R2 attachment store: " + err.Error())
 	}
 	s := &Server{
-		Store: store,
-		Config: cfg,
-		LoginLimiter: auth.NewLimiter(15 * time.Minute),
+		Store:             store,
+		Config:            cfg,
+		LoginLimiter:      auth.NewLimiter(15 * time.Minute),
 		DummyPasswordHash: dummyHash,
-		AttachmentStore: attachmentStore,
-		Metrics: newHTTPMetrics(),
+		AttachmentStore:   attachmentStore,
+		Metrics:           newHTTPMetrics(),
 	}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer)
@@ -231,14 +231,22 @@ func (s *Server) createAccount(w http.ResponseWriter, r *http.Request) {
 	write(w, http.StatusCreated, v)
 }
 
-func (s *Server) updateAccount(w http.ResponseWriter,r *http.Request){
-	a:=getAccess(r)
-	if !requireRole(w,canConfigureAccounting(a.Role),"account configuration requires OWNER, ADMIN, or ACCOUNTANT"){return}
+func (s *Server) updateAccount(w http.ResponseWriter, r *http.Request) {
+	a := getAccess(r)
+	if !requireRole(w, canConfigureAccounting(a.Role), "account configuration requires OWNER, ADMIN, or ACCOUNTANT") {
+		return
+	}
 	var in postgres.UpdateAccountInput
-	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,400,err);return}
-	v,err:=s.Store.UpdateAccount(r.Context(),a.User,a.Entity,chi.URLParam(r,"account"),in)
-	if err!=nil{fail(w,400,err);return}
-	write(w,200,v)
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		fail(w, 400, err)
+		return
+	}
+	v, err := s.Store.UpdateAccount(r.Context(), a.User, a.Entity, chi.URLParam(r, "account"), in)
+	if err != nil {
+		fail(w, 400, err)
+		return
+	}
+	write(w, 200, v)
 }
 
 func (s *Server) listFinancialAccounts(w http.ResponseWriter, r *http.Request) {
@@ -271,25 +279,32 @@ func (s *Server) createFinancialAccount(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) listTransactions(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
-	q:=r.URL.Query()
-	limit,_:=strconv.Atoi(q.Get("limit"))
-	offset,_:=strconv.Atoi(q.Get("offset"))
-	status:=q.Get("status")
-	switch status{case "","DRAFT","POSTED","VOIDED":default:fail(w,400,errors.New("invalid status filter"));return}
-	typ:=q.Get("type")
-	switch typ{
-	case "","INCOME","EXPENSE","ACCOUNT_TRANSFER","INTER_ENTITY","MANUAL_JOURNAL","ADJUSTMENT","REVERSAL":
-	default:fail(w,400,errors.New("invalid type filter"));return
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	offset, _ := strconv.Atoi(q.Get("offset"))
+	status := q.Get("status")
+	switch status {
+	case "", "DRAFT", "POSTED", "VOIDED":
+	default:
+		fail(w, 400, errors.New("invalid status filter"))
+		return
+	}
+	typ := q.Get("type")
+	switch typ {
+	case "", "INCOME", "EXPENSE", "ACCOUNT_TRANSFER", "INTER_ENTITY", "MANUAL_JOURNAL", "ADJUSTMENT", "REVERSAL":
+	default:
+		fail(w, 400, errors.New("invalid type filter"))
+		return
 	}
 	v, err := s.Store.ListTransactionsFiltered(r.Context(), a.Entity.ID, postgres.TransactionListFilter{
-		Search:q.Get("q"),
-		Status:status,
-		Type:typ,
-		From:q.Get("from"),
-		To:q.Get("to"),
-		FinancialAccountID:q.Get("financial_account_id"),
-		Limit:limit,
-		Offset:offset,
+		Search:             q.Get("q"),
+		Status:             status,
+		Type:               typ,
+		From:               q.Get("from"),
+		To:                 q.Get("to"),
+		FinancialAccountID: q.Get("financial_account_id"),
+		Limit:              limit,
+		Offset:             offset,
 	})
 	if err != nil {
 		fail(w, http.StatusInternalServerError, err)
@@ -316,24 +331,42 @@ func (s *Server) createTransaction(w http.ResponseWriter, r *http.Request) {
 	write(w, http.StatusCreated, v)
 }
 
-func (s *Server) updateDraftTransaction(w http.ResponseWriter,r *http.Request){
-	a:=getAccess(r)
-	if !requireRole(w,canOperateLedger(a.Role),"ledger operation access required"){return}
+func (s *Server) updateDraftTransaction(w http.ResponseWriter, r *http.Request) {
+	a := getAccess(r)
+	if !requireRole(w, canOperateLedger(a.Role), "ledger operation access required") {
+		return
+	}
 	var in postgres.CreateTransactionInput
-	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,http.StatusBadRequest,err);return}
-	v,err:=s.Store.UpdateDraftTransaction(r.Context(),a.User,a.Entity,chi.URLParam(r,"tx"),in)
-	if err!=nil{fail(w,http.StatusBadRequest,err);return}
-	write(w,http.StatusOK,v)
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		fail(w, http.StatusBadRequest, err)
+		return
+	}
+	v, err := s.Store.UpdateDraftTransaction(r.Context(), a.User, a.Entity, chi.URLParam(r, "tx"), in)
+	if err != nil {
+		fail(w, http.StatusBadRequest, err)
+		return
+	}
+	write(w, http.StatusOK, v)
 }
 
-func (s *Server) cancelDraftTransaction(w http.ResponseWriter,r *http.Request){
-	a:=getAccess(r)
-	if !requireRole(w,canOperateLedger(a.Role),"ledger operation access required"){return}
-	var in struct{Reason string `json:"reason"`}
-	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,http.StatusBadRequest,err);return}
-	v,err:=s.Store.CancelDraftTransaction(r.Context(),a.User,a.Entity,chi.URLParam(r,"tx"),in.Reason)
-	if err!=nil{fail(w,http.StatusBadRequest,err);return}
-	write(w,http.StatusOK,v)
+func (s *Server) cancelDraftTransaction(w http.ResponseWriter, r *http.Request) {
+	a := getAccess(r)
+	if !requireRole(w, canOperateLedger(a.Role), "ledger operation access required") {
+		return
+	}
+	var in struct {
+		Reason string `json:"reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		fail(w, http.StatusBadRequest, err)
+		return
+	}
+	v, err := s.Store.CancelDraftTransaction(r.Context(), a.User, a.Entity, chi.URLParam(r, "tx"), in.Reason)
+	if err != nil {
+		fail(w, http.StatusBadRequest, err)
+		return
+	}
+	write(w, http.StatusOK, v)
 }
 
 func (s *Server) postTransaction(w http.ResponseWriter, r *http.Request) {

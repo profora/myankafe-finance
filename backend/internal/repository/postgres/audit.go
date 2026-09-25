@@ -64,44 +64,48 @@ SELECT public_id::text,occurred_at,action,resource_type,resource_public_id::text
 FROM filtered
 ORDER BY occurred_at DESC,public_id DESC
 LIMIT $7 OFFSET $8`,
-		entityID,f.Outcome,f.Action,f.From,f.To,f.Search,f.Limit,f.Offset)
+		entityID, f.Outcome, f.Action, f.From, f.To, f.Search, f.Limit, f.Offset)
 	if err != nil {
 		return AuditEventList{}, err
 	}
 	defer rows.Close()
 
-	out:=AuditEventList{Items:[]map[string]any{}}
+	out := AuditEventList{Items: []map[string]any{}}
 	for rows.Next() {
-		var id,action,outcome,source string
-		var resourceType,resourceID,reason,ip,userAgent,requestID,userID,userName *string
+		var id, action, outcome, source string
+		var resourceType, resourceID, reason, ip, userAgent, requestID, userID, userName *string
 		var occurred time.Time
-		var before,after,metadata any
+		var before, after, metadata any
 		var totalCount int
-		if err:=rows.Scan(
-			&id,&occurred,&action,&resourceType,&resourceID,
-			&outcome,&source,&reason,&before,&after,&metadata,
-			&ip,&userAgent,&requestID,&userID,&userName,&totalCount,
-		);err!=nil{return AuditEventList{},err}
-		out.Count=totalCount
-		out.Items=append(out.Items,map[string]any{
-			"id":id,
-			"occurred_at":occurred,
-			"action":action,
-			"resource_type":resourceType,
-			"resource_id":resourceID,
-			"outcome":outcome,
-			"source":source,
-			"reason":reason,
-			"before":before,
-			"after":after,
-			"metadata":metadata,
-			"ip_address":ip,
-			"user_agent":userAgent,
-			"request_id":requestID,
-			"actor":map[string]any{"id":userID,"display_name":userName},
+		if err := rows.Scan(
+			&id, &occurred, &action, &resourceType, &resourceID,
+			&outcome, &source, &reason, &before, &after, &metadata,
+			&ip, &userAgent, &requestID, &userID, &userName, &totalCount,
+		); err != nil {
+			return AuditEventList{}, err
+		}
+		out.Count = totalCount
+		out.Items = append(out.Items, map[string]any{
+			"id":            id,
+			"occurred_at":   occurred,
+			"action":        action,
+			"resource_type": resourceType,
+			"resource_id":   resourceID,
+			"outcome":       outcome,
+			"source":        source,
+			"reason":        reason,
+			"before":        before,
+			"after":         after,
+			"metadata":      metadata,
+			"ip_address":    ip,
+			"user_agent":    userAgent,
+			"request_id":    requestID,
+			"actor":         map[string]any{"id": userID, "display_name": userName},
 		})
 	}
-	if err:=rows.Err();err!=nil{return AuditEventList{},err}
-	out.HasMore=f.Offset+len(out.Items)<out.Count
-	return out,nil
+	if err := rows.Err(); err != nil {
+		return AuditEventList{}, err
+	}
+	out.HasMore = f.Offset+len(out.Items) < out.Count
+	return out, nil
 }

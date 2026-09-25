@@ -19,7 +19,7 @@ func TestTransactionListRunningTotalsRespectReversal(t *testing.T) {
 		Description:              "Searchable sale " + mustULID(t),
 		FinancialAccountPublicID: financialAccount,
 		Currency:                 "MMK",
-		Splits: []SplitInput{{AccountPublicID: incomeAccount, Amount: "5000"}},
+		Splits:                   []SplitInput{{AccountPublicID: incomeAccount, Amount: "5000"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -34,7 +34,7 @@ func TestTransactionListRunningTotalsRespectReversal(t *testing.T) {
 		Description:              "Reversed expense " + mustULID(t),
 		FinancialAccountPublicID: financialAccount,
 		Currency:                 "MMK",
-		Splits: []SplitInput{{AccountPublicID: expenseAccount, Amount: "2000"}},
+		Splits:                   []SplitInput{{AccountPublicID: expenseAccount, Amount: "2000"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +92,7 @@ func TestTransactionAttachmentRegistrationPreservesOrder(t *testing.T) {
 		Description:              "Attachment metadata test",
 		FinancialAccountPublicID: financialAccount,
 		Currency:                 "MMK",
-		Splits: []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000"}},
+		Splits:                   []SplitInput{{AccountPublicID: expenseAccount, Amount: "1000"}},
 	})
 	if err != nil {
 		t.Fatal(err)

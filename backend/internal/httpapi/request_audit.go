@@ -69,7 +69,7 @@ func (s *Server) auditRequests(next http.Handler) http.Handler {
 			outcome,
 			map[string]any{
 				"method": r.Method,
-				"path": r.URL.Path,
+				"path":   r.URL.Path,
 				"status": rec.status,
 			},
 		)

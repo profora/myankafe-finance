@@ -114,7 +114,6 @@ func (s *Server) storageProbe(w http.ResponseWriter, r *http.Request) {
 	write(w, http.StatusOK, result)
 }
 
-
 func (s *Server) systemStatus(w http.ResponseWriter, r *http.Request) {
 	user, err := s.principal(r)
 	if err != nil {

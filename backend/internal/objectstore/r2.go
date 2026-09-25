@@ -120,8 +120,8 @@ func (s *R2Store) Open(ctx context.Context, key string) (ReadObject, error) {
 		ct = "application/octet-stream"
 	}
 	return ReadObject{
-		Body: resp.Body,
-		ContentType: ct,
+		Body:          resp.Body,
+		ContentType:   ct,
 		ContentLength: resp.ContentLength,
 	}, nil
 }
