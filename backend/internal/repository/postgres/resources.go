@@ -11,7 +11,7 @@ import (
 )
 
 type User struct{ ID,PublicID,Username,DisplayName string }
-type Entity struct{ ID,PublicID,Code,Name,Type,FunctionalCurrency,Timezone string; FiscalMonth,FiscalDay int }
+type Entity struct{ ID,PublicID,Code,Name,Type,FunctionalCurrency,Timezone,Role string; FiscalMonth,FiscalDay int }
 type Account struct{ PublicID,Code,Name,Type string; Subtype *string; Postable,Active bool }
 type FinancialAccount struct{ PublicID,Code,Name,Kind,Currency,AccountPublicID string; Institution,Reference *string; Active bool }
 
@@ -22,21 +22,41 @@ func (s *Store) ResolveUser(ctx context.Context,pub string)(User,error){
 }
 
 func (s *Store) ListEntities(ctx context.Context,userID string)([]Entity,error){
-  rows,err:=s.Pool.Query(ctx,`SELECT DISTINCT e.id::text,e.public_id::text,e.code,e.name,e.entity_type,e.functional_currency_code,e.timezone,e.fiscal_year_start_month,e.fiscal_year_start_day
-FROM entities e JOIN user_entity_roles uer ON uer.entity_id=e.id
-WHERE uer.user_id=$1 AND uer.revoked_at IS NULL AND e.active=true ORDER BY e.name`,userID)
+  rows,err:=s.Pool.Query(ctx,`
+SELECT e.id::text,e.public_id::text,e.code,e.name,e.entity_type,e.functional_currency_code,e.timezone,
+       e.fiscal_year_start_month,e.fiscal_year_start_day,
+       (
+         SELECT r.code
+         FROM user_entity_roles uer
+         JOIN roles r ON r.id=uer.role_id
+         WHERE uer.entity_id=e.id AND uer.user_id=$1 AND uer.revoked_at IS NULL
+         ORDER BY CASE r.code WHEN 'OWNER' THEN 1 WHEN 'ADMIN' THEN 2 WHEN 'ACCOUNTANT' THEN 3 WHEN 'BOOKKEEPER' THEN 4 ELSE 5 END
+         LIMIT 1
+       ) effective_role
+FROM entities e
+WHERE e.active=true
+  AND EXISTS (
+    SELECT 1 FROM user_entity_roles x
+    WHERE x.entity_id=e.id AND x.user_id=$1 AND x.revoked_at IS NULL
+  )
+ORDER BY e.name`,userID)
   if err!=nil{return nil,err}; defer rows.Close()
-  out:=[]Entity{}; for rows.Next(){var e Entity;if err:=rows.Scan(&e.ID,&e.PublicID,&e.Code,&e.Name,&e.Type,&e.FunctionalCurrency,&e.Timezone,&e.FiscalMonth,&e.FiscalDay);err!=nil{return nil,err};out=append(out,e)}
+  out:=[]Entity{}
+  for rows.Next(){
+    var e Entity
+    if err:=rows.Scan(&e.ID,&e.PublicID,&e.Code,&e.Name,&e.Type,&e.FunctionalCurrency,&e.Timezone,&e.FiscalMonth,&e.FiscalDay,&e.Role);err!=nil{return nil,err}
+    out=append(out,e)
+  }
   return out,rows.Err()
 }
 
 func (s *Store) ResolveEntityAccess(ctx context.Context,userID,pub string)(Entity,string,error){
-  var e Entity; var role string
+  var e Entity
   err:=s.Pool.QueryRow(ctx,`SELECT e.id::text,e.public_id::text,e.code,e.name,e.entity_type,e.functional_currency_code,e.timezone,e.fiscal_year_start_month,e.fiscal_year_start_day,r.code
 FROM entities e JOIN user_entity_roles uer ON uer.entity_id=e.id JOIN roles r ON r.id=uer.role_id
 WHERE e.public_id=$1 AND uer.user_id=$2 AND uer.revoked_at IS NULL AND e.active=true
-ORDER BY CASE r.code WHEN 'OWNER' THEN 1 WHEN 'ADMIN' THEN 2 WHEN 'ACCOUNTANT' THEN 3 WHEN 'BOOKKEEPER' THEN 4 ELSE 5 END LIMIT 1`,pub,userID).Scan(&e.ID,&e.PublicID,&e.Code,&e.Name,&e.Type,&e.FunctionalCurrency,&e.Timezone,&e.FiscalMonth,&e.FiscalDay,&role)
-  return e,role,err
+ORDER BY CASE r.code WHEN 'OWNER' THEN 1 WHEN 'ADMIN' THEN 2 WHEN 'ACCOUNTANT' THEN 3 WHEN 'BOOKKEEPER' THEN 4 ELSE 5 END LIMIT 1`,pub,userID).Scan(&e.ID,&e.PublicID,&e.Code,&e.Name,&e.Type,&e.FunctionalCurrency,&e.Timezone,&e.FiscalMonth,&e.FiscalDay,&e.Role)
+  return e,e.Role,err
 }
 
 func (s *Store) ListAccounts(ctx context.Context,entityID string)([]Account,error){
