@@ -36,3 +36,5 @@
 }
 
 .attachment-viewer-stage img.zoomed{cursor:grab;touch-action:none}.attachment-viewer-stage img.zoomed.dragging{cursor:grabbing;transition:none}
+
+.locking-grid{grid-template-columns:minmax(260px,.8fr) repeat(2,minmax(320px,1fr));align-items:start}@media(max-width:1050px){.locking-grid{grid-template-columns:1fr}}
