@@ -214,3 +214,16 @@ Authentication and R2 receipt storage are no longer placeholders. Do not replace
 
 - production startup now rejects non-HTTPS/non-origin CORS values, insecure configured R2 endpoints, and configured metrics bearer tokens shorter than 32 characters
 - config tests cover invalid origins, HTTPS origins with ports, R2 scheme enforcement, and metrics token strength
+
+
+## 2026-09-25 overnight deployment attempt
+
+Finance was not started on the VPS. Existing MyanKafe and Royal Masterpiece services were left running and were still healthy afterward.
+
+The shared droplet is `root@159.223.48.7`, deploy path reserved as `/opt/myankafe-finance`. Public entry is Cloudflare Tunnel, not Caddy or Nginx. Ports `8180` and `3100` were free. The managed PostgreSQL cluster is reachable, but no Finance database or application role exists, and the existing application roles cannot create one. `finance.myankafe.com` does not resolve, and neither tunnel ingress includes it. Database, R2, and initial OWNER values were not supplied, so migrations, bootstrap, and acceptance tests were not run.
+
+Full evidence, the acceptance matrix, and the credential/rotation notes are in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
+
+PR #1 remains Draft. Do not merge it.
+
+Recommended next step: create the Finance database and least-privilege role with the cluster `doadmin` account, supply R2 credentials and an OWNER bootstrap password, add a path-split Cloudflare Tunnel route for `finance.myankafe.com`, then run `scripts/deploy-production.sh` with `pool_max_conns=2`. Do not revoke `doadmin`; it is still required for this shared cluster.
