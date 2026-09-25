@@ -26,18 +26,18 @@ export default function Reports(){
   const [from,setFrom]=useState(()=>fiscalYearStartInTimeZone());
   const [to,setTo]=useState(()=>dateInTimeZone());
 
-  async function load(){
+  async function loadRange(rangeFrom:string,rangeTo:string){
     if(!entity)return;
     setLoading(true);setError("");
-    const range=`from=${from}&to=${to}`;
+    const range=`from=${rangeFrom}&to=${rangeTo}`;
     try{
       const [p,t,b,g,c,i]=await Promise.all([
         api<{items:Row[]}>(`/entities/${entity.PublicID}/reports/profit-loss?${range}`),
-        api<{items:Row[]}>(`/entities/${entity.PublicID}/reports/trial-balance?through=${to}`),
-        api<{items:Row[];current_earnings:string}>(`/entities/${entity.PublicID}/reports/balance-sheet?through=${to}`),
+        api<{items:Row[]}>(`/entities/${entity.PublicID}/reports/trial-balance?through=${rangeTo}`),
+        api<{items:Row[];current_earnings:string}>(`/entities/${entity.PublicID}/reports/balance-sheet?through=${rangeTo}`),
         api<{items:GL[]}>(`/entities/${entity.PublicID}/reports/general-ledger?${range}&limit=200`),
         api<{items:Cash[]}>(`/entities/${entity.PublicID}/reports/cash-movement?${range}`),
-        api<{items:Inter[]}>(`/entities/${entity.PublicID}/reports/inter-entity-balances?through=${to}`)
+        api<{items:Inter[]}>(`/entities/${entity.PublicID}/reports/inter-entity-balances?through=${rangeTo}`)
       ]);
       setPL(p.items);setTB(t.items);setBS(b.items);setEarnings(b.current_earnings);
       setGL(g.items);setCash(c.items);setInter(i.items);
@@ -45,13 +45,18 @@ export default function Reports(){
     finally{setLoading(false)}
   }
 
+  async function load(){
+    await loadRange(from,to);
+  }
+
   useEffect(()=>{
     if(!entity)return;
-    setFrom(fiscalYearStartInTimeZone(entity.Timezone,entity.FiscalMonth,entity.FiscalDay));
-    setTo(dateInTimeZone(entity.Timezone));
+    const nextFrom=fiscalYearStartInTimeZone(entity.Timezone,entity.FiscalMonth,entity.FiscalDay);
+    const nextTo=dateInTimeZone(entity.Timezone);
+    setFrom(nextFrom);
+    setTo(nextTo);
+    void loadRange(nextFrom,nextTo);
   },[entity?.PublicID]);
-
-  useEffect(()=>{load()},[entity?.PublicID]);
 
   function exportName(report:string){
     return safeCsvFilename(`${entity?.Name??"entity"}-${report}-${from}-to-${to}`);
