@@ -22,6 +22,7 @@ const nav = [
   {href:"/locking",label:"Transaction Locking",show:canLockAccounting},
   {href:"/settings/entities",label:"Entities",show:canManageEntitySettings},
   {href:"/settings/users",label:"Users & Access",show:canManagePlatformUsers},
+  {href:"/settings/system",label:"System"},
   {href:"/settings/security",label:"Security"},
 ];
 
@@ -53,7 +54,10 @@ function Shell({ children }: { children: React.ReactNode }) {
           </span>
         </Link>
         <nav>
-          {nav.filter(item=>item.href==="/settings/users"?ownerAnywhere:(!item.show||item.show(entity?.Role))).map(({href,label}) => (
+          {nav.filter(item=>{
+            const ownerOnly=item.href==="/settings/users"||item.href==="/settings/system";
+            return ownerOnly?ownerAnywhere:(!item.show||item.show(entity?.Role));
+          }).map(({href,label}) => (
             <Link key={href} className={pathname === href || (href!=="/"&&pathname.startsWith(href+"/")) ? "active" : ""} href={href} onClick={()=>setMobileNavOpen(false)}>{label}</Link>
           ))}
         </nav>
