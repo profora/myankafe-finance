@@ -113,3 +113,30 @@ func (s *Server) storageProbe(w http.ResponseWriter, r *http.Request) {
 	)
 	write(w, http.StatusOK, result)
 }
+
+
+func (s *Server) systemStatus(w http.ResponseWriter, r *http.Request) {
+	user, err := s.principal(r)
+	if err != nil {
+		fail(w, http.StatusUnauthorized, err)
+		return
+	}
+	isOwner, err := s.ownerAnywhere(r, user)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err)
+		return
+	}
+	if !isOwner {
+		fail(w, http.StatusForbidden, errors.New("OWNER access required"))
+		return
+	}
+
+	metricsTokenConfigured := s.Config.MetricsBearerToken != ""
+	write(w, http.StatusOK, map[string]any{
+		"app_env":                       s.Config.AppEnv,
+		"database":                      "ok",
+		"attachment_storage_configured": s.AttachmentStore != nil && s.AttachmentStore.Configured(),
+		"metrics_available":             s.Config.AppEnv != "production" || metricsTokenConfigured,
+		"metrics_protected":             metricsTokenConfigured,
+	})
+}
