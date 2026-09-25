@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -44,7 +45,7 @@ func Load() (Config, error) {
 		HTTPAddr:    getenv("HTTP_ADDR", ":8080"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		AuthMode:    getenv("AUTH_MODE", "password"),
-		CORSOrigin:  getenv("CORS_ORIGIN", "http://localhost:3000"),
+		CORSOrigin:  strings.TrimSpace(getenv("CORS_ORIGIN", "http://localhost:3000")),
 
 		AuthCookieName:   getenv("AUTH_COOKIE_NAME", "myankafe_finance_session"),
 		AuthSessionTTL:   time.Duration(sessionHours) * time.Hour,
@@ -72,8 +73,25 @@ func Load() (Config, error) {
 		if !c.AuthCookieSecure {
 			return c, fmt.Errorf("AUTH_COOKIE_SECURE=true is required in production")
 		}
+		if err := validateProductionOrigin(c.CORSOrigin); err != nil {
+			return c, err
+		}
+		if c.R2Endpoint != "" && !strings.HasPrefix(strings.ToLower(c.R2Endpoint), "https://") {
+			return c, fmt.Errorf("R2_ENDPOINT must use https in production")
+		}
+		if c.MetricsBearerToken != "" && len(c.MetricsBearerToken) < 32 {
+			return c, fmt.Errorf("METRICS_BEARER_TOKEN must be at least 32 characters in production")
+		}
 	}
 	return c, nil
+}
+
+func validateProductionOrigin(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("CORS_ORIGIN must be one exact https origin in production")
+	}
+	return nil
 }
 
 func getenv(k, d string) string {

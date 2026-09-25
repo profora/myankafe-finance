@@ -26,12 +26,12 @@ $EDITOR .env.production
 
 Required production values include:
 
-- `PUBLIC_ORIGIN` / `CORS_ORIGIN` — exact HTTPS Finance origin.
+- `PUBLIC_ORIGIN` / `CORS_ORIGIN` — exact HTTPS Finance origin with no trailing slash or path; production startup rejects non-HTTPS/invalid origins.
 - `NEXT_PUBLIC_API_URL` — normally the same origin plus `/api/v1`.
 - `DATABASE_URL` — production PostgreSQL with TLS required by the provider.
 - `AUTH_COOKIE_SECURE=true`.
 - R2 values when attachments are enabled.
-- `METRICS_BEARER_TOKEN` when monitoring is enabled.
+- `METRICS_BEARER_TOKEN` when monitoring is enabled; production requires at least 32 characters when a token is configured.
 
 The API refuses production startup with development auth or insecure cookies.
 

@@ -208,3 +208,9 @@ Authentication and R2 receipt storage are no longer placeholders. Do not replace
 - transaction attachment lists now clear prior-transaction thumbnails before loading a new transaction and expose explicit loading/error state
 - attachment preview receives focus when opened and has labelled zoom/navigation controls
 - draft transaction editor now reloads accounts/contacts/financial accounts with cancellation protection, disables save until references are ready, and has labelled dialog semantics
+
+
+## 2026-09-25 production config validation
+
+- production startup now rejects non-HTTPS/non-origin CORS values, insecure configured R2 endpoints, and configured metrics bearer tokens shorter than 32 characters
+- config tests cover invalid origins, HTTPS origins with ports, R2 scheme enforcement, and metrics token strength
