@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { dateInTimeZone, fiscalYearStartInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
+import { downloadCsv, safeCsvFilename } from "@/lib/csv";
 
 type Row={id?:string;code?:string;name?:string;type?:string;amount?:string;debits?:string;credits?:string;balance?:string};
 type GL={journal_id:string;date:string;account_id:string;account_code:string;account_name:string;description:string;debit:string;credit:string;currency:string};
@@ -52,6 +53,47 @@ export default function Reports(){
 
   useEffect(()=>{load()},[entity?.PublicID]);
 
+  function exportName(report:string){
+    return safeCsvFilename(`${entity?.Name??"entity"}-${report}-${from}-to-${to}`);
+  }
+
+  function exportPL(){
+    downloadCsv(exportName("profit-loss"),["Account code","Account name","Type","Amount"],
+      pl.map(x=>[x.code,x.name,x.type,x.amount]));
+  }
+
+  function exportBS(){
+    downloadCsv(exportName("balance-sheet"),["Account code","Account name","Type","Balance"],
+      [...bs.map(x=>[x.code,x.name,x.type,x.balance]),["","Current earnings","EQUITY",earnings]]);
+  }
+
+  function exportTB(){
+    downloadCsv(exportName("trial-balance"),["Account code","Account name","Type","Debit","Credit"],
+      tb.map(x=>[x.code,x.name,x.type,x.debits,x.credits]));
+  }
+
+  function exportInter(){
+    downloadCsv(exportName("inter-entity-balances"),["Counterparty","Due from","Due to"],
+      inter.map(x=>[x.counterparty_name,x.due_from,x.due_to]));
+  }
+
+  function exportCash(){
+    downloadCsv(exportName("cash-movement"),["Date","Financial account","Currency","Movement"],
+      cash.map(x=>[x.date,x.name,x.currency,x.movement]));
+  }
+
+  async function exportGL(){
+    if(!entity)return;
+    setError("");
+    try{
+      const range=`from=${from}&to=${to}`;
+      const data=await api<{items:GL[]}>(`/entities/${entity.PublicID}/reports/general-ledger?${range}&limit=2000`);
+      downloadCsv(exportName("general-ledger"),
+        ["Date","Journal","Account code","Account name","Description","Debit","Credit","Currency"],
+        data.items.map(x=>[x.date,x.journal_id,x.account_code,x.account_name,x.description,x.debit,x.credit,x.currency]));
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+  }
+
   return <>
     <div className="page-head"><div><h1>Reports</h1><p>Reports are generated from posted/reversed journal history only.</p></div></div>
     {error&&<div className="alert error">{error}</div>}
@@ -64,16 +106,16 @@ export default function Reports(){
     </div>
 
     <div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(420px,1fr))"}}>
-      <div><h3>Profit & Loss</h3><div className="table-wrap"><table><thead><tr><th>Account</th><th>Type</th><th>Amount</th></tr></thead><tbody>{pl.map((x,n)=><tr key={x.id??n}><td>{x.id?<Link className="table-link" href={`/accounts/${x.id}/ledger`}>{x.code} · {x.name}</Link>:<>{x.code} · {x.name}</>}</td><td>{x.type}</td><td>{Number(x.amount||0).toLocaleString()}</td></tr>)}</tbody></table></div></div>
-      <div><h3>Balance Sheet</h3><div className="table-wrap"><table><thead><tr><th>Account</th><th>Type</th><th>Balance</th></tr></thead><tbody>{bs.map((x,n)=><tr key={x.id??n}><td>{x.id?<Link className="table-link" href={`/accounts/${x.id}/ledger`}>{x.code} · {x.name}</Link>:<>{x.code} · {x.name}</>}</td><td>{x.type}</td><td>{Number(x.balance||0).toLocaleString()}</td></tr>)}<tr><td><strong>Current earnings</strong></td><td>EQUITY</td><td><strong>{Number(earnings).toLocaleString()}</strong></td></tr></tbody></table></div></div>
-      <div><h3>Trial Balance</h3><div className="table-wrap"><table><thead><tr><th>Account</th><th>Debit</th><th>Credit</th></tr></thead><tbody>{tb.map((x,n)=><tr key={x.id??n}><td>{x.id?<Link className="table-link" href={`/accounts/${x.id}/ledger`}>{x.code} · {x.name}</Link>:<>{x.code} · {x.name}</>}</td><td>{Number(x.debits||0).toLocaleString()}</td><td>{Number(x.credits||0).toLocaleString()}</td></tr>)}</tbody></table></div></div>
-      <div><h3>Inter-Entity Balances</h3><div className="table-wrap"><table><thead><tr><th>Counterparty</th><th>Due from</th><th>Due to</th></tr></thead><tbody>{inter.map(x=><tr key={x.counterparty_entity_id}><td>{x.counterparty_name}</td><td>{Number(x.due_from).toLocaleString()}</td><td>{Number(x.due_to).toLocaleString()}</td></tr>)}</tbody></table></div></div>
+      <div><div className="report-title"><h3>Profit & Loss</h3><button className="secondary compact" onClick={exportPL}>Export CSV</button></div><div className="table-wrap"><table><thead><tr><th>Account</th><th>Type</th><th>Amount</th></tr></thead><tbody>{pl.map((x,n)=><tr key={x.id??n}><td>{x.id?<Link className="table-link" href={`/accounts/${x.id}/ledger`}>{x.code} · {x.name}</Link>:<>{x.code} · {x.name}</>}</td><td>{x.type}</td><td>{Number(x.amount||0).toLocaleString()}</td></tr>)}</tbody></table></div></div>
+      <div><div className="report-title"><h3>Balance Sheet</h3><button className="secondary compact" onClick={exportBS}>Export CSV</button></div><div className="table-wrap"><table><thead><tr><th>Account</th><th>Type</th><th>Balance</th></tr></thead><tbody>{bs.map((x,n)=><tr key={x.id??n}><td>{x.id?<Link className="table-link" href={`/accounts/${x.id}/ledger`}>{x.code} · {x.name}</Link>:<>{x.code} · {x.name}</>}</td><td>{x.type}</td><td>{Number(x.balance||0).toLocaleString()}</td></tr>)}<tr><td><strong>Current earnings</strong></td><td>EQUITY</td><td><strong>{Number(earnings).toLocaleString()}</strong></td></tr></tbody></table></div></div>
+      <div><div className="report-title"><h3>Trial Balance</h3><button className="secondary compact" onClick={exportTB}>Export CSV</button></div><div className="table-wrap"><table><thead><tr><th>Account</th><th>Debit</th><th>Credit</th></tr></thead><tbody>{tb.map((x,n)=><tr key={x.id??n}><td>{x.id?<Link className="table-link" href={`/accounts/${x.id}/ledger`}>{x.code} · {x.name}</Link>:<>{x.code} · {x.name}</>}</td><td>{Number(x.debits||0).toLocaleString()}</td><td>{Number(x.credits||0).toLocaleString()}</td></tr>)}</tbody></table></div></div>
+      <div><div className="report-title"><h3>Inter-Entity Balances</h3><button className="secondary compact" onClick={exportInter}>Export CSV</button></div><div className="table-wrap"><table><thead><tr><th>Counterparty</th><th>Due from</th><th>Due to</th></tr></thead><tbody>{inter.map(x=><tr key={x.counterparty_entity_id}><td>{x.counterparty_name}</td><td>{Number(x.due_from).toLocaleString()}</td><td>{Number(x.due_to).toLocaleString()}</td></tr>)}</tbody></table></div></div>
     </div>
 
-    <div className="page-head" style={{marginTop:28}}><div><h1 style={{fontSize:20}}>Cash Movement</h1></div></div>
+    <div className="page-head" style={{marginTop:28}}><div><h1 style={{fontSize:20}}>Cash Movement</h1></div><button className="secondary compact" onClick={exportCash}>Export CSV</button></div>
     <div className="table-wrap"><table><thead><tr><th>Date</th><th>Account</th><th>Currency</th><th>Movement</th></tr></thead><tbody>{cash.map((x,n)=><tr key={x.financial_account_id+x.date+n}><td>{x.date}</td><td>{x.name}</td><td>{x.currency}</td><td>{Number(x.movement).toLocaleString()}</td></tr>)}</tbody></table></div>
 
-    <div className="page-head" style={{marginTop:28}}><div><h1 style={{fontSize:20}}>General Ledger</h1><p>Most recent 200 lines.</p></div></div>
+    <div className="page-head" style={{marginTop:28}}><div><h1 style={{fontSize:20}}>General Ledger</h1><p>Most recent 200 lines shown; CSV export fetches up to 2,000 lines for the selected range.</p></div><button className="secondary compact" onClick={exportGL}>Export CSV</button></div>
     <div className="table-wrap"><table><thead><tr><th>Date</th><th>Account</th><th>Description</th><th>Debit</th><th>Credit</th></tr></thead><tbody>{gl.map((x,n)=><tr key={x.journal_id+n}><td>{x.date}</td><td><Link className="table-link" href={`/accounts/${x.account_id}/ledger`}>{x.account_code} · {x.account_name}</Link></td><td>{x.description}</td><td>{Number(x.debit).toLocaleString()}</td><td>{Number(x.credit).toLocaleString()}</td></tr>)}</tbody></table></div>
   </>;
 }
