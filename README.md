@@ -36,6 +36,7 @@ Private multi-entity, multi-currency double-entry finance platform for MyanKafe,
 - searchable/filterable transaction list with functional-currency summaries and filtered running net
 - multi-action New Transaction menu for income, expense, transfer, manual journal, and inter-entity entry
 - transaction/journal detail inspection and account-ledger drill-down
+- editable income/expense drafts with audited cancellation; locked-period drafts cannot be created, re-dated, or cancelled
 - multiple private R2 attachments per transaction
 - authenticated streaming attachment preview; fullscreen image viewer with zoom, pan and keyboard navigation; PDF/text/CSV inline preview
 - P&L, Balance Sheet, Trial Balance, General Ledger, Account Ledger, cash movement, and inter-entity balances
