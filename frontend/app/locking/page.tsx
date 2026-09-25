@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { canLockAccounting, canUnlockAccounting } from "@/lib/permissions";
 
 type State={
   locked_through?:string|null;
@@ -14,6 +15,8 @@ type State={
 
 export default function Locking(){
   const {entity}=useEntity();
+  const mayLock=canLockAccounting(entity?.Role);
+  const mayUnlock=canUnlockAccounting(entity?.Role);
   const [state,setState]=useState<State>({});
   const [date,setDate]=useState("");
   const [lockReason,setLockReason]=useState("");
@@ -85,7 +88,7 @@ export default function Locking(){
         <p className="muted">Posting, reversal, re-dating and other accounting changes on or before the locked-through date are rejected by both the API and PostgreSQL.</p>
       </div>
 
-      <div className="card form">
+      {mayLock&&<div className="card form">
         <div>
           <h3 style={{margin:"0 0 4px"}}>Lock transactions</h3>
           <p className="muted" style={{margin:0}}>Close accounting through a date after review or month-end.</p>
@@ -101,9 +104,9 @@ export default function Locking(){
         <div className="actions">
           <button disabled={busy||!date||!lockReason.trim()} onClick={lock}>{busy?"Working…":"Lock transactions"}</button>
         </div>
-      </div>
+      </div>}
 
-      <div className="card form">
+      {mayUnlock&&<div className="card form">
         <div>
           <h3 style={{margin:"0 0 4px"}}>Owner unlock</h3>
           <p className="muted" style={{margin:0}}>Unlocking reopens accounting history. A separate reason is required and audited.</p>
@@ -115,11 +118,14 @@ export default function Locking(){
         <div className="actions">
           <button className="danger" disabled={busy||!current||!unlockReason.trim()} onClick={()=>setConfirmUnlock(true)}>Review unlock</button>
         </div>
-      </div>
+      </div>}
     </div>
 
+    {!mayLock&&<div className="alert">Your {entity?.Role??"VIEWER"} role can view the lock state but cannot close accounting periods.</div>}
+    {mayLock&&!mayUnlock&&<div className="alert">ACCOUNTANT may advance the lock but only OWNER may reopen a locked period.</div>}
+
     <ConfirmDialog
-      open={confirmUnlock}
+      open={mayUnlock&&confirmUnlock}
       title="Reopen locked accounting period?"
       description={current
         ? `This will remove the lock through ${current}. Historical transactions in that period may become mutable again according to normal permissions. The unlock will be permanently audited.`
