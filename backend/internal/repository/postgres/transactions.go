@@ -20,6 +20,7 @@ func (s *Store) CreateTransaction(ctx context.Context,user User,e Entity,in Crea
   if _,err:=time.Parse("2006-01-02",in.Date);err!=nil{return Transaction{},fmt.Errorf("invalid date")}
   if len(in.Splits)==0{return Transaction{},fmt.Errorf("at least one split is required")}
   tx,err:=s.Pool.Begin(ctx);if err!=nil{return Transaction{},err};defer tx.Rollback(ctx)
+  if err:=s.EnsureOpenDateTx(ctx,tx,e.ID,in.Date);err!=nil{return Transaction{},err}
   var faID,faCurrency string
   if err:=tx.QueryRow(ctx,`SELECT id::text,currency_code FROM financial_accounts WHERE entity_id=$1 AND public_id=$2 AND active=true`,e.ID,in.FinancialAccountPublicID).Scan(&faID,&faCurrency);err!=nil{return Transaction{},err}
   if in.Currency==""{in.Currency=faCurrency};if in.Currency!=faCurrency{return Transaction{},fmt.Errorf("transaction currency must match selected financial account")}
@@ -101,4 +102,115 @@ func insertAuditTx(ctx context.Context,tx pgx.Tx,user User,e Entity,action,resou
   _,err:=tx.Exec(ctx,`INSERT INTO audit_events(id,public_id,actor_type,actor_user_id,entity_id,action,resource_type,resource_public_id,outcome,source,request_id,after_data)
 VALUES($1,$2,'USER',$3,$4,$5,$6,$7,'SUCCESS','API',$8,$9)`,id,apub,user.ID,e.ID,action,resource,pub,fmt.Sprintf("req-%d",time.Now().UnixNano()),after)
   return err
+}
+
+
+func (s *Store) UpdateDraftTransaction(ctx context.Context,user User,e Entity,pub string,in CreateTransactionInput)(Transaction,error){
+  if in.Type!="INCOME" && in.Type!="EXPENSE"{return Transaction{},fmt.Errorf("only INCOME or EXPENSE drafts can be edited here")}
+  if _,err:=time.Parse("2006-01-02",in.Date);err!=nil{return Transaction{},fmt.Errorf("invalid date")}
+  if len(in.Splits)==0{return Transaction{},fmt.Errorf("at least one split is required")}
+
+  tx,err:=s.Pool.Begin(ctx);if err!=nil{return Transaction{},err};defer tx.Rollback(ctx)
+
+  var id,status,oldDate,oldDescription,oldTotal string
+  if err:=tx.QueryRow(ctx,`
+SELECT id::text,status,transaction_date::text,description,total_amount::text
+FROM transactions
+WHERE entity_id=$1 AND public_id=$2
+FOR UPDATE`,e.ID,pub).Scan(&id,&status,&oldDate,&oldDescription,&oldTotal);err!=nil{return Transaction{},err}
+  if status!="DRAFT"{return Transaction{},fmt.Errorf("only draft transactions can be edited")}
+  if err:=s.EnsureOpenDateTx(ctx,tx,e.ID,oldDate);err!=nil{return Transaction{},err}
+  if err:=s.EnsureOpenDateTx(ctx,tx,e.ID,in.Date);err!=nil{return Transaction{},err}
+
+  var faID,faCurrency string
+  if err:=tx.QueryRow(ctx,`
+SELECT id::text,currency_code
+FROM financial_accounts
+WHERE entity_id=$1 AND public_id=$2 AND active=true`,e.ID,in.FinancialAccountPublicID).Scan(&faID,&faCurrency);err!=nil{return Transaction{},err}
+  if in.Currency==""{in.Currency=faCurrency}
+  if in.Currency!=faCurrency{return Transaction{},fmt.Errorf("transaction currency must match selected financial account")}
+
+  var contactID any
+  if in.ContactPublicID!=""{
+    var cid string
+    if err:=tx.QueryRow(ctx,`
+SELECT id::text FROM contacts
+WHERE entity_id=$1 AND public_id=$2 AND active=true`,e.ID,in.ContactPublicID).Scan(&cid);err!=nil{return Transaction{},err}
+    contactID=cid
+  }
+
+  total:=new(big.Rat)
+  type resolved struct{id,amount,desc string}
+  rr:=make([]resolved,0,len(in.Splits))
+  for _,sp:=range in.Splits{
+    amount,err:=accounting.ParseAmount(sp.Amount)
+    if err!=nil||amount.Sign()<=0{return Transaction{},fmt.Errorf("invalid split amount")}
+    total.Add(total,amount)
+
+    var accountID string
+    var postable bool
+    var accountType string
+    if err:=tx.QueryRow(ctx,`
+SELECT id::text,is_postable,account_type
+FROM accounts
+WHERE entity_id=$1 AND public_id=$2 AND active=true`,e.ID,sp.AccountPublicID).
+      Scan(&accountID,&postable,&accountType);err!=nil{return Transaction{},err}
+    if !postable{return Transaction{},fmt.Errorf("split account is not postable")}
+    if in.Type=="EXPENSE"&&accountType!="EXPENSE"{return Transaction{},fmt.Errorf("expense splits must use EXPENSE accounts")}
+    if in.Type=="INCOME"&&accountType!="INCOME"{return Transaction{},fmt.Errorf("income splits must use INCOME accounts")}
+    rr=append(rr,resolved{accountID,amount.FloatString(6),sp.Description})
+  }
+
+  if _,err:=tx.Exec(ctx,`
+UPDATE transactions
+SET transaction_type=$3,
+    transaction_date=$4,
+    description=$5,
+    contact_id=$6,
+    primary_financial_account_id=$7,
+    currency_code=$8,
+    total_amount=$9,
+    updated_at=now()
+WHERE id=$1 AND entity_id=$2`,
+    id,e.ID,in.Type,in.Date,in.Description,contactID,faID,in.Currency,total.FloatString(6));err!=nil{return Transaction{},err}
+
+  if _,err:=tx.Exec(ctx,`DELETE FROM transaction_splits WHERE transaction_id=$1`,id);err!=nil{return Transaction{},err}
+  for i,sp:=range rr{
+    splitID,err:=ids.UUIDv7();if err!=nil{return Transaction{},err}
+    if _,err:=tx.Exec(ctx,`
+INSERT INTO transaction_splits(id,transaction_id,line_no,account_id,amount,description)
+VALUES($1,$2,$3,$4,$5,NULLIF($6,''))`,splitID,id,i+1,sp.id,sp.amount,sp.desc);err!=nil{return Transaction{},err}
+  }
+
+  if err:=insertAuditTx(ctx,tx,user,e,"TRANSACTION_DRAFT_UPDATE","TRANSACTION",pub,map[string]any{
+    "before":map[string]any{"date":oldDate,"description":oldDescription,"total":oldTotal},
+    "after":map[string]any{"type":in.Type,"date":in.Date,"description":in.Description,"total":total.FloatString(6),"currency":in.Currency},
+  });err!=nil{return Transaction{},err}
+  if err:=tx.Commit(ctx);err!=nil{return Transaction{},err}
+  return Transaction{pub,in.Type,"DRAFT",in.Date,in.Description,in.Currency,total.FloatString(6)},nil
+}
+
+func (s *Store) CancelDraftTransaction(ctx context.Context,user User,e Entity,pub,reason string)(Transaction,error){
+  if len([]rune(reason))<3{return Transaction{},fmt.Errorf("cancellation reason is required")}
+  tx,err:=s.Pool.Begin(ctx);if err!=nil{return Transaction{},err};defer tx.Rollback(ctx)
+
+  var id,typ,status,date,desc,currency,total string
+  if err:=tx.QueryRow(ctx,`
+SELECT id::text,transaction_type,status,transaction_date::text,description,currency_code,total_amount::text
+FROM transactions
+WHERE entity_id=$1 AND public_id=$2
+FOR UPDATE`,e.ID,pub).Scan(&id,&typ,&status,&date,&desc,&currency,&total);err!=nil{return Transaction{},err}
+  if status!="DRAFT"{return Transaction{},fmt.Errorf("only draft transactions can be cancelled")}
+  if err:=s.EnsureOpenDateTx(ctx,tx,e.ID,date);err!=nil{return Transaction{},err}
+
+  now:=time.Now().UTC()
+  if _,err:=tx.Exec(ctx,`
+UPDATE transactions
+SET status='VOIDED',voided_by=$2,voided_at=$3,void_reason=$4,updated_at=$3
+WHERE id=$1`,id,user.ID,now,reason);err!=nil{return Transaction{},err}
+  if err:=insertAuditTx(ctx,tx,user,e,"TRANSACTION_DRAFT_CANCEL","TRANSACTION",pub,map[string]any{
+    "reason":reason,"type":typ,"date":date,"total":total,
+  });err!=nil{return Transaction{},err}
+  if err:=tx.Commit(ctx);err!=nil{return Transaction{},err}
+  return Transaction{pub,typ,"VOIDED",date,desc,currency,total},nil
 }
