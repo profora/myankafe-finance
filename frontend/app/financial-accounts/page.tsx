@@ -94,7 +94,7 @@ export default function FinancialAccounts() {
     {mayConfigure&&<div className="card form" style={{marginBottom:16}}>
       <h3>New financial account</h3>
       <div className="form-grid">
-        <div className="field"><label>Code</label><input value={form.Code} onChange={e=>setForm({...form,Code:e.target.value.toUpperCase().replace(/s+/g,"_")})}/></div>
+        <div className="field"><label>Code</label><input value={form.Code} onChange={e=>setForm({...form,Code:e.target.value.toUpperCase().replace(/\s+/g,"_")})}/></div>
         <div className="field"><label>Name</label><input value={form.Name} onChange={e=>setForm({...form,Name:e.target.value})}/></div>
         <div className="field"><label>Kind</label><select value={form.Kind} onChange={e=>setForm({...form,Kind:e.target.value})}>{["CASH","BANK","MOBILE_WALLET","CREDIT_CARD","OTHER"].map(x=><option key={x}>{x}</option>)}</select></div>
         <div className="field"><label>Currency</label><input value={form.Currency} onChange={e=>setForm({...form,Currency:e.target.value.toUpperCase()})}/></div>
