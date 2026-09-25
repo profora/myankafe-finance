@@ -30,7 +30,7 @@ type Me={user:{public_id:string;username:string;display_name:string}};
 
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { entities, entity, setEntityID, error } = useEntity();
+  const { entities, entity, setEntityID, error, loading } = useEntity();
   const [me,setMe]=useState<Me["user"]|null>(null);
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
   const ownerAnywhere=entities.some(x=>x.Role==="OWNER");
@@ -73,7 +73,9 @@ function Shell({ children }: { children: React.ReactNode }) {
             <button type="button" className="secondary mobile-nav-button" aria-label="Open navigation" onClick={()=>setMobileNavOpen(true)}>☰</button>
             <div>
               <div className="eyebrow">Entity</div>
-              <select aria-label="Current entity" value={entity?.PublicID ?? ""} onChange={(e) => setEntityID(e.target.value)}>
+              <select aria-label="Current entity" aria-busy={loading} disabled={loading||entities.length===0} value={entity?.PublicID ?? ""} onChange={(e) => setEntityID(e.target.value)}>
+                {loading&&entities.length===0&&<option value="">Loading entities…</option>}
+                {!loading&&entities.length===0&&<option value="">No entities available</option>}
                 {entities.map((x) => <option key={x.PublicID} value={x.PublicID}>{x.Name}</option>)}
               </select>
             </div>
@@ -88,6 +90,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         {error && <div className="alert error" role="alert">{error}</div>}
+        {!loading&&!error&&entities.length===0&&<div className="alert" role="status">No finance entities are available for this account.</div>}
         <section id="main-content" tabIndex={-1} className="content">{children}</section>
       </main>
     </div>

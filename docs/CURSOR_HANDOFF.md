@@ -194,3 +194,10 @@ Authentication and R2 receipt storage are no longer placeholders. Do not replace
 - reference selectors show explicit loading/choose states instead of appearing silently empty
 - compact transaction-entry dialog now has labelled dialog semantics, accessible errors, and the same reference-data readiness guard
 - this prevents accidental reuse of stale account IDs across entity switches without changing server accounting rules
+
+
+## 2026-09-25 entity-context/report polish
+
+- entity context now exposes loading state and automatically falls back only to a valid accessible entity after reloads/role changes
+- entity selector disables itself while entity access is loading and clearly distinguishes loading from no-access state
+- all accounting report panels clear prior-entity values before reload, show accessible loading/empty rows, and disable CSV export until the selected entity's report data is ready

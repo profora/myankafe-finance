@@ -9,6 +9,7 @@ type Value = {
   entity?: Entity;
   setEntityID: (id: string) => void;
   error: string;
+  loading: boolean;
   reload: () => void;
 };
 
@@ -18,29 +19,32 @@ export function EntityProvider({ children }: { children: React.ReactNode }) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [entityID, setEntityIDState] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const load = () => {
+  const load = async () => {
+    setLoading(true);
     setError("");
-    api<{ items: Entity[] }>("/entities")
-      .then((x) => {
-        setEntities(x.items);
-        setEntityIDState((current) => current || x.items[0]?.PublicID || "");
-      })
-      .catch((e) => {
-        if (e instanceof ApiError && e.status === 401 && typeof window !== "undefined") {
-          window.location.assign("/login");
-          return;
-        }
-        setError(e instanceof Error ? e.message : String(e));
-      });
+    try {
+      const x=await api<{ items: Entity[] }>("/entities");
+      setEntities(x.items);
+      setEntityIDState((current) => x.items.some(item=>item.PublicID===current) ? current : (x.items[0]?.PublicID || ""));
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401 && typeof window !== "undefined") {
+        window.location.assign("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(load, []);
+  useEffect(()=>{void load()}, []);
 
   const entity = useMemo(() => entities.find((x) => x.PublicID === entityID), [entities, entityID]);
 
   return (
-    <Ctx.Provider value={{ entities, entity, setEntityID: setEntityIDState, error, reload: load }}>
+    <Ctx.Provider value={{ entities, entity, setEntityID: setEntityIDState, error, loading, reload: ()=>{void load()} }}>
       {children}
     </Ctx.Provider>
   );
