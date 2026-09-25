@@ -140,6 +140,8 @@ The web app uses the Chieftain Chin Coffee logo supplied for MyanKafe Finance at
 
 The draft feature PR validates:
 
+- fail-on-diff Go formatting and module tidiness
+- committed dependency lockfiles with `npm ci`
 - frontend TypeScript typecheck
 - Next.js production build
 - Go module resolution
@@ -159,8 +161,6 @@ Tests cover core ledger invariants, authorization, idempotency, reversal, inter-
 ## Before production merge
 
 Cursor should still:
-- commit generated dependency lock metadata (`backend/go.sum`, `frontend/package-lock.json`)
-- run and commit final `gofmt`, then make format/tidy CI checks non-mutating
 - validate against the real production R2 bucket and credentials
 - configure production secrets, TLS/reverse proxy, PostgreSQL backups/PITR, and observability
 - perform final responsive/accessibility/browser polish and deployment validation
