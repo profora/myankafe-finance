@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
+import { canManageEntitySettings } from "@/lib/permissions";
 
 export default function EntitySettings(){
   const {entities,entity,reload}=useEntity();
+  const mayEdit=canManageEntitySettings(entity?.Role);
+  const ownerAnywhere=entities.some(x=>x.Role==="OWNER");
   const [err,setErr]=useState("");
   const [msg,setMsg]=useState("");
   const [busy,setBusy]=useState(false);
@@ -44,7 +47,7 @@ export default function EntitySettings(){
     {err&&<div className="alert error">{err}</div>}
     {msg&&<div className="alert success">{msg}</div>}
 
-    {entity&&<div className="card form" style={{marginBottom:16}}>
+    {entity&&mayEdit&&<div className="card form" style={{marginBottom:16}}>
       <h3>Settings for {entity.Name}</h3>
       <div className="alert">Entity code, type and functional currency are protected accounting identity fields after creation.</div>
       <div className="form-grid">
@@ -58,7 +61,7 @@ export default function EntitySettings(){
       <button disabled={busy||!edit.Name.trim()||!edit.Timezone.trim()} onClick={saveEntity}>{busy?"Saving…":"Save entity settings"}</button>
     </div>}
 
-    <div className="card form" style={{marginBottom:16}}>
+    {ownerAnywhere&&<div className="card form" style={{marginBottom:16}}>
       <h3>New entity</h3>
       <div className="form-grid">
         <div className="field"><label>Code</label><input value={f.Code} onChange={e=>setF({...f,Code:e.target.value.toUpperCase()})}/></div>
@@ -69,8 +72,11 @@ export default function EntitySettings(){
         <div className="field"><label>Fiscal year start</label><div style={{display:"flex",gap:8}}><input type="number" min={1} max={12} value={f.FiscalMonth} onChange={e=>setF({...f,FiscalMonth:Number(e.target.value)})}/><input type="number" min={1} max={31} value={f.FiscalDay} onChange={e=>setF({...f,FiscalDay:Number(e.target.value)})}/></div></div>
       </div>
       <button disabled={busy||!f.Code||!f.Name} onClick={create}>Create entity</button>
-    </div>
+    </div>}
 
-    <div className="table-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Currency</th><th>Timezone</th><th>Fiscal year</th></tr></thead><tbody>{entities.map(x=><tr key={x.PublicID}><td>{x.Code}</td><td>{x.Name}</td><td>{x.Type}</td><td>{x.FunctionalCurrency}</td><td>{x.Timezone}</td><td>{x.FiscalMonth}/{x.FiscalDay}</td></tr>)}</tbody></table></div>
+    {!mayEdit&&entity&&<div className="alert">Your {entity.Role} role can view this entity but cannot change entity settings.</div>}
+    {!ownerAnywhere&&<div className="alert">Creating additional entities requires OWNER access somewhere in the platform.</div>}
+
+    <div className="table-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Currency</th><th>Timezone</th><th>Fiscal year</th><th>Your role</th></tr></thead><tbody>{entities.map(x=><tr key={x.PublicID}><td>{x.Code}</td><td>{x.Name}</td><td>{x.Type}</td><td>{x.FunctionalCurrency}</td><td>{x.Timezone}</td><td>{x.FiscalMonth}/{x.FiscalDay}</td><td><span className="badge">{x.Role}</span></td></tr>)}</tbody></table></div>
   </>;
 }
