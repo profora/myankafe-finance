@@ -44,7 +44,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="app">
       <aside className={`sidebar ${mobileNavOpen?"mobile-open":""}`}>
         <Link className="brand platform-brand" href="/" aria-label="MyanKafe Finance home" onClick={()=>setMobileNavOpen(false)}>
-          <img className="sidebar-brand-logo" src="/brand/chieftain-logo.png" alt="Chieftain Chin Coffee"/>
+          <img className="sidebar-brand-logo" src="/brand/chieftain-logo.webp" alt="Chieftain Chin Coffee"/>
           <span className="sidebar-brand-text">
             <strong>MyanKafe</strong>
             <span>Finance</span>
