@@ -36,3 +36,6 @@
 .attachment-viewer-stage img.zoomed{cursor:grab;touch-action:none}.attachment-viewer-stage img.zoomed.dragging{cursor:grabbing;transition:none}
 
 .locking-grid{grid-template-columns:minmax(260px,.8fr) repeat(2,minmax(320px,1fr));align-items:start}@media(max-width:1050px){.locking-grid{grid-template-columns:1fr}}
+
+.draft-management-card{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:16px;border-color:#ead9a2;background:#fffdf6}.draft-management-card p{margin:5px 0 0;max-width:720px}.draft-actions{flex:0 0 auto;justify-content:flex-end}
+@media(max-width:760px){.draft-management-card{align-items:stretch;flex-direction:column}.draft-actions{display:grid;grid-template-columns:1fr}.draft-actions button{width:100%}}
