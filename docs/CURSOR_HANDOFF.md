@@ -7,13 +7,15 @@ PR: `#1 feat: V1 multi-entity accounting foundation`
 
 ### Backend and database
 
-- PostgreSQL 17 schema and Goose migrations through 00011
+- PostgreSQL 17 schema and Goose migrations through 00012
 - UUIDv7 internal IDs / canonical ULID public IDs
-- multi-entity books and per-entity roles
+- multi-entity books and deterministic effective per-entity roles
 - hierarchical Chart of Accounts
 - cash/bank/mobile-wallet/card/other financial accounts
 - contacts/payees/payers
 - income/expense entry with split categories
+- editable income/expense drafts with audited cancellation; posted transactions remain immutable
+- locked-period protection on draft creation, re-dating, cancellation, posting and reversal
 - deterministic double-entry posting
 - manual journals
 - same-entity transfers
@@ -42,8 +44,10 @@ Working Next.js screens/workflows include:
 - password change
 - dashboard
 - searchable/filterable/paginated transaction list
+- role-aware mutation/configuration controls matching the server authorization matrix
 - New Transaction dropdown: income, expense, transfer, manual journal, inter-entity
 - transaction detail with actual journal debit/credit lines
+- transaction-detail draft editor with split editing, controlled posting and reason-required cancellation
 - new income/expense entry with multiple attachments
 - transfers with attachments
 - inter-entity posting/mapping with attachments on the initiating transaction
@@ -76,11 +80,11 @@ GitHub Actions validates:
 Tests now cover:
 
 - journal balancing and posting guards
-- period locks
+- period locks, including database-level draft creation/re-date/cancellation guards
 - cross-entity boundaries
 - posted immutability
 - FX snapshot immutability/math
-- role authorization
+- role authorization and effective-role precedence
 - idempotency claim/replay/concurrency plus HTTP replay behavior
 - reversal success and locked reversal rejection
 - inter-entity success and forced late-failure rollback
@@ -88,9 +92,10 @@ Tests now cover:
 - attachment metadata ordering
 - Argon2/password/session-token helpers
 - R2 configuration/canonical-path helpers
-- username/password session lifecycle (login/me/logout) when the latest CI reaches that test
+- username/password session lifecycle (login/me/logout)
+- draft edit/cancel lifecycle and locked-date rejection
 
-Do not merge if CI is red.
+Do not merge if CI is red. CI run #727 passed the complete frontend/backend/container gate on the implementation head after migration 00012 and the draft/role work.
 
 ## Tasks Cursor should do next
 
