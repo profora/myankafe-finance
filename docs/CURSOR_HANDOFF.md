@@ -125,9 +125,9 @@ Do not merge if CI is red. CI run #772 passed the complete frontend/backend/cont
 
 3. **Polish without changing accounting semantics**
    - mobile navigation drawer is already implemented; do final device QA
-   - loading/skeleton states
+   - loading/skeleton states (dashboard balances/metrics and transaction list now use accessible skeleton feedback; continue only where UX still feels abrupt)
    - accounting unlock confirmation is already implemented; preserve its OWNER-only audited flow
-   - richer table sorting/export if desired
+   - richer table sorting/export if desired (CSV export is already shipped for transactions, reports, General Ledger and Account Ledger)
    - final accessibility/browser review
    - visual polish of forms and attachment gallery
    - preserve the supplied Chieftain logo; do not replace it with the old MK placeholder
@@ -163,3 +163,11 @@ Authentication and R2 receipt storage are no longer placeholders. Do not replace
 - Never use live/latest FX retroactively in historical reports; preserve stored snapshots.
 - Keep R2 credentials backend-only.
 - Do not expose raw stored session-token hashes or password hashes.
+
+
+## 2026-09-25 continuation note
+
+- accessibility pass added skip-to-content navigation, visible keyboard focus, current-page semantics, labelled confirmation dialogs, password-toggle state, reduced-motion behavior, and alert/live-region improvements
+- dashboard now avoids showing stale financial values while entity data is loading and exposes skeleton loading feedback
+- transaction loading was de-duplicated: entity changes load financial-account choices separately while the canonical transaction loader owns filtered/paginated transaction refreshes
+- transaction empty/loading state now uses accessible skeleton rows rather than a transient text-only blank table

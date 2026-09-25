@@ -46,18 +46,18 @@ export default function LoginPage(){
       <div className="login-card">
       <h1>Sign in</h1>
       <p className="muted">Sign in with your finance username and password.</p>
-      {expired&&!error&&<div className="alert">Your session expired. Please sign in again.</div>}
-      {error&&<div className="alert error">{error}</div>}
-      <form className="form" onSubmit={submit}>
+      {expired&&!error&&<div className="alert" role="status" aria-live="polite">Your session expired. Please sign in again.</div>}
+      {error&&<div className="alert error" role="alert">{error}</div>}
+      <form className="form" aria-busy={busy} onSubmit={submit}>
         <div className="field"><label htmlFor="username">Username</label><input id="username" autoComplete="username" autoFocus required value={username} onChange={e=>setUsername(e.target.value)}/></div>
         <div className="field">
           <label htmlFor="password">Password</label>
           <div className="password-row">
             <input id="password" type={showPassword?"text":"password"} autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/>
-            <button type="button" className="secondary password-toggle" onClick={()=>setShowPassword(v=>!v)}>{showPassword?"Hide":"Show"}</button>
+            <button type="button" className="secondary password-toggle" aria-controls="password" aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)}>{showPassword?"Hide":"Show"}</button>
           </div>
         </div>
-        <button disabled={busy||!username||!password}>{busy?"Signing in…":"Sign in"}</button>
+        <button type="submit" disabled={busy||!username||!password}>{busy?"Signing in…":"Sign in"}</button>
       </form>
       </div>
     </section>

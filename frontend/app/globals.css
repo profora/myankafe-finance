@@ -48,3 +48,23 @@
 
 .report-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px}.report-title h3{margin:0}
 @media(max-width:600px){.report-title{align-items:flex-start;flex-direction:column}.report-title button{width:100%}}
+
+
+/* Accessibility and loading polish */
+.skip-link{position:fixed;left:16px;top:12px;z-index:4000;transform:translateY(-160%);background:#fff;color:#102d27;border:2px solid #d4a72c;border-radius:8px;padding:9px 12px;font-weight:800;box-shadow:0 8px 24px rgba(15,23,42,.18)}
+.skip-link:focus{transform:translateY(0)}
+:where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid #d4a72c;outline-offset:2px}
+.sidebar nav a[aria-current="page"]{background:#1c493e;color:#fff}
+#main-content:focus{outline:none}
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.skeleton{display:inline-block;border-radius:7px;background:linear-gradient(90deg,#edf0f1 25%,#f7f8f8 45%,#edf0f1 65%);background-size:220% 100%;animation:skeleton-shimmer 1.25s ease-in-out infinite}
+.skeleton-metric{width:min(180px,80%);height:32px;vertical-align:middle}
+.skeleton-line{width:120px;height:14px;vertical-align:middle}
+.skeleton-short{width:72px;height:14px;vertical-align:middle}
+.skeleton-wide{width:220px;max-width:100%;height:14px;vertical-align:middle}
+.table-loading{display:grid;padding:8px 14px}
+.table-loading-row{display:grid;grid-template-columns:110px 150px minmax(220px,1fr) 140px;gap:24px;align-items:center;min-height:48px;border-bottom:1px solid #edf0f2}
+.table-loading-row:last-child{border-bottom:0}
+@keyframes skeleton-shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media(max-width:700px){.table-loading-row{grid-template-columns:90px 1fr}.table-loading-row>:nth-child(n+3){display:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

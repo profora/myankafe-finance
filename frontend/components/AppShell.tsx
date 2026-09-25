@@ -45,6 +45,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <aside className={`sidebar ${mobileNavOpen?"mobile-open":""}`}>
         <Link className="brand platform-brand" href="/" aria-label="MyanKafe Finance home" onClick={()=>setMobileNavOpen(false)}>
           <img className="sidebar-brand-logo" src="/brand/chieftain-logo.webp" alt="Chieftain Chin Coffee"/>
@@ -53,26 +54,26 @@ function Shell({ children }: { children: React.ReactNode }) {
             <span>Finance</span>
           </span>
         </Link>
-        <nav>
+        <nav aria-label="Primary navigation">
           {nav.filter(item=>{
             const ownerOnly=item.href==="/settings/users"||item.href==="/settings/system";
             return ownerOnly?ownerAnywhere:(!item.show||item.show(entity?.Role));
           }).map(({href,label}) => (
-            <Link key={href} className={pathname === href || (href!=="/"&&pathname.startsWith(href+"/")) ? "active" : ""} href={href} onClick={()=>setMobileNavOpen(false)}>{label}</Link>
+            <Link key={href} aria-current={pathname === href || (href!=="/"&&pathname.startsWith(href+"/")) ? "page" : undefined} className={pathname === href || (href!=="/"&&pathname.startsWith(href+"/")) ? "active" : ""} href={href} onClick={()=>setMobileNavOpen(false)}>{label}</Link>
           ))}
         </nav>
         <div className="sidebar-note">
           Double-entry ledger<br />UUIDv7 internal · ULID public
         </div>
       </aside>
-      {mobileNavOpen&&<button className="mobile-nav-overlay" aria-label="Close navigation" onClick={()=>setMobileNavOpen(false)}/>}
+      {mobileNavOpen&&<button type="button" className="mobile-nav-overlay" aria-label="Close navigation" onClick={()=>setMobileNavOpen(false)}/>}
       <main className="main">
         <header className="topbar">
           <div className="topbar-entity">
-            <button className="secondary mobile-nav-button" aria-label="Open navigation" onClick={()=>setMobileNavOpen(true)}>☰</button>
+            <button type="button" className="secondary mobile-nav-button" aria-label="Open navigation" onClick={()=>setMobileNavOpen(true)}>☰</button>
             <div>
               <div className="eyebrow">Entity</div>
-              <select value={entity?.PublicID ?? ""} onChange={(e) => setEntityID(e.target.value)}>
+              <select aria-label="Current entity" value={entity?.PublicID ?? ""} onChange={(e) => setEntityID(e.target.value)}>
                 {entities.map((x) => <option key={x.PublicID} value={x.PublicID}>{x.Name}</option>)}
               </select>
             </div>
@@ -83,11 +84,11 @@ function Shell({ children }: { children: React.ReactNode }) {
               {me&&entity&&" · "}
               {entity ? `${entity.Role} · ${entity.FunctionalCurrency} · FY ${entity.FiscalMonth}/${entity.FiscalDay}` : "No entity"}
             </div>
-            <button className="secondary" onClick={signOut}>Sign out</button>
+            <button type="button" className="secondary" onClick={signOut}>Sign out</button>
           </div>
         </header>
-        {error && <div className="alert error">{error}</div>}
-        <section className="content">{children}</section>
+        {error && <div className="alert error" role="alert">{error}</div>}
+        <section id="main-content" tabIndex={-1} className="content">{children}</section>
       </main>
     </div>
   );

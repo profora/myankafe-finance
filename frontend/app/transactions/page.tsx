@@ -101,16 +101,15 @@ export default function Transactions(){
 
   useEffect(()=>{
     if(!entity)return;
-    setFilters(emptyFilters);setApplied(emptyFilters);setItems([]);
-    Promise.all([
-      api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
-      api<TransactionList>(`/entities/${entity.PublicID}/transactions?limit=100&offset=0`)
-    ]).then(([f,result])=>{
-      setFinancial(f.items);
-      setItems(result.items);
-      setSummary({count:result.count,income_total:result.income_total,expense_total:result.expense_total,net_total:result.net_total,functional_currency:result.functional_currency});
-      setHasMore(result.has_more);
-    }).catch(e=>setError(e instanceof Error?e.message:String(e)));
+    let cancelled=false;
+    setFilters(emptyFilters);
+    setApplied(emptyFilters);
+    setItems([]);
+    setFinancial([]);
+    api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`)
+      .then(result=>{if(!cancelled)setFinancial(result.items)})
+      .catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))});
+    return ()=>{cancelled=true};
   },[entity?.PublicID]);
 
   async function exportCSV(){
@@ -161,7 +160,7 @@ export default function Transactions(){
     setFilters(emptyFilters);setApplied(emptyFilters);
   }
 
-  useEffect(()=>{if(entity)load(true)},[query.toString()]);
+  useEffect(()=>{if(entity)void load(true)},[entity?.PublicID,query.toString()]);
 
   return <>
     <div className="page-head transaction-head">
@@ -184,7 +183,7 @@ export default function Transactions(){
       </div>}
     </div>
 
-    {error&&<div className="alert error">{error}</div>}
+    {error&&<div className="alert error" role="alert">{error}</div>}
 
     <form className="card transaction-filters" onSubmit={applyFilters}>
       <div className="transaction-filter-grid">
@@ -209,7 +208,7 @@ export default function Transactions(){
       <div className="card"><div className="muted">Running net</div><div className={`metric ${signedClass(summary.net_total)}`}>{Number(summary.net_total).toLocaleString()} <small>{summary.functional_currency}</small></div></div>
     </div>
 
-    <div className="table-wrap transaction-table">
+    <div className="table-wrap transaction-table" aria-busy={loading}>
       {items.length?<table>
         <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Account / Contact</th><th>Status</th><th>Amount</th><th>Functional effect</th><th>Running net</th><th></th></tr></thead>
         <tbody>{items.map(t=><tr key={t.id}>
@@ -226,7 +225,12 @@ export default function Transactions(){
             {mayReverse&&t.status==="POSTED"&&<button className="danger" disabled={busy===t.id} onClick={()=>{setReverseID(t.id);setReverseReason("");setReverseDate(dateInTimeZone(entity?.Timezone??"Asia/Yangon"))}}>Reverse</button>}
           </div></td>
         </tr>)}</tbody>
-      </table>:<div className="empty">{loading?"Loading transactions…":"No transactions match these filters."}</div>}
+      </table>:loading?<div className="table-loading" role="status" aria-live="polite">
+        <span className="sr-only">Loading transactions…</span>
+        {Array.from({length:5}).map((_,i)=><div className="table-loading-row" key={i} aria-hidden="true">
+          <span className="skeleton skeleton-short"/><span className="skeleton skeleton-line"/><span className="skeleton skeleton-wide"/><span className="skeleton skeleton-line"/>
+        </div>)}
+      </div>:<div className="empty">No transactions match these filters.</div>}
     </div>
 
     {hasMore&&<div className="load-more"><button className="secondary" disabled={loading} onClick={()=>load(false)}>{loading?"Loading…":"Load more"}</button></div>}
