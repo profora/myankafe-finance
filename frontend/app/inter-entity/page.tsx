@@ -18,18 +18,42 @@ export default function InterEntity(){
   const [message,setMessage]=useState("");
   const [attachments,setAttachments]=useState<File[]>([]);
   const [busy,setBusy]=useState(false);
+  const [loadingOwn,setLoadingOwn]=useState(true);
+  const [loadingCounterparty,setLoadingCounterparty]=useState(false);
   const [mapping,setMapping]=useState({due_from_account_id:"",due_to_account_id:""});
   const [form,setForm]=useState({Date:dateInTimeZone(entity?.Timezone??"Asia/Yangon"),InitiatingFinancialAccountPublicID:"",InitiatingAmount:"",CounterpartyAmount:"",CounterpartyExpenseAccountPublicID:"",Description:""});
 
   useEffect(()=>{
     if(!entity)return;
+    let cancelled=false;
+    const firstCounterparty=counterparts[0]?.PublicID||"";
+    setLoadingOwn(true);setError("");setMessage("");
+    setOwnAccounts([]);setFinancial([]);setCpAccounts([]);setMapping({due_from_account_id:"",due_to_account_id:""});
+    setAttachments([]);setCounterparty(firstCounterparty);
+    setForm({Date:dateInTimeZone(entity.Timezone),InitiatingFinancialAccountPublicID:"",InitiatingAmount:"",CounterpartyAmount:"",CounterpartyExpenseAccountPublicID:"",Description:""});
     Promise.all([
       api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
       api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`)
-    ]).then(([a,f])=>{const activeFinancial=f.items.filter(x=>x.Active);setOwnAccounts(a.items);setFinancial(activeFinancial);setForm(v=>({...v,InitiatingFinancialAccountPublicID:activeFinancial[0]?.PublicID||""}));setCounterparty(x=>x||counterparts[0]?.PublicID||"")}).catch(e=>setError(e.message))
-  },[entity,counterparts.length]);
+    ]).then(([a,f])=>{
+      if(cancelled)return;
+      const activeFinancial=f.items.filter(x=>x.Active);
+      setOwnAccounts(a.items);setFinancial(activeFinancial);
+      setForm(v=>({...v,InitiatingFinancialAccountPublicID:activeFinancial[0]?.PublicID||""}));
+    }).catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
+      .finally(()=>{if(!cancelled)setLoadingOwn(false)});
+    return()=>{cancelled=true};
+  },[entity?.PublicID]);
 
-  useEffect(()=>{if(counterparty)api<{items:Account[]}>(`/entities/${counterparty}/accounts`).then(x=>setCpAccounts(x.items)).catch(e=>setError(e.message))},[counterparty]);
+  useEffect(()=>{
+    if(!counterparty){setCpAccounts([]);setLoadingCounterparty(false);return}
+    let cancelled=false;
+    setCpAccounts([]);setLoadingCounterparty(true);
+    api<{items:Account[]}>(`/entities/${counterparty}/accounts`)
+      .then(x=>{if(!cancelled)setCpAccounts(x.items)})
+      .catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
+      .finally(()=>{if(!cancelled)setLoadingCounterparty(false)});
+    return()=>{cancelled=true};
+  },[counterparty]);
 
   async function saveMapping(){
     if(!entity||!counterparty)return;setError("");setMessage("");
@@ -60,27 +84,27 @@ export default function InterEntity(){
 
   return <>
     <div className="page-head"><div><h1>Inter-Entity</h1><p>Atomic due-to / due-from accounting across entities.</p></div></div>
-    {error&&<div className="alert error">{error}</div>}{message&&<div className="alert success">{message}</div>}
+    {error&&<div className="alert error" role="alert">{error}</div>}{message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
     <div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(360px,1fr))"}}>
-      <div className="card form">
+      <div className="card form" aria-busy={loadingOwn}>
         <h3>Mapping for {entity?.Name}</h3>
-        <div className="field"><label>Counterparty</label><select value={counterparty} onChange={e=>setCounterparty(e.target.value)}>{counterparts.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name}</option>)}</select></div>
-        <div className="field"><label>Due from account (Asset)</label><select value={mapping.due_from_account_id} onChange={e=>setMapping({...mapping,due_from_account_id:e.target.value})}><option value="">Choose…</option>{dueFrom.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
-        <div className="field"><label>Due to account (Liability)</label><select value={mapping.due_to_account_id} onChange={e=>setMapping({...mapping,due_to_account_id:e.target.value})}><option value="">Choose…</option>{dueTo.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
-        <button disabled={!mapping.due_from_account_id||!mapping.due_to_account_id} onClick={saveMapping}>Save mapping</button>
+        <div className="field"><label>Counterparty</label><select value={counterparty} disabled={loadingOwn} onChange={e=>setCounterparty(e.target.value)}><option value="">{loadingOwn?"Loading entities…":"Choose…"}</option>{counterparts.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name}</option>)}</select></div>
+        <div className="field"><label>Due from account (Asset)</label><select value={mapping.due_from_account_id} disabled={loadingOwn} onChange={e=>setMapping({...mapping,due_from_account_id:e.target.value})}><option value="">Choose…</option>{dueFrom.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
+        <div className="field"><label>Due to account (Liability)</label><select value={mapping.due_to_account_id} disabled={loadingOwn} onChange={e=>setMapping({...mapping,due_to_account_id:e.target.value})}><option value="">Choose…</option>{dueTo.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
+        <button type="button" disabled={loadingOwn||!counterparty||!mapping.due_from_account_id||!mapping.due_to_account_id} onClick={saveMapping}>Save mapping</button>
       </div>
-      <div className="card form">
+      <div className="card form" aria-busy={loadingOwn||loadingCounterparty}>
         <h3>Pay expense on behalf</h3>
-        <div className="field"><label>Pay from</label><select value={form.InitiatingFinancialAccountPublicID} onChange={e=>setForm({...form,InitiatingFinancialAccountPublicID:e.target.value})}>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
+        <div className="field"><label>Pay from</label><select value={form.InitiatingFinancialAccountPublicID} disabled={loadingOwn} onChange={e=>setForm({...form,InitiatingFinancialAccountPublicID:e.target.value})}><option value="">{loadingOwn?"Loading accounts…":"Choose…"}</option>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
         <div className="form-grid">
           <div className="field"><label>Date</label><input type="date" value={form.Date} onChange={e=>setForm({...form,Date:e.target.value})}/></div>
           <div className="field"><label>Paid amount ({entity?.FunctionalCurrency})</label><input inputMode="decimal" value={form.InitiatingAmount} onChange={e=>setForm({...form,InitiatingAmount:e.target.value,CounterpartyAmount:e.target.value})}/></div>
           <div className="field"><label>Counterparty amount</label><input inputMode="decimal" value={form.CounterpartyAmount} onChange={e=>setForm({...form,CounterpartyAmount:e.target.value})}/></div>
-          <div className="field"><label>Counterparty expense account</label><select value={form.CounterpartyExpenseAccountPublicID} onChange={e=>setForm({...form,CounterpartyExpenseAccountPublicID:e.target.value})}><option value="">Choose…</option>{expenses.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
+          <div className="field"><label>Counterparty expense account</label><select value={form.CounterpartyExpenseAccountPublicID} disabled={loadingCounterparty} onChange={e=>setForm({...form,CounterpartyExpenseAccountPublicID:e.target.value})}><option value="">{loadingCounterparty?"Loading counterparty accounts…":"Choose…"}</option>{expenses.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
           <div className="field span-2"><label>Description</label><input value={form.Description} onChange={e=>setForm({...form,Description:e.target.value})}/></div>
         </div>
         <div className="field"><label>Attachments</label><input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,text/csv,.docx,.xlsx" onChange={e=>setAttachments(Array.from(e.target.files??[]))}/><span className="muted">{attachments.length?attachments.map(x=>x.name).join(", "):"Optional supporting documents. They are stored on the initiating transaction."}</span></div>
-        <button disabled={busy||!form.InitiatingAmount||!form.CounterpartyAmount||!form.CounterpartyExpenseAccountPublicID||!form.Description} onClick={post}>{busy?"Posting…":"Post both entities atomically"}</button>
+        <button type="button" disabled={loadingOwn||loadingCounterparty||busy||!counterparty||!form.InitiatingFinancialAccountPublicID||!form.InitiatingAmount||!form.CounterpartyAmount||!form.CounterpartyExpenseAccountPublicID||!form.Description} onClick={post}>{busy?"Posting…":"Post both entities atomically"}</button>
       </div>
     </div>
   </>;

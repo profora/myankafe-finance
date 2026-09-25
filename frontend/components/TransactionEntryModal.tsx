@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
 import type { Account, Entity, FinancialAccount, Transaction } from "@/components/types";
@@ -23,6 +23,8 @@ function emptyFiles(input:HTMLInputElement|null){
 
 export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}:Props){
   const dialogRef=useRef<HTMLDialogElement>(null);
+  const titleID=useId();
+  const descriptionID=useId();
   const fileRef=useRef<HTMLInputElement>(null);
   const [accounts,setAccounts]=useState<Account[]>([]);
   const [financial,setFinancial]=useState<FinancialAccount[]>([]);
@@ -30,6 +32,7 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [attachments,setAttachments]=useState<File[]>([]);
+  const [loadingRefs,setLoadingRefs]=useState(false);
 
   const [date,setDate]=useState(()=>dateInTimeZone(entity?.Timezone??"Asia/Yangon"));
   const [description,setDescription]=useState("");
@@ -50,20 +53,28 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
 
   useEffect(()=>{
     if(!open||!entity)return;
-    setError("");
+    let cancelled=false;
+    setLoadingRefs(true);setError("");
+    setAccounts([]);setFinancial([]);setContacts([]);
+    setFinancialID("");setToFinancialID("");setAccountID("");setContactID("");
+    setDescription("");setAmount("");setToAmount("");setAttachments([]);
+    emptyFiles(fileRef.current);
     setDate(dateInTimeZone(entity.Timezone));
     Promise.all([
       api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
       api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
       api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`)
     ]).then(([a,f,c])=>{
+      if(cancelled)return;
       const activeFinancial=f.items.filter(x=>x.Active);
       setAccounts(a.items);setFinancial(activeFinancial);setContacts(c.items.filter(x=>x.active));
       setFinancialID(activeFinancial[0]?.PublicID??"");
       setToFinancialID(activeFinancial[1]?.PublicID??activeFinancial[0]?.PublicID??"");
       const want=kind==="INCOME"?"INCOME":"EXPENSE";
-      setAccountID(a.items.find(x=>x.Postable&&x.Type===want)?.PublicID??"");
-    }).catch(e=>setError(e instanceof Error?e.message:String(e)));
+      setAccountID(a.items.find(x=>x.Postable&&x.Active&&x.Type===want)?.PublicID??"");
+    }).catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
+      .finally(()=>{if(!cancelled)setLoadingRefs(false)});
+    return()=>{cancelled=true};
   },[open,entity?.PublicID,kind]);
 
   const eligible=useMemo(()=>accounts.filter(a=>a.Active&&a.Postable&&a.Type===(kind==="INCOME"?"INCOME":"EXPENSE")),[accounts,kind]);
@@ -145,26 +156,26 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
   if(!kind)return null;
   const transfer=kind==="TRANSFER";
   const title=kind==="INCOME"?"New Income":kind==="EXPENSE"?"New Expense":"New Transfer";
-  const ready=transfer
+  const ready=!loadingRefs&&(transfer
     ? Boolean(description.trim()&&financialID&&toFinancialID&&financialID!==toFinancialID&&Number(amount)>0&&Number(toAmount)>0)
-    : Boolean(description.trim()&&financialID&&accountID&&Number(amount)>0);
+    : Boolean(description.trim()&&financialID&&accountID&&Number(amount)>0));
 
-  return <dialog ref={dialogRef} className="dialog entry-dialog" onCancel={e=>{e.preventDefault();resetAndClose()}}>
+  return <dialog ref={dialogRef} className="dialog entry-dialog" aria-labelledby={titleID} aria-describedby={descriptionID} aria-busy={loadingRefs||busy} onCancel={e=>{e.preventDefault();resetAndClose()}}>
     <div className="dialog-card">
       <div className="page-head compact-head">
-        <div><h2>{title}</h2><p>{transfer?"Move money between financial accounts.":"Compact daily entry; double-entry is created automatically."}</p></div>
+        <div><h2 id={titleID}>{title}</h2><p id={descriptionID}>{transfer?"Move money between financial accounts.":"Compact daily entry; double-entry is created automatically."}</p></div>
         <button className="secondary" type="button" onClick={resetAndClose}>Close</button>
       </div>
-      {error&&<div className="alert error">{error}</div>}
+      {error&&<div className="alert error" role="alert">{error}</div>}
       <div className="form">
         <div className="form-grid">
           <div className="field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
-          {!transfer&&<div className="field"><label>{kind==="EXPENSE"?"Paid from":"Received into"}</label><select value={financialID} onChange={e=>setFinancialID(e.target.value)}>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>}
-          {transfer&&<><div className="field"><label>From</label><select value={financialID} onChange={e=>setFinancialID(e.target.value)}>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div><div className="field"><label>To</label><select value={toFinancialID} onChange={e=>setToFinancialID(e.target.value)}>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div></>}
-          {!transfer&&<div className="field"><label>{kind==="INCOME"?"Income account":"Expense account"}</label><select value={accountID} onChange={e=>setAccountID(e.target.value)}>{eligible.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>}
+          {!transfer&&<div className="field"><label>{kind==="EXPENSE"?"Paid from":"Received into"}</label><select value={financialID} disabled={loadingRefs} onChange={e=>setFinancialID(e.target.value)}><option value="">{loadingRefs?"Loading accounts…":"Choose…"}</option>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>}
+          {transfer&&<><div className="field"><label>From</label><select value={financialID} onChange={e=>setFinancialID(e.target.value)}>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div><div className="field"><label>To</label><select value={toFinancialID} disabled={loadingRefs} onChange={e=>setToFinancialID(e.target.value)}>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div></>}
+          {!transfer&&<div className="field"><label>{kind==="INCOME"?"Income account":"Expense account"}</label><select value={accountID} disabled={loadingRefs} onChange={e=>setAccountID(e.target.value)}><option value="">{loadingRefs?"Loading accounts…":"Choose…"}</option>{eligible.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>}
           <div className="field"><label>{transfer?`From amount (${fromFinancial?.Currency??"—"})`:`Amount (${fromFinancial?.Currency??"—"})`}</label><input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0"/></div>
           {transfer&&<div className="field"><label>To amount ({toFinancial?.Currency??"—"})</label><input inputMode="decimal" value={toAmount} onChange={e=>setToAmount(e.target.value)} placeholder="0"/></div>}
-          {!transfer&&<div className="field"><label>{kind==="EXPENSE"?"Payee":"Payer"} <span className="muted">(optional)</span></label><select value={contactID} onChange={e=>setContactID(e.target.value)}><option value="">None</option>{contacts.map(c=><option key={c.id} value={c.id}>{c.display_name}</option>)}</select></div>}
+          {!transfer&&<div className="field"><label>{kind==="EXPENSE"?"Payee":"Payer"} <span className="muted">(optional)</span></label><select value={contactID} disabled={loadingRefs} onChange={e=>setContactID(e.target.value)}><option value="">{loadingRefs?"Loading contacts…":"None"}</option>{contacts.map(c=><option key={c.id} value={c.id}>{c.display_name}</option>)}</select></div>}
           <div className="field span-2"><label>Description</label><input autoFocus value={description} onChange={e=>setDescription(e.target.value)} placeholder={kind==="EXPENSE"?"e.g. Packaging and ribbons":kind==="INCOME"?"e.g. Flower arrangement sale":"e.g. Move cash to KBZPay"}/></div>
           <div className="field span-2"><label>Attachments <span className="muted">(optional, multiple)</span></label><input ref={fileRef} type="file" multiple accept="image/*,application/pdf,.csv,.txt,.docx,.xlsx" onChange={e=>setAttachments(Array.from(e.target.files??[]))}/>{attachments.length>0&&<div className="attachment-selection">{attachments.map(f=><span key={f.name+f.size} className="file-chip">{f.name}</span>)}</div>}</div>
         </div>
@@ -174,8 +185,8 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
         <div className="actions modal-actions">
           {!transfer&&<Link className="button secondary" href="/transactions/new" onClick={onClose}>Advanced / split entry</Link>}
           <span style={{flex:1}}/>
-          {!transfer&&<button className="secondary" disabled={busy||!ready} onClick={()=>saveIncomeExpense(false)}>Save draft</button>}
-          <button disabled={busy||!ready} onClick={()=>transfer?saveTransfer():saveIncomeExpense(true)}>{busy?"Saving…":transfer?"Post transfer":"Save & post"}</button>
+          {!transfer&&<button type="button" className="secondary" disabled={busy||!ready} onClick={()=>saveIncomeExpense(false)}>Save draft</button>}
+          <button type="button" disabled={busy||!ready} onClick={()=>transfer?saveTransfer():saveIncomeExpense(true)}>{busy?"Saving…":transfer?"Post transfer":"Save & post"}</button>
         </div>
       </div>
     </div>

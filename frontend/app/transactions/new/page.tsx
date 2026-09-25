@@ -25,6 +25,7 @@ export default function NewTransaction(){
   const [error,setError]=useState("");
   const [attachments,setAttachments]=useState<File[]>([]);
   const [busy,setBusy]=useState(false);
+  const [loadingRefs,setLoadingRefs]=useState(true);
 
   useEffect(()=>{
     if(typeof window!=="undefined"){
@@ -35,16 +36,27 @@ export default function NewTransaction(){
 
   useEffect(()=>{
     if(!entity)return;
+    let cancelled=false;
+    setLoadingRefs(true);setError("");setMessage("");
+    setAccounts([]);setFinancial([]);setContacts([]);
+    setFa("");setContact("");
+    setDate(dateInTimeZone(entity.Timezone));
+    setDescription("");
+    setSplits([{AccountPublicID:"",Amount:"",Description:""}]);
+    setAttachments([]);
     Promise.all([
       api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
       api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
       api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`)
     ]).then(([a,f,ct])=>{
+      if(cancelled)return;
       const activeFinancial=f.items.filter(x=>x.Active);
       setAccounts(a.items);setFinancial(activeFinancial);setContacts(ct.items.filter(x=>x.active));
-      setFa(x=>activeFinancial.some(item=>item.PublicID===x)?x:(activeFinancial[0]?.PublicID||""));
-    }).catch(e=>setError(e.message));
-  },[entity]);
+      setFa(activeFinancial[0]?.PublicID||"");
+    }).catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
+      .finally(()=>{if(!cancelled)setLoadingRefs(false)});
+    return()=>{cancelled=true};
+  },[entity?.PublicID]);
 
   const selectedFA=financial.find(x=>x.PublicID===fa);
   const eligible=accounts.filter(x=>x.Active&&x.Postable&&x.Type===type);
@@ -83,30 +95,30 @@ export default function NewTransaction(){
 
   return <>
     <div className="page-head"><div><h1>New Entry</h1><p>Simple income/expense entry backed by double-entry journals.</p></div></div>
-    {error&&<div className="alert error">{error}</div>}
-    {message&&<div className="alert success">{message}</div>}
-    <div className="card form">
+    {error&&<div className="alert error" role="alert">{error}</div>}
+    {message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
+    <div className="card form" aria-busy={loadingRefs}>
       <div className="form-grid">
         <div className="field"><label>Type</label><select value={type} onChange={e=>setType(e.target.value)}><option>EXPENSE</option><option>INCOME</option></select></div>
         <div className="field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
         <div className="field span-2"><label>Description</label><input value={description} onChange={e=>setDescription(e.target.value)}/></div>
-        <div className="field span-2"><label>{type==="EXPENSE"?"Paid from":"Received into"}</label><select value={fa} onChange={e=>setFa(e.target.value)}>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
-        <div className="field span-2"><label>{type==="EXPENSE"?"Payee":"Payer"}</label><select value={contact} onChange={e=>setContact(e.target.value)}><option value="">None</option>{contacts.map(x=><option key={x.id} value={x.id}>{x.display_name} · {x.contact_type}</option>)}</select></div>
+        <div className="field span-2"><label>{type==="EXPENSE"?"Paid from":"Received into"}</label><select value={fa} disabled={loadingRefs} onChange={e=>setFa(e.target.value)}><option value="">{loadingRefs?"Loading financial accounts…":"Choose…"}</option>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
+        <div className="field span-2"><label>{type==="EXPENSE"?"Payee":"Payer"}</label><select value={contact} disabled={loadingRefs} onChange={e=>setContact(e.target.value)}><option value="">{loadingRefs?"Loading contacts…":"None"}</option>{contacts.map(x=><option key={x.id} value={x.id}>{x.display_name} · {x.contact_type}</option>)}</select></div>
       </div>
       <div><strong>Split</strong><p className="muted">One line for a normal entry; add more lines to split by category.</p></div>
       {splits.map((sp,i)=><div className="split-row" key={i}>
-        <div className="field"><label>Account</label><select value={sp.AccountPublicID} onChange={e=>update(i,"AccountPublicID",e.target.value)}><option value="">Choose…</option>{eligible.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
+        <div className="field"><label>Account</label><select value={sp.AccountPublicID} disabled={loadingRefs} onChange={e=>update(i,"AccountPublicID",e.target.value)}><option value="">{loadingRefs?"Loading accounts…":"Choose…"}</option>{eligible.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
         <div className="field"><label>Amount</label><input inputMode="decimal" value={sp.Amount} onChange={e=>update(i,"Amount",e.target.value)}/></div>
         <div className="field"><label>Line description</label><input value={sp.Description} onChange={e=>update(i,"Description",e.target.value)}/></div>
-        <button className="danger" disabled={splits.length===1} onClick={()=>setSplits(xs=>xs.filter((_,n)=>n!==i))}>×</button>
+        <button type="button" className="danger" disabled={splits.length===1} onClick={()=>setSplits(xs=>xs.filter((_,n)=>n!==i))}>×</button>
       </div>)}
-      <div className="actions"><button className="secondary" onClick={()=>setSplits(xs=>[...xs,{AccountPublicID:"",Amount:"",Description:""}])}>+ Split</button><strong style={{marginLeft:"auto"}}>{total.toLocaleString()} {selectedFA?.Currency}</strong></div>
+      <div className="actions"><button type="button" className="secondary" disabled={loadingRefs} onClick={()=>setSplits(xs=>[...xs,{AccountPublicID:"",Amount:"",Description:""}])}>+ Split</button><strong style={{marginLeft:"auto"}}>{total.toLocaleString()} {selectedFA?.Currency}</strong></div>
       <div className="field">
         <label>Attachments</label>
         <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,text/csv,.docx,.xlsx" onChange={e=>setAttachments(Array.from(e.target.files??[]))}/>
         <span className="muted">{attachments.length?attachments.map(x=>x.name).join(", "):"Optional. Select multiple receipts/invoices; files upload before posting."}</span>
       </div>
-      <div className="actions"><button disabled={busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(false)}>{busy?"Saving…":"Save draft"}</button><button disabled={busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(true)}>{busy?"Saving…":"Save & post"}</button></div>
+      <div className="actions"><button type="button" disabled={loadingRefs||busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(false)}>{busy?"Saving…":"Save draft"}</button><button type="button" disabled={loadingRefs||busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(true)}>{busy?"Saving…":"Save & post"}</button></div>
     </div>
   </>;
 }

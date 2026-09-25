@@ -185,3 +185,12 @@ Authentication and R2 receipt storage are no longer placeholders. Do not replace
 - transaction detail clears prior-entity detail before reload and exposes a non-stale loading state
 - Security session listing, System diagnostics, and Transaction Locking now distinguish loading from empty/unavailable state and announce operational results/errors
 - mutation semantics and accounting authorization were not changed
+
+
+## 2026-09-25 entry-workflow reference-data hardening
+
+- income/expense, transfer, manual-journal and inter-entity entry screens now reset entity-specific selections and dates when the active entity changes
+- posting actions remain disabled until the selected entity's accounts/contacts/financial accounts are loaded
+- reference selectors show explicit loading/choose states instead of appearing silently empty
+- compact transaction-entry dialog now has labelled dialog semantics, accessible errors, and the same reference-data readiness guard
+- this prevents accidental reuse of stale account IDs across entity switches without changing server accounting rules
