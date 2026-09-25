@@ -5,23 +5,24 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { api } from "@/lib/api";
 import { EntityProvider, useEntity } from "./EntityContext";
+import { canCorrectPostedAccounting, canLockAccounting, canManageEntitySettings, canManagePlatformUsers, canOperateLedger, canViewAudit } from "@/lib/permissions";
 
 const nav = [
-  ["/", "Dashboard"],
-  ["/transactions", "Transactions"],
-  ["/transfers", "Transfers"],
-  ["/inter-entity", "Inter-Entity"],
-  ["/contacts", "Contacts"],
-  ["/accounts", "Chart of Accounts"],
-  ["/financial-accounts", "Cash / Bank"],
-  ["/exchange-rates", "Exchange Rates"],
-  ["/manual-journal", "Manual Journal"],
-  ["/reports", "Reports"],
-  ["/audit", "Audit Log"],
-  ["/locking", "Transaction Locking"],
-  ["/settings/entities", "Entities"],
-  ["/settings/users", "Users & Access"],
-  ["/settings/security", "Security"],
+  {href:"/",label:"Dashboard"},
+  {href:"/transactions",label:"Transactions"},
+  {href:"/transfers",label:"Transfers",show:canOperateLedger},
+  {href:"/inter-entity",label:"Inter-Entity",show:canOperateLedger},
+  {href:"/contacts",label:"Contacts"},
+  {href:"/accounts",label:"Chart of Accounts"},
+  {href:"/financial-accounts",label:"Cash / Bank"},
+  {href:"/exchange-rates",label:"Exchange Rates"},
+  {href:"/manual-journal",label:"Manual Journal",show:canCorrectPostedAccounting},
+  {href:"/reports",label:"Reports"},
+  {href:"/audit",label:"Audit Log",show:canViewAudit},
+  {href:"/locking",label:"Transaction Locking",show:canLockAccounting},
+  {href:"/settings/entities",label:"Entities",show:canManageEntitySettings},
+  {href:"/settings/users",label:"Users & Access",show:canManagePlatformUsers},
+  {href:"/settings/security",label:"Security"},
 ];
 
 type Me={user:{public_id:string;username:string;display_name:string}};
@@ -51,7 +52,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </span>
         </Link>
         <nav>
-          {nav.map(([href, label]) => (
+          {nav.filter(item=>!item.show||item.show(entity?.Role)).map(({href,label}) => (
             <Link key={href} className={pathname === href || (href!=="/"&&pathname.startsWith(href+"/")) ? "active" : ""} href={href} onClick={()=>setMobileNavOpen(false)}>{label}</Link>
           ))}
         </nav>
@@ -75,7 +76,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             <div className="top-meta">
               {me&&<strong>{me.display_name}</strong>}
               {me&&entity&&" · "}
-              {entity ? `${entity.FunctionalCurrency} · FY ${entity.FiscalMonth}/${entity.FiscalDay}` : "No entity"}
+              {entity ? `${entity.Role} · ${entity.FunctionalCurrency} · FY ${entity.FiscalMonth}/${entity.FiscalDay}` : "No entity"}
             </div>
             <button className="secondary" onClick={signOut}>Sign out</button>
           </div>
