@@ -90,8 +90,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate production Compose
         run: docker compose --env-file .env.production.example -f docker-compose.prod.yml config >/dev/null
-      - name: Validate backup script syntax
-        run: sh -n scripts/postgres-backup.sh
+      - name: Validate operations script syntax
+        run: sh -n scripts/postgres-backup.sh scripts/deploy-production.sh
       - name: Validate Caddy template
         run: >-
           docker run --rm

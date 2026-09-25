@@ -50,11 +50,10 @@ From the checked-out release commit:
 ```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml config
 
-docker compose --env-file .env.production -f docker-compose.prod.yml \
-  up -d --build
+./scripts/deploy-production.sh
 ```
 
-The `migrate` service runs Goose first. The API starts only after migrations complete and the web service starts only after API readiness is healthy.
+The deployment script builds both images, runs Goose explicitly, replaces the API, waits for `/ready`, and only then replaces the web container. If API readiness fails, the script leaves the existing web container in place and exits with API logs.
 
 Verify locally on the host:
 
@@ -121,7 +120,7 @@ Store backups encrypted and off-host. Periodically restore a backup into a separ
 2. Take/verify a recent database backup and provider PITR status.
 3. Pull/checkout the exact release SHA.
 4. Review pending migrations.
-5. Run Compose build/start; migrations execute before API replacement.
+5. Run `./scripts/deploy-production.sh`; it applies forward migrations before API replacement and waits for readiness before replacing web.
 6. Verify `/ready`, login, transaction list, one read-only report, and R2 diagnostics.
 7. Record the deployed Git SHA.
 

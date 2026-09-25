@@ -114,7 +114,7 @@ Do not merge if CI is red. CI run #772 passed the complete frontend/backend/cont
    - confirm the chosen reverse-proxy request-size limits allow the configured attachment size
 
 2. **Production operations**
-   - production Compose, secure env template, Caddy/TLS example, migration/deployment runbook, and logical backup script are now committed and CI-validated
+   - production Compose, secure env template, Caddy/TLS example, explicit migrate→API-ready→web deployment script/runbook, and logical backup script are now committed and CI-validated
    - still configure real PostgreSQL/R2/bootstrap secrets on the target host; never commit filled `.env.production`
    - keep `AUTH_COOKIE_SECURE=true` and set exact production `CORS_ORIGIN`
    - enable provider PostgreSQL backups/PITR and restore-test them; the logical dump script is only an additional portable backup
