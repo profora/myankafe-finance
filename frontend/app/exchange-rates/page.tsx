@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { canConfigureAccounting } from "@/lib/permissions";
 
 type Rate={
   id:string;
@@ -19,6 +20,7 @@ type Rate={
 
 export default function ExchangeRates(){
   const {entity}=useEntity();
+  const mayConfigure=canConfigureAccounting(entity?.Role);
   const [items,setItems]=useState<Rate[]>([]);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
@@ -79,7 +81,7 @@ export default function ExchangeRates(){
     {error&&<div className="alert error">{error}</div>}
     {message&&<div className="alert success">{message}</div>}
 
-    {editing&&<div className="card form" style={{marginBottom:16}}>
+    {mayConfigure&&editing&&<div className="card form" style={{marginBottom:16}}>
       <div className="page-head" style={{marginBottom:0}}><div><h1 style={{fontSize:20}}>Correct unused rate</h1><p>Once used in posted accounting, the database permanently locks the snapshot.</p></div><button className="secondary" onClick={()=>setEditing(null)}>Cancel</button></div>
       <div className="form-grid">
         <div className="field"><label>Date</label><input type="date" value={edit.RateDate} onChange={e=>setEdit({...edit,RateDate:e.target.value})}/></div>
@@ -91,7 +93,7 @@ export default function ExchangeRates(){
       <button disabled={busy||!edit.Rate} onClick={saveEdit}>{busy?"Saving…":"Save correction"}</button>
     </div>}
 
-    <div className="card form" style={{marginBottom:16}}>
+    {mayConfigure&&<div className="card form" style={{marginBottom:16}}>
       <h3>New manual rate</h3>
       <div className="form-grid">
         <div className="field"><label>Date</label><input type="date" value={form.rate_date} onChange={e=>setForm({...form,rate_date:e.target.value})}/></div>
@@ -101,10 +103,12 @@ export default function ExchangeRates(){
         <div className="field span-2"><label>Source reference</label><input value={form.source_reference} onChange={e=>setForm({...form,source_reference:e.target.value})}/></div>
       </div>
       <button disabled={busy||!form.rate} onClick={create}>Save rate</button>
-    </div>
+    </div>}
+
+    {!mayConfigure&&<div className="alert">Your {entity?.Role??"VIEWER"} role can view stored FX snapshots but cannot create or correct rates.</div>}
 
     <div className="table-wrap"><table><thead><tr><th>Date</th><th>From</th><th>To</th><th>Rate</th><th>Source</th><th>Reference</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=>{
-      const editable=x.source==="MANUAL"&&!x.used;
+      const editable=mayConfigure&&x.source==="MANUAL"&&!x.used;
       return <tr key={x.id}>
         <td>{x.rate_date}</td><td>{x.from_currency}</td><td>{x.to_currency}</td><td>{x.rate}</td><td>{x.source}</td><td>{x.source_reference??"—"}</td>
         <td><span className={`badge ${x.used?"POSTED":""}`}>{x.used?"USED · LOCKED":"UNUSED"}</span></td>
