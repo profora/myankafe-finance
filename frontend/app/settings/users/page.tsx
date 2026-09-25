@@ -9,7 +9,10 @@ type User={id:string;username:string;display_name:string;email?:string;status:st
 type Member={id:string;username:string;display_name:string;email?:string;role:string};
 
 export default function Users(){
-  const {entity}=useEntity();
+  const {entities,entity}=useEntity();
+  const ownerAnywhere=entities.some(x=>x.Role==="OWNER");
+  const mayViewEntityAccess=entity?.Role==="OWNER"||entity?.Role==="ADMIN";
+  const mayManageEntityAccess=entity?.Role==="OWNER";
   const [users,setUsers]=useState<User[]>([]);
   const [members,setMembers]=useState<Member[]>([]);
   const [err,setErr]=useState("");
@@ -26,9 +29,10 @@ export default function Users(){
 
   const load=()=>{
     setErr("");
+    if(!ownerAnywhere){setUsers([]);setMembers([]);return}
     Promise.all([
       api<{items:User[]}>("/users"),
-      entity?api<{items:Member[]}>(`/entities/${entity.PublicID}/users`):Promise.resolve({items:[]})
+      entity&&mayViewEntityAccess?api<{items:Member[]}>(`/entities/${entity.PublicID}/users`):Promise.resolve({items:[]})
     ]).then(([u,m])=>{
       setUsers(u.items);
       setMembers(m.items);
@@ -38,7 +42,7 @@ export default function Users(){
     }).catch(e=>setErr(e instanceof Error?e.message:String(e)));
   };
 
-  useEffect(load,[entity?.PublicID]);
+  useEffect(load,[entity?.PublicID,ownerAnywhere,mayViewEntityAccess]);
 
   async function create(){
     setErr("");setMsg("");
@@ -106,8 +110,9 @@ export default function Users(){
     </div>
     {err&&<div className="alert error">{err}</div>}
     {msg&&<div className="alert success">{msg}</div>}
+    {!ownerAnywhere&&<div className="alert error">Platform user administration requires OWNER access on at least one entity.</div>}
 
-    <div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(360px,1fr))",marginBottom:16}}>
+    {ownerAnywhere&&<div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(360px,1fr))",marginBottom:16}}>
       <div className="card form">
         <h3>New user</h3>
         <div className="field">
@@ -139,7 +144,7 @@ export default function Users(){
         <button disabled={!f.Username||!f.DisplayName||f.Password.length<12} onClick={create}>Create user</button>
       </div>
 
-      <div className="card form">
+      {mayManageEntityAccess&&<div className="card form">
         <h3>Role for {entity?.Name}</h3>
         <div className="field">
           <label>User</label>
@@ -154,7 +159,7 @@ export default function Users(){
           </select>
         </div>
         <button disabled={!assign.user_id||!entity} onClick={setRole}>Set entity role</button>
-      </div>
+      </div>}
 
       <div className="card form">
         <h3>Reset user password</h3>
@@ -180,9 +185,9 @@ export default function Users(){
         </div>
         <button className="danger" disabled={!reset.user_id||reset.password.length<12} onClick={resetPassword}>Reset password & revoke sessions</button>
       </div>
-    </div>
+    </div>}
 
-    <div className="page-head" style={{marginTop:24}}><div><h1 style={{fontSize:20}}>Platform users</h1><p>Disable access without deleting accounting history or role assignments.</p></div></div>
+    {ownerAnywhere&&<><div className="page-head" style={{marginTop:24}}><div><h1 style={{fontSize:20}}>Platform users</h1><p>Disable access without deleting accounting history or role assignments.</p></div></div>
     <div className="table-wrap" style={{marginBottom:18}}>
       <table>
         <thead><tr><th>User</th><th>Username</th><th>Email</th><th>Status</th><th></th></tr></thead>
@@ -196,13 +201,13 @@ export default function Users(){
       </table>
     </div>
 
-    <div className="page-head"><div><h1 style={{fontSize:20}}>Access for {entity?.Name}</h1><p>Current active entity-role assignments.</p></div></div>
+    {mayViewEntityAccess&&<><div className="page-head"><div><h1 style={{fontSize:20}}>Access for {entity?.Name}</h1><p>Current active entity-role assignments.</p></div></div>
     <div className="table-wrap">
       <table>
         <thead><tr><th>User</th><th>Username</th><th>Role</th><th>Email</th><th></th></tr></thead>
-        <tbody>{members.map(x=><tr key={x.id}><td>{x.display_name}</td><td>{x.username}</td><td>{x.role}</td><td>{x.email||"—"}</td><td><button className="danger compact" onClick={()=>setAccessTarget(x)}>Remove access</button></td></tr>)}</tbody>
+        <tbody>{members.map(x=><tr key={x.id}><td>{x.display_name}</td><td>{x.username}</td><td>{x.role}</td><td>{x.email||"—"}</td><td>{mayManageEntityAccess?<button className="danger compact" onClick={()=>setAccessTarget(x)}>Remove access</button>:<span className="muted">ADMIN view</span>}</td></tr>)}</tbody>
       </table>
-    </div>
+    </div></>}</>}
 
     <ConfirmDialog
       open={Boolean(statusTarget)}
