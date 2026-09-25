@@ -34,6 +34,10 @@ PR: `#1 feat: V1 multi-entity accounting foundation`
 - private Cloudflare R2 transaction attachments
 - multi-file upload, ordered metadata, reorder, audited soft-removal, and authenticated content streaming
 - searchable/filterable transaction list with journal-derived functional-currency totals and running net
+- structured JSON request/lifecycle logs with request IDs and latency/status fields
+- Prometheus-compatible `/metrics` with production bearer protection
+- OWNER-only System diagnostics page
+- audited R2 write/read/delete acceptance probe
 - database integrity triggers for entity boundaries, balance, lifecycle, locks, FX, and posted immutability
 
 ### Frontend
@@ -94,8 +98,10 @@ Tests now cover:
 - R2 configuration/canonical-path helpers
 - username/password session lifecycle (login/me/logout)
 - draft edit/cancel lifecycle and locked-date rejection
+- operational metrics authentication/rendering
+- R2 write/read/delete probe behavior
 
-Do not merge if CI is red. CI run #727 passed the complete frontend/backend/container gate on the implementation head after migration 00012 and the draft/role work.
+Do not merge if CI is red. CI run #772 passed the complete frontend/backend/container gate on the implementation head after the operational logging/metrics and System/R2-probe work.
 
 ## Tasks Cursor should do next
 
@@ -118,7 +124,8 @@ Do not merge if CI is red. CI run #727 passed the complete frontend/backend/cont
    - exact production `CORS_ORIGIN`
    - PostgreSQL backups/PITR
    - migration/deployment runbook
-   - structured logs/metrics and alerting
+   - ship the already-structured JSON logs to the chosen log platform
+   - scrape the already-implemented `/metrics` endpoint and configure alerting
 
 4. **Polish without changing accounting semantics**
    - mobile navigation drawer is already implemented; do final device QA
@@ -140,6 +147,8 @@ Do not merge if CI is red. CI run #727 passed the complete frontend/backend/cont
 
 - `/health` — liveness only
 - `/ready` — PostgreSQL readiness plus attachment-storage configuration state
+- `/metrics` — Prometheus-compatible HTTP counters/latency; hidden in production unless `METRICS_BEARER_TOKEN` is set
+- OWNER `Settings → System` can run an audited R2 write/read/delete probe
 - Compose starts the web service only after API readiness is healthy
 
 ## Do not reimplement
