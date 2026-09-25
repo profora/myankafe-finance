@@ -32,6 +32,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const { entities, entity, setEntityID, error } = useEntity();
   const [me,setMe]=useState<Me["user"]|null>(null);
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
+  const ownerAnywhere=entities.some(x=>x.Role==="OWNER");
 
   useEffect(()=>{api<Me>("/auth/me").then(x=>setMe(x.user)).catch(()=>{})},[]);
   useEffect(()=>{setMobileNavOpen(false)},[pathname]);
@@ -52,7 +53,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </span>
         </Link>
         <nav>
-          {nav.filter(item=>!item.show||item.show(entity?.Role)).map(({href,label}) => (
+          {nav.filter(item=>item.href==="/settings/users"?ownerAnywhere:(!item.show||item.show(entity?.Role))).map(({href,label}) => (
             <Link key={href} className={pathname === href || (href!=="/"&&pathname.startsWith(href+"/")) ? "active" : ""} href={href} onClick={()=>setMobileNavOpen(false)}>{label}</Link>
           ))}
         </nav>
