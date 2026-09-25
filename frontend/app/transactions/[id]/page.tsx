@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import TransactionAttachments from "@/components/TransactionAttachments";
 import DraftTransactionActions from "@/components/DraftTransactionActions";
+import { canOperateLedger } from "@/lib/permissions";
 
 type JournalLine={
   line_no:number;
@@ -52,6 +53,7 @@ type Detail={
 
 export default function TransactionDetailPage(){
   const {entity}=useEntity();
+  const mayOperate=canOperateLedger(entity?.Role);
   const params=useParams<{id:string}>();
   const id=Array.isArray(params.id)?params.id[0]:params.id;
   const [detail,setDetail]=useState<Detail|null>(null);
@@ -81,7 +83,7 @@ export default function TransactionDetailPage(){
     </div>
     {error&&<div className="alert error">{error}</div>}
     {detail&&<>
-      {detail.status==="DRAFT"&&<div className="card draft-management-card">
+      {mayOperate&&detail.status==="DRAFT"&&<div className="card draft-management-card">
         <div>
           <strong>Draft transaction</strong>
           <p className="muted">This transaction has no accounting effect until posted. You can edit or cancel it while its date remains in an open period.</p>
@@ -96,7 +98,7 @@ export default function TransactionDetailPage(){
         <div className="card"><div className="muted">Public ID</div><div style={{fontFamily:"monospace",fontSize:12,marginTop:8}}>{detail.id}</div></div>
       </div>
 
-      <TransactionAttachments entityID={entity!.PublicID} transactionID={detail.id}/>
+      <TransactionAttachments entityID={entity!.PublicID} transactionID={detail.id} canUpload={mayOperate} canManage={mayOperate}/>
 
       {(detail.original_transaction_id||detail.reversal_transaction_id||detail.void_reason)&&<div className="card" style={{marginTop:16}}>
         <h3>Correction history</h3>
