@@ -5,23 +5,23 @@ Recommendation: **NOT READY FOR FINAL HUMAN REVIEW**
 
 PR #1 remains **Draft** and was not merged. No force-push was performed.
 
-Finance containers were not started. Existing MyanKafe and Royal Masterpiece services were inspected before and after this session and remained healthy. No reverse-proxy configuration was changed.
+Finance is running on the shared VPS, bound to loopback only. Existing MyanKafe and Royal Masterpiece services stayed healthy. The public hostname and the Finance R2 bucket are not accepted yet, so this is not a production cutover.
 
 ## Environment
 
 ```text
 Hostname: rm-floral-platform (root@159.223.48.7)
-Deployment path: /opt/myankafe-finance (source tree only; no production env file and no running containers)
+Deployment path: /opt/myankafe-finance
 Git branch: feat/v1-accounting-foundation
-Git SHA: application inspected at 5323af47ae9049e22fff2dc552e5996c2f3dd898; this report is a later commit on the same branch
+Git SHA: tip of feat/v1-accounting-foundation that contains migration 00013, the Goose image change, and this report
 Docker version: 29.7.2
 Compose version: v5.5.0
-Reverse proxy: Cloudflare Tunnel (cloudflared 2026.8.2). Nothing listens on ports 80 or 443. Caddy and Nginx are not the public proxy.
-API loopback port: 8180 planned and confirmed free; not bound
-Web loopback port: 3100 planned and confirmed free; not bound
+Reverse proxy: Cloudflare Tunnel (cloudflared 2026.8.2). Nothing listens on ports 80 or 443.
+API loopback port: 127.0.0.1:8180 (healthy)
+Web loopback port: 127.0.0.1:3100 (login returns 200)
 ```
 
-Intended public URL remains `https://finance.myankafe.com`, with the API on the same origin at `/api/v1/...`.
+Intended public URL remains `https://finance.myankafe.com`, with the API on the same origin at `/api/v1/...`. `finance.myankafe.com` does not resolve (`DNS_NONE`).
 
 ### How the VPS is actually wired
 
@@ -34,8 +34,10 @@ Intended public URL remains `https://finance.myankafe.com`, with the API on the 
 | MyanKafe admin | `127.0.0.1:3010` | `admin.myankafe.com` | same |
 | MyanKafe legacy staff web | `127.0.0.1:3011` | `staff.myankafe.com` | same |
 | MyanKafe customer web | `127.0.0.1:3012` | `web.myankafe.com` | same |
+| Finance API | `127.0.0.1:8180` | not published | not in either ingress |
+| Finance web | `127.0.0.1:3100` | not published | not in either ingress |
 
-Both tunnels are remotely managed (`cloudflared tunnel run --token-file`). Ingress is not a local Caddyfile. Adding Finance requires a new public hostname on the MyanKafe tunnel, with path rules in this order:
+Both tunnels are remotely managed. No local proxy config was changed. Adding Finance requires a new public hostname on the MyanKafe tunnel, with path rules in this order:
 
 ```text
 finance.myankafe.com   /api/*   -> http://127.0.0.1:8180
@@ -44,7 +46,11 @@ finance.myankafe.com   (other)  -> http://127.0.0.1:3100
 
 `/health`, `/ready`, and `/metrics` must stay off that public hostname. The browser calls `NEXT_PUBLIC_API_URL` directly; Next.js does not proxy `/api`.
 
-Host resources at inspection: 1 vCPU, 1.9 GiB RAM, about 1.1 GiB available, 405 MiB swap in use, disk 43 GiB used / 5.4 GiB free (89%). Docker had no running containers. The live apps are systemd/host processes. Building the Finance images on this droplet can pressure memory; do it only while watching the existing services.
+Host after the image build and a build-cache prune: 1 vCPU, 1.9 GiB RAM, about 1.3 GiB available, swap in use, disk about 43 GiB used / 4.9 GiB free (90%). Live sibling apps are systemd/host processes. Finance containers are the only Compose services running.
+
+Production env file is `/opt/myankafe-finance/.env.production`, mode `600`. It is not in Git. `APP_ENV=production`, `AUTH_MODE=password`, `AUTH_COOKIE_SECURE=true`, `CORS_ORIGIN=https://finance.myankafe.com`, and `NEXT_PUBLIC_API_URL=https://finance.myankafe.com/api/v1`. `ATTACHMENT_MAX_MB=20`. A metrics bearer token of 64 hex characters was generated on the server and stored only in that file.
+
+The first OWNER was bootstrapped with the existing command. Username is `owner`. The temporary password is `BOOTSTRAP_PASSWORD` in the server env file. Compose does not pass `BOOTSTRAP_*` into the running API. After the owner signs in and changes the password, remove `BOOTSTRAP_PASSWORD` from that file.
 
 ## Database
 
@@ -52,176 +58,163 @@ Host resources at inspection: 1 vCPU, 1.9 GiB RAM, about 1.1 GiB available, 405 
 Managed DB provider if identifiable: DigitalOcean Managed PostgreSQL (same cluster already used by MyanKafe and Royal Masterpiece)
 DB host: private-rm-myankafe-db-do-user-43112147-0.h.db.ondigitalocean.com
 DB port: 25060
-Private address: 10.104.0.3 (resolves and accepts connections from this VPS)
-DB name: not created
-Application DB username: not created
-SSL mode: sibling applications use sslmode=require; no provider CA file was present to switch Finance to verify-full
-Migration result: not run
+Private address: 10.104.0.3 (reachable from this VPS)
+DB name: myankafe-finance
+Application DB username: myankafe-finance-admin
+SSL mode: sslmode=require (no provider CA file was present for verify-full)
+Migration result: Goose versions 00001 through 00013 applied; goose_db_version max is 13
 PITR status: not verified in the DigitalOcean console (login was required). Sibling runbooks treat this cluster's provider backups/PITR as the primary recovery mechanism.
 Automated backup status: not verified in the provider console this session
-Logical backup test: not run; there is no Finance database to dump. Other applications' databases were not dumped.
-Restore drill: not performed
+Logical backup test: PASS. Custom-format dump /var/backups/myankafe-finance/myankafe-finance-20260925T085939Z.dump, mode restricted by the script umask, pg_restore --list succeeded.
+Restore drill: PASS. Restored into disposable database myankafe_finance_restore_drill, which then showed goose version 13, 3 entities, and 13 transactions. That database was dropped. Production was not overwritten.
 ```
 
-Databases visible on the cluster: `_dodb`, `defaultdb`, `myankafe-db`, `rm-floral-db`. There is no Finance database.
+`doadmin` is not a superuser. It can create databases and roles. It was used to set the Finance database owner to `myankafe-finance-admin` and to create and drop the disposable restore database. The running API uses `myankafe-finance-admin`, not `doadmin`. `doadmin` is not in the Finance env file.
 
-Role facts, read with the existing MyanKafe application login:
-
-| Role | Superuser | Create DB | Create role | Login |
-| --- | --- | --- | --- | --- |
-| `doadmin` | no | yes | yes | yes |
-| `myankafe-admin` | no | no | no | yes |
-| `rm-floral-admin` | no | no | no | yes |
-
-`myankafe-admin` cannot create the Finance database or role. The `doadmin` password is not stored on the VPS, and it was not supplied for this session. No temporary administrator credential was used.
-
-`max_connections` is 25. A point-in-time count showed about 23 sessions, including Royal Masterpiece (9), MyanKafe (2), and provider/system sessions. Finance must set `pool_max_conns=2` on its `DATABASE_URL`. The API uses pgx defaults, which would open up to 4 connections on this 1-CPU host.
-
-Required setup, once `doadmin` is available, before the application is started:
-
-1. Create a dedicated database, for example `myankafe_finance`. Do not migrate into `myankafe-db` or `rm-floral-db`.
-2. Create a dedicated login role. Do not run Finance as `doadmin`, `myankafe-admin`, or `rm-floral-admin`.
-3. Make that role the database owner so Goose can create tables, functions, and triggers.
-4. Put only that role in `/opt/myankafe-finance/.env.production` with mode `600`, `sslmode=require`, and `pool_max_conns=2`.
-5. Run `scripts/deploy-production.sh`. It migrates, starts the API, waits for `/ready`, and only then replaces web.
-
-A disposable restore drill needs a second empty database created by `doadmin`. Restore the custom-format dump there, run `pg_restore --list` and a schema/row check, then drop only that disposable database.
+`DATABASE_URL` includes `pool_max_conns=2`. Goose rejects that parameter, so `GOOSE_DATABASE_URL` is the same DSN without pool settings. `max_connections` on the cluster is 25.
 
 ## R2
 
 ```text
-Endpoint hostname: not supplied. The repository example uses the same Cloudflare account as the existing tunnels (dbc116a454dda65b1ab21ad7744e9473.r2.cloudflarestorage.com).
-Bucket: not supplied
-Configured: FAIL
-System probe: BLOCKED
+Endpoint hostname: dbc116a454dda65b1ab21ad7744e9473.r2.cloudflarestorage.com
+Bucket: myankafe-finance (included in the endpoint path; R2_BUCKET is empty so object keys are not double-prefixed)
+Configured: yes, backend-only, in the server env file
+System probe: FAIL (HTTP 503; R2 PUT returned 403 AccessDenied)
 Image upload: BLOCKED
 PDF upload: BLOCKED
 Preview: BLOCKED
 Delete: BLOCKED
 ```
 
-No R2 access key or secret was supplied, and the existing product-media keys were not copied. Credentials stay backend-only when they are added. The bucket must remain private.
+The Royal Masterpiece conversation-media and product-media key pairs can read their own buckets and both receive AccessDenied on `myankafe-finance`. The Finance probe fails closed. The bucket was not made public. A token scoped to this bucket is still required. Browser attachment checks were not run.
 
 ## Acceptance matrix
 
 | Area | Result |
 | --- | --- |
-| Authentication | BLOCKED |
-| Sessions | BLOCKED |
-| Entity switching | BLOCKED |
+| Authentication | PASS |
+| Sessions | PASS |
+| Entity switching | PASS |
 | Dashboard | BLOCKED |
-| Chart of Accounts | BLOCKED |
-| Financial Accounts | BLOCKED |
-| Contacts | BLOCKED |
-| Income | BLOCKED |
-| Expense | BLOCKED |
-| Split transactions | BLOCKED |
-| Draft editing | BLOCKED |
-| Draft cancellation | BLOCKED |
+| Chart of Accounts | PASS |
+| Financial Accounts | PASS |
+| Contacts | PASS |
+| Income | PASS |
+| Expense | PASS |
+| Split transactions | PASS |
+| Draft editing | PASS |
+| Draft cancellation | PASS |
 | Attachments | BLOCKED |
-| Transfers | BLOCKED |
+| Transfers | PASS |
 | Cross-currency transfer | BLOCKED |
-| Manual journal | BLOCKED |
-| Exchange rates | BLOCKED |
-| Inter-entity | BLOCKED |
-| Accounting locking | BLOCKED |
-| OWNER unlock | BLOCKED |
-| Posted reversal | BLOCKED |
+| Manual journal | PASS |
+| Exchange rates | PASS |
+| Inter-entity | PASS |
+| Accounting locking | PASS |
+| OWNER unlock | PASS |
+| Posted reversal | PASS |
 | Transaction search/filter | BLOCKED |
-| P&L | BLOCKED |
-| Balance Sheet | BLOCKED |
-| Trial Balance | BLOCKED |
-| General Ledger | BLOCKED |
-| Account Ledger | BLOCKED |
-| Cash Movement | BLOCKED |
-| Inter-Entity Balances | BLOCKED |
-| CSV exports | BLOCKED |
-| Audit log | BLOCKED |
-| User management | BLOCKED |
-| Role enforcement | BLOCKED |
+| P&L | PASS |
+| Balance Sheet | PASS |
+| Trial Balance | PASS |
+| General Ledger | PASS |
+| Account Ledger | PASS |
+| Cash Movement | PASS |
+| Inter-Entity Balances | PASS |
+| CSV exports | PASS |
+| Audit log | PASS |
+| User management | PASS |
+| Role enforcement | PASS |
 | Desktop responsive QA | BLOCKED |
 | Tablet responsive QA | BLOCKED |
 | Mobile responsive QA | BLOCKED |
 | Keyboard accessibility | BLOCKED |
-| R2 acceptance | BLOCKED |
-| Backup | BLOCKED |
-| Restore drill | BLOCKED |
-| Metrics protection | BLOCKED |
+| R2 acceptance | FAIL |
+| Backup | PASS |
+| Restore drill | PASS |
+| Metrics protection | PASS |
 | Public HTTPS | BLOCKED |
 | Existing VPS services unaffected | PASS |
 
-GitHub CI for `5323af47ae9049e22fff2dc552e5996c2f3dd898` was green (backend, frontend, operations-config, containers) before this report. That is repository CI, not a deployed-environment acceptance pass.
+Checked on the loopback API with bearer sessions, because a `Secure` cookie is not sent to `http://127.0.0.1`. Set-Cookie on login is HttpOnly and Secure. Login uses the same error for an unknown user and a wrong password. Logout is 204 and the next `/auth/me` is 401. `/metrics` is 401 without the bearer token and 200 with it. The token was not printed.
 
-Application workflows were not exercised because the API cannot start without `DATABASE_URL`, and no Finance database exists. No TEST accounting records were created. Nothing posted was deleted.
+Three bootstrap entities exist: `MYANKAFE`, `ROYAL_MASTERPIECE`, and `PERSONAL`. Using another entity's account on a post is rejected. A same-account transfer is rejected. An unbalanced journal is rejected. A balanced journal posts. A simple expense journal is balanced. Draft save, edit, and post work, and a later edit of the posted transaction is rejected. Draft cancel sets `VOIDED` and does not hard-delete. Reversal leaves the original amounts, marks the original transaction `VOIDED` and its journal `REVERSED`, and posts a separate reversal transaction. A lock through 2026-01-31 blocks a 2026-01-15 entry. An accountant cannot unlock. The owner can. A viewer cannot write. A bookkeeper can create a draft. User list payloads do not include password hashes. A transaction CSV for the active entity returned 200 and contained TEST rows. Account ledger for a TEST account returned 200.
+
+Two sessions for user `test-session-rotate` were created. Revoking the other session returned `revoked: 1`; that session then received 401 and the current session stayed 200. Changing that user's password invalidated the old password and the previous session. The new password logged in. The owner password was not changed.
+
+A USD to MMK rate of 4500 was stored with source `MANUAL`. A cross-currency transfer was not posted. Dashboard, search, and filter screens were not exercised in a browser. Report endpoints returned 200; a full numeric tie-out of every report was not written down.
 
 ## Bugs discovered
 
-No application defect was reproduced. The API was not started, so accounting, UI, attachment, and authorization behavior were not retested on this host.
-
-Checked and not defective: Alpine 3.20 provides `/usr/bin/wget`, which the production health check and `scripts/deploy-production.sh` call. The temporary Alpine image used for that check was removed.
+1. The anonymous GHCR Goose image pull is denied. Production migrate now builds `deploy/goose.Dockerfile` from the Goose 3.24.3 release binary, checksummed for amd64 and arm64.
+2. Goose forwards `DATABASE_URL` to PostgreSQL, which rejects `pool_max_conns`. Migrate uses `GOOSE_DATABASE_URL` without pool parameters. The API keeps `pool_max_conns=2`.
+3. `idempotency_records.scope` was `varchar(120)`. Entity URLs with two ULIDs overflowed and returned HTTP 500 on draft cancel, reversal, and inter-entity mapping. Migration `00013` widens the column to `varchar(300)`. Those operations then succeeded. Already-applied migrations were not edited.
+4. The API stored financial-account codes with spaces. `NormalizeFinancialAccountCode` now uppercases and collapses whitespace to underscores. A live create of `test  spaced wallet` stored `TEST_SPACED_WALLET`. An earlier TEST cash-box code still contains a space because it was created before the rebuild. It was left in place because posted TEST activity may reference it.
 
 ## Remaining blockers
 
 ### BLOCKER
 
-- Managed PostgreSQL application database and least-privilege role were not created. `doadmin` is required and its password was not available.
-- Owner-supplied values were empty: `DB_*`, `R2_*`, `OWNER_USERNAME`, `OWNER_DISPLAY_NAME`, and `OWNER_TEMP_PASSWORD`.
-- `finance.myankafe.com` does not resolve. Neither Cloudflare Tunnel ingress contains that hostname. DigitalOcean and Cloudflare dashboards both required an interactive login, so DNS and the tunnel route were not created.
-- Public HTTPS, secure-cookie login, and same-origin `/api` routing therefore could not be verified.
+- `finance.myankafe.com` does not resolve, and MyanKafe tunnel `ae61f9d6-aace-42d5-8cd1-8397d9de1387` has no ingress for it. Public HTTPS, secure-cookie browser login, and same-origin `/api` routing were not verified. No Cloudflare API token was available, and the remotely managed tunnel was not converted to a local config.
+- The Finance R2 bucket denies the keys that work for the Royal Masterpiece buckets. The system probe stays 503. Image and PDF attachment acceptance was not run.
 
 ### IMPORTANT FOLLOW-UP
 
-- Cap Finance at `pool_max_conns=2` before first start. The shared cluster allows 25 connections and was already near that ceiling.
-- When the tunnel route is added, put `/api/*` ahead of the catch-all web route. Do not publish `/metrics`.
-- Confirm the Cloudflare request-body limit is above 25 MB so a 20 MB attachment plus multipart overhead is accepted. The Caddy example is not what this droplet uses.
-- Confirm DigitalOcean automated backups and PITR on cluster `rm-myankafe-db` in the control panel.
-- Build images while watching memory. The droplet has 1.9 GiB RAM and 5.4 GiB free disk.
-- Generate `METRICS_BEARER_TOKEN` with `openssl rand -hex 32` into the server env file only. Do not commit it.
-- Bootstrap the first OWNER with `docker compose ... run --rm --entrypoint bootstrap api`, then remove `BOOTSTRAP_PASSWORD` from `.env.production`.
-- After a real dump exists, restore it into a disposable database. Do not restore over `myankafe-db` or `rm-floral-db`.
+- Add the path-split tunnel route above. Do not publish `/health`, `/ready`, or `/metrics`. Confirm the Cloudflare request-body limit is above 25 MB.
+- Issue an R2 token that can write, read, and delete objects in `myankafe-finance`, update only the server env file, recreate the API, and rerun the system probe plus a real image and PDF attachment.
+- Confirm DigitalOcean automated backups and PITR for cluster `rm-myankafe-db` in the control panel. The logical dump is a secondary copy.
+- Sign in as `owner`, change the temporary password, and remove `BOOTSTRAP_PASSWORD` from `/opt/myankafe-finance/.env.production`.
+- Rotate the `doadmin` password and the `myankafe-finance-admin` password, because both were pasted into chat. After rotating the application password, update the server env and recreate the API. Do not revoke the `doadmin` role.
+- Keep `pool_max_conns=2`. The shared cluster allows 25 connections.
+- Disk was at 95% after the image build. Unused build cache was pruned and free space returned to about 4.9 GiB. Do not delete the Finance images or the pre-existing PostgreSQL images to make room.
 
 ### OPTIONAL IMPROVEMENT
 
-- Document the Cloudflare Tunnel path split next to `deploy/Caddyfile.example`, so the next deploy does not assume Caddy owns ports 80/443.
-- Ship API stdout JSON logs and scrape loopback `/metrics` only after a monitoring destination exists. This droplet has no Prometheus or Grafana for Finance.
+- Document the Cloudflare Tunnel path split beside `deploy/Caddyfile.example`.
+- Finish the cross-currency transfer against the stored 4500 rate, and do a numeric tie-out of the TEST profit-and-loss figures.
+- Browser QA at 1440x900, 768x1024, 390x844, and nearby 375 and 430 widths, plus keyboard access, after the hostname is live.
+- This droplet has no Prometheus or Grafana for Finance. `/metrics` stays on loopback.
 
 ## Credentials to rotate
 
-No new credentials were created or written.
+Names only. Values are not recorded here.
 
-- Do **not** revoke the existing DigitalOcean `doadmin` role. It was not a one-time Finance credential, and it is the only role on this cluster that can create the Finance database and application role. No temporary administrator password was supplied, so there is nothing from this session to revoke.
-- Do not reuse or rotate `myankafe-admin` or `rm-floral-admin` as part of Finance.
-- R2 keys and the initial OWNER password were not installed.
-- No metrics bearer token was generated, because there is no production env file yet.
+- DigitalOcean role `doadmin`: rotate the password. Do not revoke or delete the role. It remains the only role that can create databases on this cluster. It is not the Finance runtime login.
+- Database role `myankafe-finance-admin`: rotate the password, then update `/opt/myankafe-finance/.env.production` (`DATABASE_URL` and `GOOSE_DATABASE_URL`) and recreate the API.
+- Application user `owner`: change the temporary password on first sign-in, then delete `BOOTSTRAP_PASSWORD` from the server env file. The password is only in that file.
+- `METRICS_BEARER_TOKEN`: generated on the server and not printed. Leave it unless it is exposed.
+- Royal Masterpiece R2 keys: do not rotate them because of this deploy. They do not grant access to bucket `myankafe-finance`. Create a separate token for that bucket.
 
-## Security checks that were possible
+## TEST data left in place
 
-- No secrets were committed.
-- `.env.production` is not in Git.
-- Finance did not publish a database port or an application port.
-- Existing application ports stay on loopback, and the public path is Cloudflare Tunnel.
-- Production config code still requires `AUTH_MODE=password`, `AUTH_COOKIE_SECURE=true`, an exact HTTPS `CORS_ORIGIN`, HTTPS when R2 is set, and a metrics token of at least 32 characters when one is set. Those checks were not bypassed.
+Posted accounting rows were not deleted. Remaining records include TEST chart accounts, financial accounts (including one pre-fix code that still contains a space, and `TEST_SPACED_WALLET`), contacts TEST Customer and TEST Supplier, posted and voided TEST transactions, a TEST inter-entity expense, a USD/MMK rate of 4500 dated 2026-09-25, and users `test-admin`, `test-accountant`, `test-bookkeeper`, `test-viewer`, and `test-session-rotate`. The accounting period lock used for the test was unlocked again. Passwords for the TEST users were generated during the run and were not stored.
+
+## Security checks
+
+- No secrets were committed. `.env.production` is untracked.
+- Finance binds `127.0.0.1` only. Ports 80 and 443 are not listening.
+- The database is the existing private managed host. No database port was published.
+- Production startup validation was not bypassed: password auth, secure cookies, exact HTTPS CORS origin, HTTPS R2 endpoint, metrics token length.
 - Debug auth was not enabled.
+- R2 credentials are only in the server env. They did not appear in the probe error body beyond the provider AccessDenied XML.
+- `/metrics` requires the bearer token.
 
 ## Existing services after this session
 
 ```text
-http://127.0.0.1:8080/healthz          200
-http://127.0.0.1:8080/readyz           200
-http://127.0.0.1:8090/healthz          200
-http://127.0.0.1:8090/readyz           200
-https://api.myankafe.com/healthz       200
-https://admin.myankafe.com             307
-https://web.myankafe.com               200
-https://royalmasterpiecefloral.com     200
+http://127.0.0.1:8180/ready             200
+http://127.0.0.1:8180/health            200
+http://127.0.0.1:3100/login             200
+http://127.0.0.1:8080/healthz           200
+http://127.0.0.1:8090/healthz           200
 ```
 
-No Finance container, extra cloudflared process, or debug service was left running.
+No debug container was left running. The Finance API container was healthy after the code-normalization recreate.
 
 ## Final recommendation
 
 **NOT READY FOR FINAL HUMAN REVIEW**
 
-The feature branch and CI were already in place, and the VPS can host Finance on free loopback ports without replacing the current proxy. Deployment and acceptance did not start because the Finance database cannot be created without `doadmin`, R2 and OWNER bootstrap values were not supplied, and `finance.myankafe.com` is not in DNS or the MyanKafe tunnel. Starting Finance on another application's database, or opening ports 80/443 beside the tunnels, would have been the wrong fix.
+The API, web, migrations, owner bootstrap, accounting acceptance on loopback, logical backup, and disposable restore drill are in place, and the existing VPS applications were left running. Public DNS and HTTPS are not configured, and the Finance R2 bucket still denies the available keys, so attachment and browser acceptance are incomplete.
 
 Do not merge PR #1.

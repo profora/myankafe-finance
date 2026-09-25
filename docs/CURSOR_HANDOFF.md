@@ -227,3 +227,20 @@ Full evidence, the acceptance matrix, and the credential/rotation notes are in [
 PR #1 remains Draft. Do not merge it.
 
 Recommended next step: create the Finance database and least-privilege role with the cluster `doadmin` account, supply R2 credentials and an OWNER bootstrap password, add a path-split Cloudflare Tunnel route for `finance.myankafe.com`, then run `scripts/deploy-production.sh` with `pool_max_conns=2`. Do not revoke `doadmin`; it is still required for this shared cluster.
+
+## 2026-09-25 production deploy on the shared VPS
+
+The section above describes the first pass, before database and R2 values were available. Finance was started afterward.
+
+- API is healthy on `127.0.0.1:8180` and web answers on `127.0.0.1:3100`. Both binds are loopback only. MyanKafe and Royal Masterpiece stayed up.
+- Database `myankafe-finance` is owned by `myankafe-finance-admin`. Goose is at version 13. `DATABASE_URL` uses `pool_max_conns=2`. `GOOSE_DATABASE_URL` omits pool parameters because Goose forwards them to PostgreSQL.
+- The migrate image is built from `deploy/goose.Dockerfile` (Goose 3.24.3 release binary). The anonymous GHCR pull is denied.
+- Migration `00013` widens `idempotency_records.scope` to `varchar(300)`. Two-ULID mutation URLs were returning HTTP 500.
+- Financial-account codes are normalized on create: uppercase, whitespace collapsed to underscores.
+- The initial OWNER username is `owner`. The temporary password is only in `/opt/myankafe-finance/.env.production` as `BOOTSTRAP_PASSWORD`. Remove it after the first human password change.
+- `finance.myankafe.com` still does not resolve. Tunnel `ae61f9d6-aace-42d5-8cd1-8397d9de1387` needs `/api/*` to `127.0.0.1:8180` and every other path to `127.0.0.1:3100`.
+- The R2 system probe fails closed with AccessDenied on bucket `myankafe-finance`. The keys that work for the Royal Masterpiece buckets do not work for this bucket.
+- A logical backup and a restore into a disposable database succeeded. The disposable database was dropped. Provider PITR was not confirmed in the console.
+- Recommendation remains **NOT READY FOR FINAL HUMAN REVIEW**. PR #1 stays Draft.
+
+Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
