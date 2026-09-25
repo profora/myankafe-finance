@@ -6,6 +6,7 @@ import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { canConfigureAccounting } from "@/lib/permissions";
+import TableStateRows from "@/components/TableStateRows";
 
 type Rate={
   id:string;
@@ -25,13 +26,29 @@ export default function ExchangeRates(){
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
+  const [loading,setLoading]=useState(true);
   const [editing,setEditing]=useState<Rate|null>(null);
   const [deleteTarget,setDeleteTarget]=useState<Rate|null>(null);
   const [form,setForm]=useState({rate_date:dateInTimeZone(entity?.Timezone??"Asia/Yangon"),from_currency:"USD",to_currency:"MMK",rate:"",source:"MANUAL",source_reference:""});
   const [edit,setEdit]=useState({RateDate:"",FromCurrency:"",ToCurrency:"",Rate:"",SourceReference:""});
 
-  const load=()=>{if(entity)api<{items:Rate[]}>(`/entities/${entity.PublicID}/exchange-rates`).then(x=>setItems(x.items)).catch(e=>setError(e.message))};
-  useEffect(load,[entity?.PublicID]);
+  const load=async()=>{
+    if(!entity)return;
+    setLoading(true);setError("");
+    try{
+      const result=await api<{items:Rate[]}>(`/entities/${entity.PublicID}/exchange-rates`);
+      setItems(result.items);
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setLoading(false)}
+  };
+  useEffect(()=>{
+    if(!entity)return;
+    setItems([]);
+    setEditing(null);
+    setDeleteTarget(null);
+    setForm(current=>({...current,rate_date:dateInTimeZone(entity.Timezone)}));
+    void load();
+  },[entity?.PublicID]);
 
   async function create(){
     if(!entity)return;
@@ -78,11 +95,11 @@ export default function ExchangeRates(){
 
   return <>
     <div className="page-head"><div><h1>Exchange Rates</h1><p>Stored rate snapshots used by foreign-currency posting.</p></div></div>
-    {error&&<div className="alert error">{error}</div>}
-    {message&&<div className="alert success">{message}</div>}
+    {error&&<div className="alert error" role="alert">{error}</div>}
+    {message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
 
     {mayConfigure&&editing&&<div className="card form" style={{marginBottom:16}}>
-      <div className="page-head" style={{marginBottom:0}}><div><h1 style={{fontSize:20}}>Correct unused rate</h1><p>Once used in posted accounting, the database permanently locks the snapshot.</p></div><button className="secondary" onClick={()=>setEditing(null)}>Cancel</button></div>
+      <div className="page-head" style={{marginBottom:0}}><div><h1 style={{fontSize:20}}>Correct unused rate</h1><p>Once used in posted accounting, the database permanently locks the snapshot.</p></div><button type="button" className="secondary" onClick={()=>setEditing(null)}>Cancel</button></div>
       <div className="form-grid">
         <div className="field"><label>Date</label><input type="date" value={edit.RateDate} onChange={e=>setEdit({...edit,RateDate:e.target.value})}/></div>
         <div className="field"><label>Rate</label><input inputMode="decimal" value={edit.Rate} onChange={e=>setEdit({...edit,Rate:e.target.value})}/></div>
@@ -90,7 +107,7 @@ export default function ExchangeRates(){
         <div className="field"><label>To</label><input value={edit.ToCurrency} onChange={e=>setEdit({...edit,ToCurrency:e.target.value.toUpperCase()})}/></div>
         <div className="field span-2"><label>Source reference</label><input value={edit.SourceReference} onChange={e=>setEdit({...edit,SourceReference:e.target.value})}/></div>
       </div>
-      <button disabled={busy||!edit.Rate} onClick={saveEdit}>{busy?"Saving…":"Save correction"}</button>
+      <button type="button" disabled={busy||!edit.Rate} onClick={saveEdit}>{busy?"Saving…":"Save correction"}</button>
     </div>}
 
     {mayConfigure&&<div className="card form" style={{marginBottom:16}}>
@@ -102,19 +119,19 @@ export default function ExchangeRates(){
         <div className="field"><label>To</label><input value={form.to_currency} onChange={e=>setForm({...form,to_currency:e.target.value.toUpperCase()})}/></div>
         <div className="field span-2"><label>Source reference</label><input value={form.source_reference} onChange={e=>setForm({...form,source_reference:e.target.value})}/></div>
       </div>
-      <button disabled={busy||!form.rate} onClick={create}>Save rate</button>
+      <button type="button" disabled={busy||!form.rate} onClick={create}>Save rate</button>
     </div>}
 
     {!mayConfigure&&<div className="alert">Your {entity?.Role??"VIEWER"} role can view stored FX snapshots but cannot create or correct rates.</div>}
 
-    <div className="table-wrap"><table><thead><tr><th>Date</th><th>From</th><th>To</th><th>Rate</th><th>Source</th><th>Reference</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=>{
+    <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Date</th><th>From</th><th>To</th><th>Rate</th><th>Source</th><th>Reference</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=>{
       const editable=mayConfigure&&x.source==="MANUAL"&&!x.used;
       return <tr key={x.id}>
         <td>{x.rate_date}</td><td>{x.from_currency}</td><td>{x.to_currency}</td><td>{x.rate}</td><td>{x.source}</td><td>{x.source_reference??"—"}</td>
         <td><span className={`badge ${x.used?"POSTED":""}`}>{x.used?"USED · LOCKED":"UNUSED"}</span></td>
-        <td><div className="actions">{editable&&<><button className="secondary compact" onClick={()=>startEdit(x)}>Edit</button><button className="danger compact" onClick={()=>setDeleteTarget(x)}>Delete</button></>}{!editable&&<span className="muted">Read-only</span>}</div></td>
+        <td><div className="actions">{editable&&<><button type="button" className="secondary compact" onClick={()=>startEdit(x)}>Edit</button><button type="button" className="danger compact" onClick={()=>setDeleteTarget(x)}>Delete</button></>}{!editable&&<span className="muted">Read-only</span>}</div></td>
       </tr>;
-    })}</tbody></table></div>
+    })}<TableStateRows loading={loading&&items.length===0} empty={!loading&&items.length===0} columns={8} emptyText="No stored exchange rates for this entity yet."/></tbody></table></div>
 
     <ConfirmDialog
       open={Boolean(deleteTarget)}

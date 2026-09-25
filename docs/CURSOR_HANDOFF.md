@@ -169,3 +169,11 @@ Authentication and R2 receipt storage are no longer placeholders. Do not replace
 - dashboard now avoids showing stale financial values while entity data is loading and exposes skeleton loading feedback
 - transaction loading was de-duplicated: entity changes load financial-account choices separately while the canonical transaction loader owns filtered/paginated transaction refreshes
 - transaction empty/loading state now uses accessible skeleton rows rather than a transient text-only blank table
+
+
+## 2026-09-25 entity-switch/list-state polish
+
+- added reusable table loading/empty rows for core entity-scoped lists
+- Chart of Accounts, Contacts, Cash/Bank, Exchange Rates, and Users & Access now clear stale rows when entity context changes, announce errors/successes accessibly, and expose explicit loading/empty states
+- exchange-rate default date now follows the newly selected entity timezone immediately
+- password visibility toggles in user administration expose pressed state to assistive technology

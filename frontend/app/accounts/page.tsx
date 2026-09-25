@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import type { Account } from "@/components/types";
 import { canConfigureAccounting } from "@/lib/permissions";
+import TableStateRows from "@/components/TableStateRows";
 
 export default function Accounts() {
   const { entity } = useEntity();
@@ -14,12 +15,26 @@ export default function Accounts() {
   const [error,setError] = useState("");
   const [message,setMessage] = useState("");
   const [busy,setBusy] = useState(false);
+  const [loading,setLoading] = useState(true);
   const [form,setForm] = useState({Code:"",Name:"",Type:"EXPENSE",Subtype:"",ParentPublicID:"",Postable:true});
   const [editing,setEditing]=useState<Account|null>(null);
   const [edit,setEdit]=useState({Name:"",Subtype:"",Active:true});
 
-  const load=()=>{if(entity)api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`).then(x=>setItems(x.items)).catch(e=>setError(e.message))};
-  useEffect(load,[entity?.PublicID]);
+  const load=async()=>{
+    if(!entity)return;
+    setLoading(true);setError("");
+    try{
+      const result=await api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`);
+      setItems(result.items);
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setLoading(false)}
+  };
+  useEffect(()=>{
+    if(!entity)return;
+    setItems([]);
+    setEditing(null);
+    void load();
+  },[entity?.PublicID]);
 
   async function create(){
     if(!entity)return;
@@ -53,13 +68,13 @@ export default function Accounts() {
 
   return <>
     <div className="page-head"><div><h1>Chart of Accounts</h1><p>Hierarchical accounts for {entity?.Name}.</p></div></div>
-    {error&&<div className="alert error">{error}</div>}
-    {message&&<div className="alert success">{message}</div>}
+    {error&&<div className="alert error" role="alert">{error}</div>}
+    {message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
 
     {mayConfigure&&editing&&<div className="card form" style={{marginBottom:16}}>
       <div className="page-head" style={{marginBottom:0}}>
         <div><h1 style={{fontSize:20}}>Edit account</h1><p>{editing.Code} · {editing.Type} · {editing.Postable?"Posting account":"Header account"}</p></div>
-        <button className="secondary" onClick={()=>setEditing(null)}>Cancel</button>
+        <button type="button" className="secondary" onClick={()=>setEditing(null)}>Cancel</button>
       </div>
       <div className="alert">Code, fundamental account type, hierarchy and posting/header identity are protected accounting fields in this editor.</div>
       <div className="form-grid">
@@ -68,7 +83,7 @@ export default function Accounts() {
         <div className="field"><label>Status</label><select value={edit.Active?"ACTIVE":"INACTIVE"} onChange={e=>setEdit({...edit,Active:e.target.value==="ACTIVE"})}><option>ACTIVE</option><option>INACTIVE</option></select></div>
       </div>
       <div className="actions">
-        <button disabled={busy||!edit.Name.trim()} onClick={saveEdit}>{busy?"Saving…":"Save changes"}</button>
+        <button type="button" disabled={busy||!edit.Name.trim()} onClick={saveEdit}>{busy?"Saving…":"Save changes"}</button>
         <span className="muted">To deactivate a parent, deactivate active descendants and linked financial accounts first.</span>
       </div>
     </div>}
@@ -82,17 +97,17 @@ export default function Accounts() {
         <div className="field"><label>Parent</label><select value={form.ParentPublicID} onChange={e=>setForm({...form,ParentPublicID:e.target.value})}><option value="">None</option>{items.filter(a=>a.Active).map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
         <div className="field"><label>Subtype</label><input value={form.Subtype} onChange={e=>setForm({...form,Subtype:e.target.value})}/></div>
       </div>
-      <button disabled={busy||!form.Code||!form.Name} onClick={create}>Create account</button>
+      <button type="button" disabled={busy||!form.Code||!form.Name} onClick={create}>Create account</button>
     </div>}
 
     {!mayConfigure&&<div className="alert">Your {entity?.Role??"VIEWER"} role can view the Chart of Accounts and ledgers but cannot change account configuration.</div>}
 
-    <div className="table-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Subtype</th><th>Posting</th><th>Status</th><th></th></tr></thead><tbody>{items.map(a=><tr key={a.PublicID}>
+    <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Subtype</th><th>Posting</th><th>Status</th><th></th></tr></thead><tbody>{items.map(a=><tr key={a.PublicID}>
       <td><Link className="table-link" href={`/accounts/${a.PublicID}/ledger`}>{a.Code}</Link></td>
       <td><Link className="table-link" href={`/accounts/${a.PublicID}/ledger`}>{a.Name}</Link></td>
       <td>{a.Type}</td><td>{a.Subtype??"—"}</td><td>{a.Postable?"Yes":"Header"}</td>
       <td><span className={`badge ${a.Active?"POSTED":"VOIDED"}`}>{a.Active?"ACTIVE":"INACTIVE"}</span></td>
-      <td>{mayConfigure?<button className="secondary compact" onClick={()=>startEdit(a)}>Edit</button>:<span className="muted">Read-only</span>}</td>
-    </tr>)}</tbody></table></div>
+      <td>{mayConfigure?<button type="button" className="secondary compact" onClick={()=>startEdit(a)}>Edit</button>:<span className="muted">Read-only</span>}</td>
+    </tr>)}<TableStateRows loading={loading&&items.length===0} empty={!loading&&items.length===0} columns={7} emptyText="No accounts configured for this entity."/></tbody></table></div>
   </>;
 }

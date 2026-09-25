@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import { canOperateLedger } from "@/lib/permissions";
+import TableStateRows from "@/components/TableStateRows";
 
 type Contact={
   id:string;
@@ -35,9 +36,23 @@ export default function Contacts(){
   const [editing,setEditing]=useState<Contact|null>(null);
   const [edit,setEdit]=useState<ContactForm&{active:boolean}>({...blank,active:true});
   const [busy,setBusy]=useState(false);
+  const [loading,setLoading]=useState(true);
 
-  const load=()=>{if(entity)api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`).then(x=>setItems(x.items)).catch(e=>setError(e.message))};
-  useEffect(load,[entity?.PublicID]);
+  const load=async()=>{
+    if(!entity)return;
+    setLoading(true);setError("");
+    try{
+      const result=await api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`);
+      setItems(result.items);
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setLoading(false)}
+  };
+  useEffect(()=>{
+    if(!entity)return;
+    setItems([]);
+    setEditing(null);
+    void load();
+  },[entity?.PublicID]);
 
   async function create(){
     if(!entity)return;
@@ -81,13 +96,13 @@ export default function Contacts(){
 
   return <>
     <div className="page-head"><div><h1>Contacts</h1><p>Entity-scoped payees, payers, suppliers, customers and owners.</p></div></div>
-    {error&&<div className="alert error">{error}</div>}
-    {message&&<div className="alert success">{message}</div>}
+    {error&&<div className="alert error" role="alert">{error}</div>}
+    {message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
 
     {mayOperate&&editing&&<div className="card form" style={{marginBottom:16}}>
       <div className="page-head" style={{marginBottom:0}}>
         <div><h1 style={{fontSize:20}}>Edit contact</h1><p>{editing.display_name}</p></div>
-        <button className="secondary" onClick={()=>setEditing(null)}>Cancel</button>
+        <button type="button" className="secondary" onClick={()=>setEditing(null)}>Cancel</button>
       </div>
       <div className="form-grid">
         <div className="field"><label>Name</label><input value={edit.display_name} onChange={e=>setEdit({...edit,display_name:e.target.value})}/></div>
@@ -97,7 +112,7 @@ export default function Contacts(){
         <div className="field span-2"><label>Notes</label><textarea rows={3} value={edit.notes} onChange={e=>setEdit({...edit,notes:e.target.value})}/></div>
         <div className="field"><label>Status</label><select value={edit.active?"ACTIVE":"INACTIVE"} onChange={e=>setEdit({...edit,active:e.target.value==="ACTIVE"})}><option>ACTIVE</option><option>INACTIVE</option></select></div>
       </div>
-      <div className="actions"><button disabled={busy||!edit.display_name.trim()} onClick={saveEdit}>{busy?"Saving…":"Save changes"}</button><span className="muted">Inactive contacts remain on historical transactions but cannot be selected for new entries.</span></div>
+      <div className="actions"><button type="button" disabled={busy||!edit.display_name.trim()} onClick={saveEdit}>{busy?"Saving…":"Save changes"}</button><span className="muted">Inactive contacts remain on historical transactions but cannot be selected for new entries.</span></div>
     </div>}
 
     {mayOperate&&<div className="card form" style={{marginBottom:16}}>
@@ -109,15 +124,15 @@ export default function Contacts(){
         <div className="field"><label>Email</label><input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
         <div className="field span-2"><label>Notes</label><input value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div>
       </div>
-      <button disabled={busy||!form.display_name.trim()} onClick={create}>Create contact</button>
+      <button type="button" disabled={busy||!form.display_name.trim()} onClick={create}>Create contact</button>
     </div>}
 
     {!mayOperate&&<div className="alert">Your VIEWER role can read contacts but cannot create or edit them.</div>}
 
-    <div className="table-wrap"><table><thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id}>
+    <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id}>
       <td>{x.display_name}</td><td>{x.contact_type}</td><td>{x.phone||"—"}</td><td>{x.email||"—"}</td>
       <td><span className={`badge ${x.active?"POSTED":"VOIDED"}`}>{x.active?"ACTIVE":"INACTIVE"}</span></td>
-      <td>{mayOperate?<button className="secondary compact" onClick={()=>startEdit(x)}>Edit</button>:<span className="muted">Read-only</span>}</td>
-    </tr>)}</tbody></table></div>
+      <td>{mayOperate?<button type="button" className="secondary compact" onClick={()=>startEdit(x)}>Edit</button>:<span className="muted">Read-only</span>}</td>
+    </tr>)}<TableStateRows loading={loading&&items.length===0} empty={!loading&&items.length===0} columns={6} emptyText="No contacts for this entity yet."/></tbody></table></div>
   </>;
 }

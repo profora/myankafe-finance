@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import TableStateRows from "@/components/TableStateRows";
 
 type User={id:string;username:string;display_name:string;email?:string;status:string};
 type Member={id:string;username:string;display_name:string;email?:string;role:string};
@@ -26,23 +27,31 @@ export default function Users(){
   const [statusBusy,setStatusBusy]=useState(false);
   const [accessTarget,setAccessTarget]=useState<Member|null>(null);
   const [accessBusy,setAccessBusy]=useState(false);
+  const [loading,setLoading]=useState(true);
 
-  const load=()=>{
+  const load=async()=>{
     setErr("");
-    if(!ownerAnywhere){setUsers([]);setMembers([]);return}
-    Promise.all([
-      api<{items:User[]}>("/users"),
-      entity&&mayViewEntityAccess?api<{items:Member[]}>(`/entities/${entity.PublicID}/users`):Promise.resolve({items:[]})
-    ]).then(([u,m])=>{
+    if(!ownerAnywhere){setUsers([]);setMembers([]);setLoading(false);return}
+    setLoading(true);
+    try{
+      const [u,m]=await Promise.all([
+        api<{items:User[]}>("/users"),
+        entity&&mayViewEntityAccess?api<{items:Member[]}>(`/entities/${entity.PublicID}/users`):Promise.resolve({items:[]})
+      ]);
       setUsers(u.items);
       setMembers(m.items);
       const activeUsers=u.items.filter(x=>x.status==="ACTIVE");
       setAssign(a=>({...a,user_id:activeUsers.some(x=>x.id===a.user_id)?a.user_id:(activeUsers[0]?.id||"")}));
       setReset(a=>({...a,user_id:u.items.some(x=>x.id===a.user_id)?a.user_id:(u.items[0]?.id||"")}));
-    }).catch(e=>setErr(e instanceof Error?e.message:String(e)));
+    }catch(e){setErr(e instanceof Error?e.message:String(e))}
+    finally{setLoading(false)}
   };
 
-  useEffect(load,[entity?.PublicID,ownerAnywhere,mayViewEntityAccess]);
+  useEffect(()=>{
+    setUsers([]);
+    setMembers([]);
+    void load();
+  },[entity?.PublicID,ownerAnywhere,mayViewEntityAccess]);
 
   async function create(){
     setErr("");setMsg("");
@@ -108,8 +117,8 @@ export default function Users(){
     <div className="page-head">
       <div><h1>Users & Access</h1><p>Platform identities, initial credentials, and per-entity roles.</p></div>
     </div>
-    {err&&<div className="alert error">{err}</div>}
-    {msg&&<div className="alert success">{msg}</div>}
+    {err&&<div className="alert error" role="alert">{err}</div>}
+    {msg&&<div className="alert success" role="status" aria-live="polite">{msg}</div>}
     {!ownerAnywhere&&<div className="alert error">Platform user administration requires OWNER access on at least one entity.</div>}
 
     {ownerAnywhere&&<div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(360px,1fr))",marginBottom:16}}>
@@ -137,11 +146,11 @@ export default function Users(){
               onChange={e=>setF({...f,Password:e.target.value})}
               placeholder="At least 12 characters"
             />
-            <button type="button" className="secondary compact" onClick={()=>setShowPassword(x=>!x)}>{showPassword?"Hide":"Show"}</button>
+            <button type="button" className="secondary compact" aria-pressed={showPassword} onClick={()=>setShowPassword(x=>!x)}>{showPassword?"Hide":"Show"}</button>
           </div>
           <div className="muted">Minimum 12 characters. Share it securely; the user can change it after signing in.</div>
         </div>
-        <button disabled={!f.Username||!f.DisplayName||f.Password.length<12} onClick={create}>Create user</button>
+        <button type="button" disabled={!f.Username||!f.DisplayName||f.Password.length<12} onClick={create}>Create user</button>
       </div>
 
       {mayManageEntityAccess&&<div className="card form">
@@ -158,7 +167,7 @@ export default function Users(){
             {["OWNER","ADMIN","ACCOUNTANT","BOOKKEEPER","VIEWER"].map(x=><option key={x}>{x}</option>)}
           </select>
         </div>
-        <button disabled={!assign.user_id||!entity} onClick={setRole}>Set entity role</button>
+        <button type="button" disabled={!assign.user_id||!entity} onClick={setRole}>Set entity role</button>
       </div>}
 
       <div className="card form">
@@ -180,15 +189,15 @@ export default function Users(){
               onChange={e=>setReset({...reset,password:e.target.value})}
               placeholder="At least 12 characters"
             />
-            <button type="button" className="secondary compact" onClick={()=>setShowResetPassword(x=>!x)}>{showResetPassword?"Hide":"Show"}</button>
+            <button type="button" className="secondary compact" aria-pressed={showResetPassword} onClick={()=>setShowResetPassword(x=>!x)}>{showResetPassword?"Hide":"Show"}</button>
           </div>
         </div>
-        <button className="danger" disabled={!reset.user_id||reset.password.length<12} onClick={resetPassword}>Reset password & revoke sessions</button>
+        <button type="button" className="danger" disabled={!reset.user_id||reset.password.length<12} onClick={resetPassword}>Reset password & revoke sessions</button>
       </div>
     </div>}
 
     {ownerAnywhere&&<><div className="page-head" style={{marginTop:24}}><div><h1 style={{fontSize:20}}>Platform users</h1><p>Disable access without deleting accounting history or role assignments.</p></div></div>
-    <div className="table-wrap" style={{marginBottom:18}}>
+    <div className="table-wrap" style={{marginBottom:18}} aria-busy={loading}>
       <table>
         <thead><tr><th>User</th><th>Username</th><th>Email</th><th>Status</th><th></th></tr></thead>
         <tbody>{users.map(x=><tr key={x.id}>
@@ -196,16 +205,16 @@ export default function Users(){
           <td>{x.username}</td>
           <td>{x.email||"—"}</td>
           <td><span className={`badge ${x.status==="ACTIVE"?"POSTED":"VOIDED"}`}>{x.status}</span></td>
-          <td><button className={x.status==="ACTIVE"?"danger":"secondary"} onClick={()=>setStatusTarget(x)}>{x.status==="ACTIVE"?"Disable":"Reactivate"}</button></td>
-        </tr>)}</tbody>
+          <td><button type="button" className={x.status==="ACTIVE"?"danger":"secondary"} onClick={()=>setStatusTarget(x)}>{x.status==="ACTIVE"?"Disable":"Reactivate"}</button></td>
+        </tr>)}<TableStateRows loading={loading&&users.length===0} empty={!loading&&users.length===0} columns={5} emptyText="No platform users found."/></tbody>
       </table>
     </div>
 
     {mayViewEntityAccess&&<><div className="page-head"><div><h1 style={{fontSize:20}}>Access for {entity?.Name}</h1><p>Current active entity-role assignments.</p></div></div>
-    <div className="table-wrap">
+    <div className="table-wrap" aria-busy={loading}>
       <table>
         <thead><tr><th>User</th><th>Username</th><th>Role</th><th>Email</th><th></th></tr></thead>
-        <tbody>{members.map(x=><tr key={x.id}><td>{x.display_name}</td><td>{x.username}</td><td>{x.role}</td><td>{x.email||"—"}</td><td>{mayManageEntityAccess?<button className="danger compact" onClick={()=>setAccessTarget(x)}>Remove access</button>:<span className="muted">ADMIN view</span>}</td></tr>)}</tbody>
+        <tbody>{members.map(x=><tr key={x.id}><td>{x.display_name}</td><td>{x.username}</td><td>{x.role}</td><td>{x.email||"—"}</td><td>{mayManageEntityAccess?<button type="button" className="danger compact" onClick={()=>setAccessTarget(x)}>Remove access</button>:<span className="muted">ADMIN view</span>}</td></tr>)}<TableStateRows loading={loading&&members.length===0} empty={!loading&&members.length===0} columns={5} emptyText="No users currently have access to this entity."/></tbody>
       </table>
     </div></>}</>}
 

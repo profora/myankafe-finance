@@ -68,3 +68,5 @@
 @keyframes skeleton-shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
 @media(max-width:700px){.table-loading-row{grid-template-columns:90px 1fr}.table-loading-row>:nth-child(n+3){display:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+.table-empty-cell{padding:30px 18px!important;text-align:center!important;color:#7b8490;white-space:normal!important}
