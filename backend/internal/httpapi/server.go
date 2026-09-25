@@ -23,6 +23,7 @@ type Server struct {
 	LoginLimiter      *auth.Limiter
 	DummyPasswordHash string
 	AttachmentStore   objectstore.Store
+	Metrics           *httpMetrics
 }
 
 func New(store *postgres.Store, cfg config.Config) http.Handler {
@@ -46,15 +47,18 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 		LoginLimiter: auth.NewLimiter(15 * time.Minute),
 		DummyPasswordHash: dummyHash,
 		AttachmentStore: attachmentStore,
+		Metrics: newHTTPMetrics(),
 	}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer)
+	r.Use(s.observeRequests)
 	r.Use(cors(cfg.CORSOrigin))
 
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		write(w, http.StatusOK, map[string]any{"ok": true})
 	})
 	r.Get("/ready", s.readiness)
+	r.Get("/metrics", s.metrics)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(s.bodyLimit)
