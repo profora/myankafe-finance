@@ -26,6 +26,7 @@ type Config struct {
 	R2SecretKey string
 
 	AttachmentMaxBytes int64
+	MetricsBearerToken string
 }
 
 func Load() (Config, error) {
@@ -56,6 +57,7 @@ func Load() (Config, error) {
 		R2SecretKey: strings.TrimSpace(os.Getenv("R2_SECRET_ACCESS_KEY")),
 
 		AttachmentMaxBytes: int64(maxMB) << 20,
+		MetricsBearerToken: strings.TrimSpace(os.Getenv("METRICS_BEARER_TOKEN")),
 	}
 	if c.DatabaseURL == "" {
 		return c, fmt.Errorf("DATABASE_URL is required")
