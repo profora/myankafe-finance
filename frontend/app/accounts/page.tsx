@@ -5,9 +5,11 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import type { Account } from "@/components/types";
+import { canConfigureAccounting } from "@/lib/permissions";
 
 export default function Accounts() {
   const { entity } = useEntity();
+  const mayConfigure=canConfigureAccounting(entity?.Role);
   const [items,setItems] = useState<Account[]>([]);
   const [error,setError] = useState("");
   const [message,setMessage] = useState("");
@@ -54,7 +56,7 @@ export default function Accounts() {
     {error&&<div className="alert error">{error}</div>}
     {message&&<div className="alert success">{message}</div>}
 
-    {editing&&<div className="card form" style={{marginBottom:16}}>
+    {mayConfigure&&editing&&<div className="card form" style={{marginBottom:16}}>
       <div className="page-head" style={{marginBottom:0}}>
         <div><h1 style={{fontSize:20}}>Edit account</h1><p>{editing.Code} · {editing.Type} · {editing.Postable?"Posting account":"Header account"}</p></div>
         <button className="secondary" onClick={()=>setEditing(null)}>Cancel</button>
@@ -71,7 +73,7 @@ export default function Accounts() {
       </div>
     </div>}
 
-    <div className="card form" style={{marginBottom:16}}>
+    {mayConfigure&&<div className="card form" style={{marginBottom:16}}>
       <h3>New account</h3>
       <div className="form-grid">
         <div className="field"><label>Code</label><input value={form.Code} onChange={e=>setForm({...form,Code:e.target.value})}/></div>
@@ -81,14 +83,16 @@ export default function Accounts() {
         <div className="field"><label>Subtype</label><input value={form.Subtype} onChange={e=>setForm({...form,Subtype:e.target.value})}/></div>
       </div>
       <button disabled={busy||!form.Code||!form.Name} onClick={create}>Create account</button>
-    </div>
+    </div>}
+
+    {!mayConfigure&&<div className="alert">Your {entity?.Role??"VIEWER"} role can view the Chart of Accounts and ledgers but cannot change account configuration.</div>}
 
     <div className="table-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Subtype</th><th>Posting</th><th>Status</th><th></th></tr></thead><tbody>{items.map(a=><tr key={a.PublicID}>
       <td><Link className="table-link" href={`/accounts/${a.PublicID}/ledger`}>{a.Code}</Link></td>
       <td><Link className="table-link" href={`/accounts/${a.PublicID}/ledger`}>{a.Name}</Link></td>
       <td>{a.Type}</td><td>{a.Subtype??"—"}</td><td>{a.Postable?"Yes":"Header"}</td>
       <td><span className={`badge ${a.Active?"POSTED":"VOIDED"}`}>{a.Active?"ACTIVE":"INACTIVE"}</span></td>
-      <td><button className="secondary compact" onClick={()=>startEdit(a)}>Edit</button></td>
+      <td>{mayConfigure?<button className="secondary compact" onClick={()=>startEdit(a)}>Edit</button>:<span className="muted">Read-only</span>}</td>
     </tr>)}</tbody></table></div>
   </>;
 }
