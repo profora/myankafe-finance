@@ -27,7 +27,7 @@ $EDITOR .env.production
 Required production values include:
 
 - `PUBLIC_ORIGIN` / `CORS_ORIGIN` — exact HTTPS Finance origin with no trailing slash or path; production startup rejects non-HTTPS/invalid origins.
-- `NEXT_PUBLIC_API_URL` — normally the same origin plus `/api/v1`.
+- `NEXT_PUBLIC_API_URL` — browser API base. When the site and API use separate hostnames, this is the API origin plus `/api/v1`. `CORS_ORIGIN` stays the frontend origin. Do not use a wildcard origin.
 - `DATABASE_URL` — production PostgreSQL with TLS required by the provider.
 - `AUTH_COOKIE_SECURE=true`.
 - R2 values when attachments are enabled.

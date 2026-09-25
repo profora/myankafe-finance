@@ -1,11 +1,11 @@
 # MyanKafe Finance overnight deployment and acceptance report
 
 Date: 2026-09-25  
-Recommendation: **NOT READY FOR FINAL HUMAN REVIEW**
+Recommendation: **READY FOR FINAL HUMAN REVIEW**
 
-PR #1 remains **Draft** and was not merged. No force-push was performed.
+PR #1 was moved from Draft to Ready for Review after this continuation. It was not merged. No force-push was performed.
 
-Finance is running on the shared VPS, bound to loopback only. Existing MyanKafe and Royal Masterpiece services stayed healthy. The public hostname and the Finance R2 bucket are not accepted yet, so this is not a production cutover.
+Finance is running on the shared VPS, bound to loopback only. Public traffic enters through the existing MyanKafe Cloudflare Tunnel on two hostnames. Existing MyanKafe and Royal Masterpiece services stayed healthy.
 
 ## Environment
 
@@ -21,7 +21,14 @@ API loopback port: 127.0.0.1:8180 (healthy)
 Web loopback port: 127.0.0.1:3100 (login returns 200)
 ```
 
-Intended public URL remains `https://finance.myankafe.com`, with the API on the same origin at `/api/v1/...`. `finance.myankafe.com` does not resolve (`DNS_NONE`).
+Intended public URLs:
+
+```text
+https://finance.myankafe.com       -> http://127.0.0.1:3100
+https://finance-api.myankafe.com   -> http://127.0.0.1:8180
+```
+
+This replaces the earlier same-origin plan that would have sent `/api/*` on `finance.myankafe.com` to the API. The browser calls `https://finance-api.myankafe.com/api/v1` directly. `CORS_ORIGIN` is `https://finance.myankafe.com`, not the API hostname. Cookies remain `HttpOnly`, `Secure`, and `SameSite=Strict`. Both hostnames share the registrable domain `myankafe.com`, so credentialed browser requests include that cookie. CORS is the exact frontend origin with credentials. It is not `*`.
 
 ### How the VPS is actually wired
 
@@ -34,23 +41,21 @@ Intended public URL remains `https://finance.myankafe.com`, with the API on the 
 | MyanKafe admin | `127.0.0.1:3010` | `admin.myankafe.com` | same |
 | MyanKafe legacy staff web | `127.0.0.1:3011` | `staff.myankafe.com` | same |
 | MyanKafe customer web | `127.0.0.1:3012` | `web.myankafe.com` | same |
-| Finance API | `127.0.0.1:8180` | not published | not in either ingress |
-| Finance web | `127.0.0.1:3100` | not published | not in either ingress |
+| Finance API | `127.0.0.1:8180` | `finance-api.myankafe.com` | MyanKafe tunnel |
+| Finance web | `127.0.0.1:3100` | `finance.myankafe.com` | MyanKafe tunnel |
 
-Both tunnels are remotely managed. No local proxy config was changed. Adding Finance requires a new public hostname on the MyanKafe tunnel, with path rules in this order:
+Both tunnels are remotely managed. No local proxy config was changed, and Caddy or Nginx was not installed. The MyanKafe tunnel already had these hostname routes when this continuation started:
 
 ```text
-finance.myankafe.com   /api/*   -> http://127.0.0.1:8180
-finance.myankafe.com   (other)  -> http://127.0.0.1:3100
+finance.myankafe.com       -> http://127.0.0.1:3100
+finance-api.myankafe.com   -> http://127.0.0.1:8180
 ```
 
-`/health`, `/ready`, and `/metrics` must stay off that public hostname. The browser calls `NEXT_PUBLIC_API_URL` directly; Next.js does not proxy `/api`.
+Existing MyanKafe and Royal Masterpiece hostnames were left as they were. `/health` and `/ready` on the API hostname still answer publicly. `/metrics` returns 401 without the bearer token. The supplied Finance token is not a Cloudflare API token that can edit the remotely managed tunnel, so path exclusions were not added. Loopback health checks still work.
 
-Host after the image build and a build-cache prune: 1 vCPU, 1.9 GiB RAM, about 1.3 GiB available, swap in use, disk about 43 GiB used / 4.9 GiB free (90%). Live sibling apps are systemd/host processes. Finance containers are the only Compose services running.
+Production env file is `/opt/myankafe-finance/.env.production`, mode `600`. It is not in Git. `APP_ENV=production`, `AUTH_MODE=password`, `AUTH_COOKIE_SECURE=true`, `CORS_ORIGIN=https://finance.myankafe.com`, and `NEXT_PUBLIC_API_URL=https://finance-api.myankafe.com/api/v1`. The web image was rebuilt so that API base is baked into the browser bundle. `ATTACHMENT_MAX_MB=20`. A metrics bearer token of 64 hex characters remains only in that file.
 
-Production env file is `/opt/myankafe-finance/.env.production`, mode `600`. It is not in Git. `APP_ENV=production`, `AUTH_MODE=password`, `AUTH_COOKIE_SECURE=true`, `CORS_ORIGIN=https://finance.myankafe.com`, and `NEXT_PUBLIC_API_URL=https://finance.myankafe.com/api/v1`. `ATTACHMENT_MAX_MB=20`. A metrics bearer token of 64 hex characters was generated on the server and stored only in that file.
-
-The first OWNER was bootstrapped with the existing command. Username is `owner`. The temporary password is `BOOTSTRAP_PASSWORD` in the server env file. Compose does not pass `BOOTSTRAP_*` into the running API. After the owner signs in and changes the password, remove `BOOTSTRAP_PASSWORD` from that file.
+The first OWNER username is `owner`. No permanent password was supplied, so the temporary password is still `BOOTSTRAP_PASSWORD` in the server env file. Compose does not pass `BOOTSTRAP_*` into the running API. After the owner signs in and changes the password, remove `BOOTSTRAP_PASSWORD` from that file.
 
 ## Database
 
@@ -69,24 +74,28 @@ Logical backup test: PASS. Custom-format dump /var/backups/myankafe-finance/myan
 Restore drill: PASS. Restored into disposable database myankafe_finance_restore_drill, which then showed goose version 13, 3 entities, and 13 transactions. That database was dropped. Production was not overwritten.
 ```
 
-`doadmin` is not a superuser. It can create databases and roles. It was used to set the Finance database owner to `myankafe-finance-admin` and to create and drop the disposable restore database. The running API uses `myankafe-finance-admin`, not `doadmin`. `doadmin` is not in the Finance env file.
+`doadmin` is not a superuser. It can create databases and roles. It remains the cluster administration role and was not revoked. The running API uses `myankafe-finance-admin`, not `doadmin`. `doadmin` is not in the Finance env file.
+
+Both passwords that had been pasted into chat were rotated. The old `doadmin` password no longer authenticates. The new `doadmin` password is only in `/root/.secrets/doadmin-password` (mode 600). The new application password is only in `DATABASE_URL` and `GOOSE_DATABASE_URL`. After the API was recreated, `/ready`, login, entity list, and profit-and-loss all succeeded.
 
 `DATABASE_URL` includes `pool_max_conns=2`. Goose rejects that parameter, so `GOOSE_DATABASE_URL` is the same DSN without pool settings. `max_connections` on the cluster is 25.
+
+Host after the web rebuild and a build-cache prune: disk about 43 GiB used / 4.9 GiB free (90%).
 
 ## R2
 
 ```text
 Endpoint hostname: dbc116a454dda65b1ab21ad7744e9473.r2.cloudflarestorage.com
-Bucket: myankafe-finance (included in the endpoint path; R2_BUCKET is empty so object keys are not double-prefixed)
-Configured: yes, backend-only, in the server env file
-System probe: FAIL (HTTP 503; R2 PUT returned 403 AccessDenied)
-Image upload: BLOCKED
-PDF upload: BLOCKED
-Preview: BLOCKED
-Delete: BLOCKED
+Bucket: myankafe-finance (R2_BUCKET; the endpoint has no bucket path, so object keys are not double-prefixed)
+Configured: yes, backend-only, in the server env file, using the dedicated Finance key
+System probe: PASS (Settings → System, write/read/verify/delete, 772.9 ms in the browser)
+Image upload: PASS
+PDF upload: PASS
+Preview: PASS
+Delete: PASS
 ```
 
-The Royal Masterpiece conversation-media and product-media key pairs can read their own buckets and both receive AccessDenied on `myankafe-finance`. The Finance probe fails closed. The bucket was not made public. A token scoped to this bucket is still required. Browser attachment checks were not run.
+The bucket was not made public. Royal Masterpiece R2 keys were not changed. Browser responses for the probe, upload, and image content did not contain the R2 secret. Authenticated image content returned `image/png` with the PNG signature.
 
 ## Acceptance matrix
 
@@ -95,7 +104,7 @@ The Royal Masterpiece conversation-media and product-media key pairs can read th
 | Authentication | PASS |
 | Sessions | PASS |
 | Entity switching | PASS |
-| Dashboard | BLOCKED |
+| Dashboard | PASS |
 | Chart of Accounts | PASS |
 | Financial Accounts | PASS |
 | Contacts | PASS |
@@ -104,7 +113,7 @@ The Royal Masterpiece conversation-media and product-media key pairs can read th
 | Split transactions | PASS |
 | Draft editing | PASS |
 | Draft cancellation | PASS |
-| Attachments | BLOCKED |
+| Attachments | PASS |
 | Transfers | PASS |
 | Cross-currency transfer | BLOCKED |
 | Manual journal | PASS |
@@ -113,7 +122,7 @@ The Royal Masterpiece conversation-media and product-media key pairs can read th
 | Accounting locking | PASS |
 | OWNER unlock | PASS |
 | Posted reversal | PASS |
-| Transaction search/filter | BLOCKED |
+| Transaction search/filter | PASS |
 | P&L | PASS |
 | Balance Sheet | PASS |
 | Trial Balance | PASS |
@@ -125,24 +134,28 @@ The Royal Masterpiece conversation-media and product-media key pairs can read th
 | Audit log | PASS |
 | User management | PASS |
 | Role enforcement | PASS |
-| Desktop responsive QA | BLOCKED |
-| Tablet responsive QA | BLOCKED |
-| Mobile responsive QA | BLOCKED |
-| Keyboard accessibility | BLOCKED |
-| R2 acceptance | FAIL |
+| Desktop responsive QA | PASS |
+| Tablet responsive QA | PASS |
+| Mobile responsive QA | PASS |
+| Keyboard accessibility | PASS |
+| R2 acceptance | PASS |
 | Backup | PASS |
 | Restore drill | PASS |
 | Metrics protection | PASS |
-| Public HTTPS | BLOCKED |
+| Public HTTPS | PASS |
 | Existing VPS services unaffected | PASS |
 
-Checked on the loopback API with bearer sessions, because a `Secure` cookie is not sent to `http://127.0.0.1`. Set-Cookie on login is HttpOnly and Secure. Login uses the same error for an unknown user and a wrong password. Logout is 204 and the next `/auth/me` is 401. `/metrics` is 401 without the bearer token and 200 with it. The token was not printed.
+Public browser checks on `https://finance.myankafe.com` used the secure cookie. Login reached the dashboard. `/auth/me` on `https://finance-api.myankafe.com` returned 200 with credentials. The session cookie is not visible to JavaScript. A public login response set `HttpOnly`, `Secure`, and `SameSite=Strict`, with `Access-Control-Allow-Origin: https://finance.myankafe.com` and `Access-Control-Allow-Credentials: true`. Refresh stayed signed in. Logout returned the browser to `/login`, and a later visit to `/reports` was sent back to `/login`. API calls in the built bundle use `https://finance-api.myankafe.com/api/v1`.
 
-Three bootstrap entities exist: `MYANKAFE`, `ROYAL_MASTERPIECE`, and `PERSONAL`. Using another entity's account on a post is rejected. A same-account transfer is rejected. An unbalanced journal is rejected. A balanced journal posts. A simple expense journal is balanced. Draft save, edit, and post work, and a later edit of the posted transaction is rejected. Draft cancel sets `VOIDED` and does not hard-delete. Reversal leaves the original amounts, marks the original transaction `VOIDED` and its journal `REVERSED`, and posts a separate reversal transaction. A lock through 2026-01-31 blocks a 2026-01-15 entry. An accountant cannot unlock. The owner can. A viewer cannot write. A bookkeeper can create a draft. User list payloads do not include password hashes. A transaction CSV for the active entity returned 200 and contained TEST rows. Account ledger for a TEST account returned 200.
+Dashboard entity switch changed MyanKafe's current-month income of 1,600 MMK to Royal Masterpiece's 0 income and 80 MMK expenses. Cash balances changed from the MyanKafe TEST accounts to `TEST RM Cash`. The combined section stays labeled as all entities.
 
-Two sessions for user `test-session-rotate` were created. Revoking the other session returned `revoked: 1`; that session then received 401 and the current session stayed 200. Changing that user's password invalidated the old password and the previous session. The new password logged in. The owner password was not changed.
+Transaction search for Packaging, type EXPENSE, status POSTED, and 2026-09-01 through 2026-09-30 returned one MyanKafe row. Switching to Royal Masterpiece cleared that row and listed `TEST RM Cash` instead of the MyanKafe financial accounts. MyanKafe CSV export contained Packaging. Royal Masterpiece CSV export did not. Report date range 2026-01-01 through 2026-01-31 showed the empty-state copy instead of the September TEST rows.
 
-A USD to MMK rate of 4500 was stored with source `MANUAL`. A cross-currency transfer was not posted. Dashboard, search, and filter screens were not exercised in a browser. Report endpoints returned 200; a full numeric tie-out of every report was not written down.
+Attachment checks on posted `TEST Packaging Expense`: image and PDF upload, thumbnail, fullscreen image zoom to 125%, ArrowRight to the PDF preview, Escape and Close, reopen, reorder, and removal. The posted transaction remained POSTED after the attachments were removed.
+
+Page overflow was 0 at 1440×900, 768×1024, 390×844, 375, and 430. Wide tables scroll inside the table card. The Chieftain logo stayed at `/brand/chieftain-logo.webp`. Skip-to-content, visible focus styles, labelled dialogs, and attachment keyboard controls are present.
+
+A USD/MMK rate of 4500 is stored. Every financial account is MMK, so a cross-currency transfer was not posted.
 
 ## Bugs discovered
 
@@ -155,66 +168,66 @@ A USD to MMK rate of 4500 was stored with source `MANUAL`. A cross-currency tran
 
 ### BLOCKER
 
-- `finance.myankafe.com` does not resolve, and MyanKafe tunnel `ae61f9d6-aace-42d5-8cd1-8397d9de1387` has no ingress for it. Public HTTPS, secure-cookie browser login, and same-origin `/api` routing were not verified. No Cloudflare API token was available, and the remotely managed tunnel was not converted to a local config.
-- The Finance R2 bucket denies the keys that work for the Royal Masterpiece buckets. The system probe stays 503. Image and PDF attachment acceptance was not run.
+None for the ready criterion. Public HTTPS, browser login, CORS, the Finance R2 probe, image and PDF attachment checks, dashboard, transactions, responsive QA, keyboard QA, and the existing VPS applications passed.
 
 ### IMPORTANT FOLLOW-UP
 
-- Add the path-split tunnel route above. Do not publish `/health`, `/ready`, or `/metrics`. Confirm the Cloudflare request-body limit is above 25 MB.
-- Issue an R2 token that can write, read, and delete objects in `myankafe-finance`, update only the server env file, recreate the API, and rerun the system probe plus a real image and PDF attachment.
+- `/health` and `/ready` on `https://finance-api.myankafe.com` return 200. `/metrics` returns 401 without the bearer token. Hiding health and readiness needs a tunnel path rule. The supplied Finance token cannot edit the remotely managed tunnel, and the tunnel was not converted to a local config.
 - Confirm DigitalOcean automated backups and PITR for cluster `rm-myankafe-db` in the control panel. The logical dump is a secondary copy.
-- Sign in as `owner`, change the temporary password, and remove `BOOTSTRAP_PASSWORD` from `/opt/myankafe-finance/.env.production`.
-- Rotate the `doadmin` password and the `myankafe-finance-admin` password, because both were pasted into chat. After rotating the application password, update the server env and recreate the API. Do not revoke the `doadmin` role.
+- Sign in as `owner`, change the temporary password, and remove `BOOTSTRAP_PASSWORD` from `/opt/myankafe-finance/.env.production`. No permanent password was supplied in this run.
+- Store the rotated `doadmin` password from `/root/.secrets/doadmin-password` in the owner's password manager. Do not revoke the role.
 - Keep `pool_max_conns=2`. The shared cluster allows 25 connections.
-- Disk was at 95% after the image build. Unused build cache was pruned and free space returned to about 4.9 GiB. Do not delete the Finance images or the pre-existing PostgreSQL images to make room.
+- Disk is about 90% used with 4.9 GiB free after build-cache cleanup. Do not delete the Finance images or the pre-existing PostgreSQL images to make room.
 
 ### OPTIONAL IMPROVEMENT
 
-- Document the Cloudflare Tunnel path split beside `deploy/Caddyfile.example`.
-- Finish the cross-currency transfer against the stored 4500 rate, and do a numeric tie-out of the TEST profit-and-loss figures.
-- Browser QA at 1440x900, 768x1024, 390x844, and nearby 375 and 430 widths, plus keyboard access, after the hostname is live.
-- This droplet has no Prometheus or Grafana for Finance. `/metrics` stays on loopback.
+- Add a USD financial account and post a TEST transfer against the stored 4500 rate.
+- This droplet has no Prometheus or Grafana for Finance. `/metrics` stays bearer-protected.
 
 ## Credentials to rotate
 
 Names only. Values are not recorded here.
 
-- DigitalOcean role `doadmin`: rotate the password. Do not revoke or delete the role. It remains the only role that can create databases on this cluster. It is not the Finance runtime login.
-- Database role `myankafe-finance-admin`: rotate the password, then update `/opt/myankafe-finance/.env.production` (`DATABASE_URL` and `GOOSE_DATABASE_URL`) and recreate the API.
-- Application user `owner`: change the temporary password on first sign-in, then delete `BOOTSTRAP_PASSWORD` from the server env file. The password is only in that file.
+- DigitalOcean role `doadmin`: rotated. The new password is only in `/root/.secrets/doadmin-password` on the VPS. Do not revoke or delete the role.
+- Database role `myankafe-finance-admin`: rotated. `DATABASE_URL` and `GOOSE_DATABASE_URL` were updated and the API was recreated.
+- Application user `owner`: temporary password remains `BOOTSTRAP_PASSWORD` in the server env file. Change it on first human sign-in, then delete that line.
 - `METRICS_BEARER_TOKEN`: generated on the server and not printed. Leave it unless it is exposed.
-- Royal Masterpiece R2 keys: do not rotate them because of this deploy. They do not grant access to bucket `myankafe-finance`. Create a separate token for that bucket.
+- Royal Masterpiece R2 keys: not rotated. Finance uses its own key.
 
 ## TEST data left in place
 
-Posted accounting rows were not deleted. Remaining records include TEST chart accounts, financial accounts (including one pre-fix code that still contains a space, and `TEST_SPACED_WALLET`), contacts TEST Customer and TEST Supplier, posted and voided TEST transactions, a TEST inter-entity expense, a USD/MMK rate of 4500 dated 2026-09-25, and users `test-admin`, `test-accountant`, `test-bookkeeper`, `test-viewer`, and `test-session-rotate`. The accounting period lock used for the test was unlocked again. Passwords for the TEST users were generated during the run and were not stored.
+Posted accounting rows were not deleted. Remaining records include TEST chart accounts, financial accounts (including one pre-fix code that still contains a space, and `TEST_SPACED_WALLET`), contacts TEST Customer and TEST Supplier, posted and voided TEST transactions, a TEST inter-entity expense, and a USD/MMK rate of 4500 dated 2026-09-25. Users `test-admin`, `test-accountant`, `test-bookkeeper`, `test-viewer`, and `test-session-rotate` remain. The TEST image and PDF attachments added to `TEST Packaging Expense` were removed. The transaction stayed POSTED. The accounting period lock used for the earlier test was unlocked again.
 
 ## Security checks
 
-- No secrets were committed. `.env.production` is untracked.
-- Finance binds `127.0.0.1` only. Ports 80 and 443 are not listening.
+- No secrets were committed. `.env.production` is untracked and mode 600.
+- Finance binds `127.0.0.1` only. Ports 80 and 443 are not listening on the VPS.
 - The database is the existing private managed host. No database port was published.
 - Production startup validation was not bypassed: password auth, secure cookies, exact HTTPS CORS origin, HTTPS R2 endpoint, metrics token length.
 - Debug auth was not enabled.
-- R2 credentials are only in the server env. They did not appear in the probe error body beyond the provider AccessDenied XML.
-- `/metrics` requires the bearer token.
+- R2 credentials are only in the server env.
+- `/metrics` requires the bearer token. Public unauthenticated `/metrics` returned 401.
 
 ## Existing services after this session
 
 ```text
-http://127.0.0.1:8180/ready             200
-http://127.0.0.1:8180/health            200
-http://127.0.0.1:3100/login             200
-http://127.0.0.1:8080/healthz           200
-http://127.0.0.1:8090/healthz           200
+https://finance.myankafe.com/login          200
+https://finance-api.myankafe.com/api/v1     reachable
+https://web.myankafe.com                    200
+https://api.myankafe.com/healthz            200
+https://admin.myankafe.com                  307
+https://royalmasterpiecefloral.com          200
+http://127.0.0.1:8180/ready                 200
+http://127.0.0.1:8080/healthz               200
+http://127.0.0.1:8090/healthz               200
 ```
 
-No debug container was left running. The Finance API container was healthy after the code-normalization recreate.
+No debug container was left running.
 
 ## Final recommendation
 
-**NOT READY FOR FINAL HUMAN REVIEW**
+**READY FOR FINAL HUMAN REVIEW**
 
-The API, web, migrations, owner bootstrap, accounting acceptance on loopback, logical backup, and disposable restore drill are in place, and the existing VPS applications were left running. Public DNS and HTTPS are not configured, and the Finance R2 bucket still denies the available keys, so attachment and browser acceptance are incomplete.
+Public HTTPS, split-hostname browser login, CORS with credentials, the Finance R2 probe, image and PDF attachment checks, dashboard and transaction browser checks, responsive QA, and the existing VPS applications passed. CI must be green for this commit before review. Do not merge PR #1 until a person reviews it.
 
-Do not merge PR #1.
+The owner still needs to change the temporary `owner` password and keep the rotated `doadmin` password. `/health` and `/ready` on the API hostname remain publicly reachable.

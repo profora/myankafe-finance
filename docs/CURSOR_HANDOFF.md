@@ -7,7 +7,7 @@ PR: `#1 feat: V1 multi-entity accounting foundation`
 
 ### Backend and database
 
-- PostgreSQL 17 schema and Goose migrations through 00012
+- PostgreSQL 17 schema and Goose migrations through 00013
 - UUIDv7 internal IDs / canonical ULID public IDs
 - multi-entity books and deterministic effective per-entity roles
 - hierarchical Chart of Accounts
@@ -238,9 +238,15 @@ The section above describes the first pass, before database and R2 values were a
 - Migration `00013` widens `idempotency_records.scope` to `varchar(300)`. Two-ULID mutation URLs were returning HTTP 500.
 - Financial-account codes are normalized on create: uppercase, whitespace collapsed to underscores.
 - The initial OWNER username is `owner`. The temporary password is only in `/opt/myankafe-finance/.env.production` as `BOOTSTRAP_PASSWORD`. Remove it after the first human password change.
-- `finance.myankafe.com` still does not resolve. Tunnel `ae61f9d6-aace-42d5-8cd1-8397d9de1387` needs `/api/*` to `127.0.0.1:8180` and every other path to `127.0.0.1:3100`.
+- Public routing is no longer a same-origin `/api/*` split. `finance.myankafe.com` goes to `127.0.0.1:3100`. `finance-api.myankafe.com` goes to `127.0.0.1:8180`. Both names are on MyanKafe tunnel `ae61f9d6-aace-42d5-8cd1-8397d9de1387`.
+- `CORS_ORIGIN` remains `https://finance.myankafe.com`. `NEXT_PUBLIC_API_URL` is `https://finance-api.myankafe.com/api/v1`. Cookies stay Secure and SameSite=Strict. That works because both hostnames are the same site.
+- The Finance R2 bucket accepts the dedicated token. The system probe and browser image/PDF checks passed. Royal Masterpiece R2 keys were not changed.
+- `doadmin` and `myankafe-finance-admin` passwords were rotated. The new `doadmin` password is only in `/root/.secrets/doadmin-password` on the VPS. The application password is only in `/opt/myankafe-finance/.env.production`.
+- No permanent owner password was supplied. `BOOTSTRAP_PASSWORD` is still in the server env file. The owner should sign in, change it, and then remove that line.
+- `/health` and `/ready` on `finance-api.myankafe.com` are still reachable. `/metrics` returns 401 without the bearer token. The supplied R2 token cannot edit the remotely managed tunnel, so path exclusions were not added.
+- Cross-currency transfer was not posted. The stored USD/MMK rate exists, and every financial account is MMK.
 - The R2 system probe fails closed with AccessDenied on bucket `myankafe-finance`. The keys that work for the Royal Masterpiece buckets do not work for this bucket.
 - A logical backup and a restore into a disposable database succeeded. The disposable database was dropped. Provider PITR was not confirmed in the console.
-- Recommendation remains **NOT READY FOR FINAL HUMAN REVIEW**. PR #1 stays Draft.
+- Recommendation is **READY FOR FINAL HUMAN REVIEW**. PR #1 is Ready for Review and must not be merged until a person reviews it.
 
 Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
