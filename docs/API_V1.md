@@ -80,7 +80,10 @@ Report endpoints accept applicable `from`, `to`, or `through` date query paramet
 
 - `GET /transactions`
 - `GET /transactions/{transaction_ulid}`
+- `GET /transactions/export.csv`
 - `POST /transactions`
+- `PUT /transactions/{transaction_ulid}` — edit an `INCOME`/`EXPENSE` draft only
+- `POST /transactions/{transaction_ulid}/cancel` — mark a draft `VOIDED`; requires an audit reason
 - `POST /transactions/{transaction_ulid}/post`
 - `POST /transactions/{transaction_ulid}/reverse`
 - `POST /transfers`
@@ -99,6 +102,8 @@ Transaction-list query parameters:
 The list response includes `income_total`, `expense_total`, `net_total`, `functional_currency`, count/pagination metadata, and per-row `functional_effect`, `running_net`, and `attachment_count`.
 
 Running/summary values are journal-derived in entity functional currency. Reversals unwind prior income/expense effects.
+
+Draft creation, draft re-dating, and draft cancellation are rejected for dates at or before the entity's accounting lock. Posted transactions cannot be edited; corrections use reversal.
 
 ### Attachments
 
