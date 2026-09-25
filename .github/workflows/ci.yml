@@ -82,3 +82,23 @@ jobs:
           --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
           -t myankafe-finance-web:ci
           ./frontend
+
+
+  operations-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production Compose
+        run: docker compose --env-file .env.production.example -f docker-compose.prod.yml config >/dev/null
+      - name: Validate backup script syntax
+        run: sh -n scripts/postgres-backup.sh
+      - name: Validate Caddy template
+        run: >-
+          docker run --rm
+          -e FINANCE_HOST=finance.example.com
+          -e FINANCE_API_UPSTREAM=127.0.0.1:8180
+          -e FINANCE_WEB_UPSTREAM=127.0.0.1:3100
+          -e FINANCE_MAX_BODY=25MB
+          -v "$PWD/deploy/Caddyfile.example:/etc/caddy/Caddyfile:ro"
+          caddy:2-alpine
+          caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

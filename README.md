@@ -157,6 +157,7 @@ Tests cover core ledger invariants, authorization, idempotency, reversal, inter-
 - [Architecture and invariants](docs/ARCHITECTURE.md)
 - [API V1](docs/API_V1.md)
 - [Cursor handoff](docs/CURSOR_HANDOFF.md)
+- [Production deployment runbook](docs/DEPLOYMENT.md)
 
 ## Before production merge
 

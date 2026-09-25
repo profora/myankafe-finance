@@ -114,14 +114,12 @@ Do not merge if CI is red. CI run #772 passed the complete frontend/backend/cont
    - confirm the chosen reverse-proxy request-size limits allow the configured attachment size
 
 2. **Production operations**
-   - secret management for PostgreSQL, bootstrap credentials, cookie/session configuration, and R2 keys
-   - TLS/reverse proxy
-   - `AUTH_COOKIE_SECURE=true`
-   - exact production `CORS_ORIGIN`
-   - PostgreSQL backups/PITR
-   - migration/deployment runbook
+   - production Compose, secure env template, Caddy/TLS example, migration/deployment runbook, and logical backup script are now committed and CI-validated
+   - still configure real PostgreSQL/R2/bootstrap secrets on the target host; never commit filled `.env.production`
+   - keep `AUTH_COOKIE_SECURE=true` and set exact production `CORS_ORIGIN`
+   - enable provider PostgreSQL backups/PITR and restore-test them; the logical dump script is only an additional portable backup
    - ship the already-structured JSON logs to the chosen log platform
-   - scrape the already-implemented `/metrics` endpoint and configure alerting
+   - scrape the already-implemented `/metrics` endpoint with its bearer token and configure alerting
 
 3. **Polish without changing accounting semantics**
    - mobile navigation drawer is already implemented; do final device QA
