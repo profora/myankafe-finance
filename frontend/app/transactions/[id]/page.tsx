@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import TransactionAttachments from "@/components/TransactionAttachments";
+import DraftTransactionActions from "@/components/DraftTransactionActions";
 
 type JournalLine={
   line_no:number;
@@ -57,14 +58,16 @@ export default function TransactionDetailPage(){
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
 
-  useEffect(()=>{
+  async function load(){
     if(!entity||!id)return;
     setLoading(true);setError("");
-    api<Detail>(`/entities/${entity.PublicID}/transactions/${id}`)
-      .then(setDetail)
-      .catch(e=>setError(e.message))
-      .finally(()=>setLoading(false));
-  },[entity,id]);
+    try{
+      setDetail(await api<Detail>(`/entities/${entity.PublicID}/transactions/${id}`));
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setLoading(false)}
+  }
+
+  useEffect(()=>{load()},[entity?.PublicID,id]);
 
   if(loading&&!detail)return <div className="empty">Loading transaction…</div>;
 
@@ -78,6 +81,14 @@ export default function TransactionDetailPage(){
     </div>
     {error&&<div className="alert error">{error}</div>}
     {detail&&<>
+      {detail.status==="DRAFT"&&<div className="card draft-management-card">
+        <div>
+          <strong>Draft transaction</strong>
+          <p className="muted">This transaction has no accounting effect until posted. You can edit or cancel it while its date remains in an open period.</p>
+        </div>
+        <DraftTransactionActions entity={entity!} draft={detail} onChanged={load}/>
+      </div>}
+
       <div className="grid cards">
         <div className="card"><div className="muted">Amount</div><div className="metric">{Number(detail.total).toLocaleString()} {detail.currency}</div></div>
         <div className="card"><div className="muted">Financial account</div><div style={{fontWeight:750,marginTop:8}}>{detail.financial_account?.name??"—"}</div></div>
