@@ -121,6 +121,8 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 				r.Get("/transactions/{tx}/attachments/{attachment}/content", s.transactionAttachmentContent)
 				r.Delete("/transactions/{tx}/attachments/{attachment}", s.deleteTransactionAttachment)
 				r.Post("/transactions", s.createTransaction)
+				r.Put("/transactions/{tx}", s.updateDraftTransaction)
+				r.Post("/transactions/{tx}/cancel", s.cancelDraftTransaction)
 				r.Post("/transactions/{tx}/post", s.postTransaction)
 				r.Post("/transactions/{tx}/reverse", s.reverseTransaction)
 
@@ -305,6 +307,26 @@ func (s *Server) createTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, http.StatusCreated, v)
+}
+
+func (s *Server) updateDraftTransaction(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if !requireRole(w,canOperateLedger(a.Role),"ledger operation access required"){return}
+	var in postgres.CreateTransactionInput
+	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,http.StatusBadRequest,err);return}
+	v,err:=s.Store.UpdateDraftTransaction(r.Context(),a.User,a.Entity,chi.URLParam(r,"tx"),in)
+	if err!=nil{fail(w,http.StatusBadRequest,err);return}
+	write(w,http.StatusOK,v)
+}
+
+func (s *Server) cancelDraftTransaction(w http.ResponseWriter,r *http.Request){
+	a:=getAccess(r)
+	if !requireRole(w,canOperateLedger(a.Role),"ledger operation access required"){return}
+	var in struct{Reason string `json:"reason"`}
+	if err:=json.NewDecoder(r.Body).Decode(&in);err!=nil{fail(w,http.StatusBadRequest,err);return}
+	v,err:=s.Store.CancelDraftTransaction(r.Context(),a.User,a.Entity,chi.URLParam(r,"tx"),in.Reason)
+	if err!=nil{fail(w,http.StatusBadRequest,err);return}
+	write(w,http.StatusOK,v)
 }
 
 func (s *Server) postTransaction(w http.ResponseWriter, r *http.Request) {
