@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import TransactionAttachments from "@/components/TransactionAttachments";
 import DraftTransactionActions from "@/components/DraftTransactionActions";
-import { canOperateLedger } from "@/lib/permissions";
+import { canCorrectPostedAccounting, canOperateLedger } from "@/lib/permissions";
 
 type JournalLine={
   line_no:number;
@@ -54,12 +56,19 @@ type Detail={
 export default function TransactionDetailPage(){
   const {entity,entities,setEntityID,loading:entitiesLoading}=useEntity();
   const mayOperate=canOperateLedger(entity?.Role);
+  const mayReverse=canCorrectPostedAccounting(entity?.Role);
   const params=useParams<{id:string}>();
   const id=Array.isArray(params.id)?params.id[0]:params.id;
   const [detail,setDetail]=useState<Detail|null>(null);
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
   const [requestedEntity,setRequestedEntity]=useState<string|undefined>();
+  const [reverseOpen,setReverseOpen]=useState(false);
+  const [reverseBusy,setReverseBusy]=useState(false);
+  const [reverseReason,setReverseReason]=useState("");
+  const [reverseDate,setReverseDate]=useState("");
+  const reversalDateID=useId();
+  const reversalReasonID=useId();
 
   async function load(){
     if(!entity||!id)return;
@@ -90,15 +99,35 @@ export default function TransactionDetailPage(){
     void load();
   },[entity?.PublicID,id,requestedEntity]);
 
+  const canReverse=Boolean(mayReverse&&detail&&detail.status==="POSTED"&&!detail.reversal_transaction_id);
+
+  function openReverse(){
+    setReverseReason("");
+    setReverseDate(dateInTimeZone(entity?.Timezone??"Asia/Yangon"));
+    setReverseOpen(true);
+  }
+
+  async function reverse(){
+    if(!entity||!detail||!reverseDate||!reverseReason.trim())return;
+    setReverseBusy(true);setError("");
+    try{
+      await api(`/entities/${entity.PublicID}/transactions/${detail.id}/reverse`,{method:"POST",body:JSON.stringify({reversal_date:reverseDate,reason:reverseReason.trim()})});
+      setReverseOpen(false);setReverseReason("");
+      await load();
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+    finally{setReverseBusy(false)}
+  }
+
   if(loading&&!detail)return <div className="card detail-loading" role="status" aria-live="polite"><span className="skeleton skeleton-wide" aria-hidden="true"/><span className="skeleton skeleton-line" aria-hidden="true"/><span className="sr-only">Loading transaction…</span></div>;
 
   return <>
-    <div className="page-head">
+    <div className="page-head detail-page-head">
       <div>
         <div className="muted"><Link href="/transactions">Transactions</Link> / Detail</div>
         <h1>{detail?.description??"Transaction"}</h1>
         {detail&&<p>{detail.date} · {detail.type} · <span className={`badge ${detail.status}`}>{detail.status}</span></p>}
       </div>
+      {canReverse&&<button type="button" className="danger" onClick={openReverse}>Reverse transaction</button>}
     </div>
     {error&&<div className="alert error" role="alert">{error}</div>}
     {detail&&<>
@@ -130,6 +159,24 @@ export default function TransactionDetailPage(){
         <div className="page-head" style={{marginTop:28}}><div><h1 style={{fontSize:20}}>Entry splits</h1></div></div>
         <div className="table-wrap"><table><thead><tr><th>#</th><th>Account</th><th>Description</th><th>Amount</th></tr></thead><tbody>{detail.splits.map(x=><tr key={x.line_no}><td>{x.line_no}</td><td><Link className="table-link" href={`/accounts/${x.account_id}/ledger`}>{x.account_code} · {x.account_name}</Link></td><td>{x.description||"—"}</td><td>{Number(x.amount).toLocaleString()} {detail.currency}</td></tr>)}</tbody></table></div>
       </>}
+
+      <ConfirmDialog
+        open={reverseOpen}
+        title="Reverse posted transaction?"
+        description="This does not edit or delete the original. A new opposite journal will be posted and the original remains in the audit trail."
+        confirmLabel="Post reversal"
+        danger
+        busy={reverseBusy}
+        confirmDisabled={!reverseDate||!reverseReason.trim()}
+        onCancel={()=>{if(!reverseBusy){setReverseOpen(false);setReverseReason("")}}}
+        onConfirm={reverse}
+      >
+        <div className="form" style={{marginTop:16}}>
+          <div className="field"><label htmlFor={reversalDateID}>Reversal date</label><input id={reversalDateID} type="date" value={reverseDate} onChange={e=>setReverseDate(e.target.value)}/></div>
+          <div className="field"><label htmlFor={reversalReasonID}>Reason</label><textarea id={reversalReasonID} autoFocus rows={3} value={reverseReason} onChange={e=>setReverseReason(e.target.value)} placeholder="Why is this transaction being reversed?"/></div>
+          {!reverseReason.trim()&&<div className="muted">A reason is required for the audit trail.</div>}
+        </div>
+      </ConfirmDialog>
 
       {detail.journals.map(j=><section key={j.id}>
         <div className="page-head" style={{marginTop:28}}><div><h1 style={{fontSize:20}}>Journal · {j.status}</h1><p>{j.date} · {j.id}</p></div></div>

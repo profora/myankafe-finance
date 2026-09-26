@@ -9,12 +9,13 @@ type Props={
   confirmLabel:string;
   danger?:boolean;
   busy?:boolean;
+  confirmDisabled?:boolean;
   children?:React.ReactNode;
   onCancel:()=>void;
   onConfirm:()=>void;
 };
 
-export default function ConfirmDialog({open,title,description,confirmLabel,danger,busy,children,onCancel,onConfirm}:Props){
+export default function ConfirmDialog({open,title,description,confirmLabel,danger,busy,confirmDisabled,children,onCancel,onConfirm}:Props){
   const ref=useRef<HTMLDialogElement>(null);
   const titleID=useId();
   const descriptionID=useId();
@@ -33,7 +34,7 @@ export default function ConfirmDialog({open,title,description,confirmLabel,dange
       {children}
       <div className="actions dialog-actions">
         <button type="button" className="secondary" disabled={busy} onClick={onCancel}>Cancel</button>
-        <button type="button" className={danger?"danger":""} disabled={busy} onClick={onConfirm}>{busy?"Working…":confirmLabel}</button>
+        <button type="button" className={danger?"danger":""} disabled={busy||confirmDisabled} onClick={onConfirm}>{busy?"Working…":confirmLabel}</button>
       </div>
     </div>
   </dialog>;

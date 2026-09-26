@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { api, apiBlob } from "@/lib/api";
-import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
 import type { FinancialAccount } from "@/components/types";
-import ConfirmDialog from "@/components/ConfirmDialog";
 import TransactionEntryModal, { type QuickEntryKind } from "@/components/TransactionEntryModal";
-import { canCorrectPostedAccounting, canOperateLedger } from "@/lib/permissions";
+import { canOperateLedger } from "@/lib/permissions";
 
 type TransactionRow={
   row_id:string;
@@ -65,7 +63,6 @@ function signedAmount(value?:string|null, currency?:string|null){
 export default function Transactions(){
   const {entity}=useEntity();
   const mayOperate=canOperateLedger(entity?.Role);
-  const mayReverse=canCorrectPostedAccounting(entity?.Role);
   const [items,setItems]=useState<TransactionRow[]>([]);
   const [summary,setSummary]=useState<Omit<TransactionList,"items"|"has_more">>({count:0,income_total:"0",expense_total:"0",net_total:"0",functional_currency:"MMK"});
   const [financial,setFinancial]=useState<FinancialAccount[]>([]);
@@ -73,11 +70,7 @@ export default function Transactions(){
   const [applied,setApplied]=useState<Filters>(emptyFilters);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
-  const [busy,setBusy]=useState("");
   const [entryKind,setEntryKind]=useState<QuickEntryKind|null>(null);
-  const [reverseID,setReverseID]=useState("");
-  const [reverseReason,setReverseReason]=useState("");
-  const [reverseDate,setReverseDate]=useState(()=>dateInTimeZone(entity?.Timezone??"Asia/Yangon"));
   const [page,setPage]=useState(1);
   const [pageSize,setPageSize]=useState(25);
   const requestID=useRef(0);
@@ -143,27 +136,6 @@ export default function Transactions(){
       a.remove();
       URL.revokeObjectURL(href);
     }catch(e){setError(e instanceof Error?e.message:String(e))}
-  }
-
-  async function post(id:string){
-    if(!entity)return;
-    setBusy(id);setError("");
-    try{
-      await api(`/entities/${entity.PublicID}/transactions/${id}/post`,{method:"POST",body:"{}"});
-      await load();
-    }catch(e){setError(e instanceof Error?e.message:String(e))}
-    finally{setBusy("")}
-  }
-
-  async function reverse(){
-    if(!entity||!reverseID||!reverseReason.trim())return;
-    setBusy(reverseID);setError("");
-    try{
-      await api(`/entities/${entity.PublicID}/transactions/${reverseID}/reverse`,{method:"POST",body:JSON.stringify({reversal_date:reverseDate,reason:reverseReason.trim()})});
-      setReverseID("");setReverseReason("");
-      await load();
-    }catch(e){setError(e instanceof Error?e.message:String(e))}
-    finally{setBusy("")}
   }
 
   function applyFilters(e?:FormEvent){
@@ -232,7 +204,7 @@ export default function Transactions(){
 
     <div className="table-wrap transaction-table" aria-busy={loading}>
       {items.length?<table>
-        <thead><tr><th>Date</th><th>Movement</th><th>Description</th><th>Account</th><th>Status</th><th>Amount</th><th>Balance</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Movement</th><th>Description</th><th>Account</th><th>Status</th><th>Amount</th><th>Balance</th></tr></thead>
         <tbody>{items.map(t=><tr key={t.row_id}>
           <td>{t.date}</td>
           <td><span className="type-pill">{t.movement_label}</span></td>
@@ -241,10 +213,6 @@ export default function Transactions(){
           <td><span className={`badge ${t.status}`}>{t.status}</span></td>
           <td className={signedClass(t.signed_movement||"0")}>{signedAmount(t.signed_movement, t.account_currency)}</td>
           <td>{t.balance==null?"—":`${Number(t.balance).toLocaleString(undefined,{maximumFractionDigits:2})}${t.account_currency?` ${t.account_currency}`:""}`}</td>
-          <td><div className="actions compact-actions">
-            {mayOperate&&t.status==="DRAFT"&&<button disabled={busy===t.id} onClick={()=>post(t.id)}>{busy===t.id?"Posting…":"Post"}</button>}
-            {mayReverse&&t.status==="POSTED"&&<button className="danger" disabled={busy===t.id} onClick={()=>{setReverseID(t.id);setReverseReason("");setReverseDate(dateInTimeZone(entity?.Timezone??"Asia/Yangon"))}}>Reverse</button>}
-          </div></td>
         </tr>)}</tbody>
       </table>:loading?<div className="table-loading" role="status" aria-live="polite">
         <span className="sr-only">Loading transactions…</span>
@@ -269,23 +237,6 @@ export default function Transactions(){
       <button type="button" className="secondary" disabled={loading||page>=pageCount} onClick={()=>setPage(page+1)}>Next</button>
     </div>
 
-    {mayOperate&&<TransactionEntryModal open={Boolean(entryKind)} kind={entryKind} entity={entity??null} onClose={()=>setEntryKind(null)} onSaved={()=>load()}/>} 
-
-    <ConfirmDialog
-      open={Boolean(reverseID)}
-      title="Reverse posted transaction?"
-      description="This does not edit or delete the original. A new opposite journal will be posted and the original remains in the audit trail."
-      confirmLabel="Post reversal"
-      danger
-      busy={Boolean(busy)}
-      onCancel={()=>{if(!busy){setReverseID("");setReverseReason("")}}}
-      onConfirm={reverse}
-    >
-      <div className="form" style={{marginTop:16}}>
-        <div className="field"><label>Reversal date</label><input type="date" value={reverseDate} onChange={e=>setReverseDate(e.target.value)}/></div>
-        <div className="field"><label>Reason</label><textarea autoFocus rows={3} value={reverseReason} onChange={e=>setReverseReason(e.target.value)} placeholder="Why is this transaction being reversed?"/></div>
-        {!reverseReason.trim()&&<div className="muted">A reason is required for the audit trail.</div>}
-      </div>
-    </ConfirmDialog>
+    {mayOperate&&<TransactionEntryModal open={Boolean(entryKind)} kind={entryKind} entity={entity??null} onClose={()=>setEntryKind(null)} onSaved={()=>load()}/>}
   </>;
 }

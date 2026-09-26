@@ -41,6 +41,14 @@ function Shell({ children }: { children: React.ReactNode }) {
 
   useEffect(()=>{api<Me>("/auth/me").then(x=>setMe(x.user)).catch(()=>{})},[]);
   useEffect(()=>{setMobileNavOpen(false)},[pathname]);
+  useEffect(()=>{
+    if(!mobileNavOpen)return;
+    function onKey(event:KeyboardEvent){if(event.key==="Escape")setMobileNavOpen(false)}
+    window.addEventListener("keydown", onKey);
+    return ()=>window.removeEventListener("keydown", onKey);
+  },[mobileNavOpen]);
+
+  const fiscalLabel=entity?fiscalYearLabel(entity.FiscalMonth, entity.FiscalDay):"";
 
   async function signOut(){
     try { await api("/auth/logout",{method:"POST",body:"{}"}); } catch {}
@@ -58,7 +66,21 @@ function Shell({ children }: { children: React.ReactNode }) {
             <span>Finance</span>
           </span>
         </Link>
-        <nav aria-label="Primary navigation">
+        <div className="sidebar-entity">
+          <label className="nav-caption" htmlFor="current-entity">Entity</label>
+          <select id="current-entity" aria-label="Current entity" aria-busy={loading} disabled={loading||entities.length===0} value={entity?.PublicID ?? ""} onChange={(e) => {setEntityID(e.target.value);setMobileNavOpen(false)}}>
+            {loading&&entities.length===0&&<option value="">Loading entities…</option>}
+            {!loading&&entities.length===0&&<option value="">No entities available</option>}
+            {entities.map((x) => <option key={x.PublicID} value={x.PublicID}>{x.Name}</option>)}
+          </select>
+          <div className="sidebar-entity-meta">
+            {entity ? <>
+              <span>{entity.Role} · {entity.FunctionalCurrency}</span>
+              <span>FY {fiscalLabel || "not set"}</span>
+            </> : "No entity"}
+          </div>
+        </div>
+        <nav className="sidebar-nav" aria-label="Primary navigation">
           {["Overview","Transactions","Accounting Setup","Reports & Control","Settings"].map(group=>{
             const items=nav.filter(item=>{
               if(item.group!==group)return false;
@@ -75,33 +97,20 @@ function Shell({ children }: { children: React.ReactNode }) {
             </div>;
           })}
         </nav>
+        <div className="sidebar-user">
+          {me&&<strong>{me.display_name}</strong>}
+          {me&&<span className="sidebar-username">{me.username}</span>}
+          <button type="button" className="secondary sidebar-signout" onClick={signOut}>Sign out</button>
+        </div>
       </aside>
       {mobileNavOpen&&<button type="button" className="mobile-nav-overlay" aria-label="Close navigation" onClick={()=>setMobileNavOpen(false)}/>}
       <main className="main">
-        <header className="topbar">
-          <div className="topbar-entity">
-            <button type="button" className="secondary mobile-nav-button" aria-label="Open navigation" onClick={()=>setMobileNavOpen(true)}>☰</button>
-            <div>
-              <div className="eyebrow">Entity</div>
-              <select aria-label="Current entity" aria-busy={loading} disabled={loading||entities.length===0} value={entity?.PublicID ?? ""} onChange={(e) => setEntityID(e.target.value)}>
-                {loading&&entities.length===0&&<option value="">Loading entities…</option>}
-                {!loading&&entities.length===0&&<option value="">No entities available</option>}
-                {entities.map((x) => <option key={x.PublicID} value={x.PublicID}>{x.Name}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="actions">
-            <div className="top-meta">
-              {me&&<strong>{me.display_name}</strong>}
-              {me&&entity&&" · "}
-              {entity ? `${entity.Role} · ${entity.FunctionalCurrency} · FY ${fiscalYearLabel(entity.FiscalMonth, entity.FiscalDay) || "not set"}` : "No entity"}
-            </div>
-            <button type="button" className="secondary" onClick={signOut}>Sign out</button>
-          </div>
-        </header>
-        {error && <div className="alert error" role="alert">{error}</div>}
-        {!loading&&!error&&entities.length===0&&<div className="alert" role="status">No finance entities are available for this account.</div>}
-        <section id="main-content" tabIndex={-1} className="content">{children}</section>
+        <button type="button" className="secondary mobile-nav-button" aria-label="Open navigation" aria-expanded={mobileNavOpen} onClick={()=>setMobileNavOpen(true)}>☰</button>
+        <section id="main-content" tabIndex={-1} className="content">
+          {error && <div className="alert error" role="alert">{error}</div>}
+          {!loading&&!error&&entities.length===0&&<div className="alert" role="status">No finance entities are available for this account.</div>}
+          {children}
+        </section>
       </main>
     </div>
   );
