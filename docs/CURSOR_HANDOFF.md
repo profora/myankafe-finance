@@ -292,5 +292,16 @@ Current state:
 - `/health` and `/ready` remain public through the existing tunnel and do not reveal secrets. Restricting them is an infrastructure follow-up.
 - PR #1 is Ready for Review and is not merged.
 
+## 2026-09-26 platform owner and audit policy
+
+This section is the current production state. The deployed SHA in the previous section is superseded.
+
+- Deployed commit `26b43af683f3a504f4236721950a4f4c1f2cf158`. Goose 15. No migration 16. Migration 15 was not edited.
+- CI push `36247687444` and pull request `36247690039` are green.
+- An active `platform_owner` is OWNER of every entity. With zero entities there is no role row, and the sidebar shows OWNER. Creating an entity assigns that OWNER role in the same transaction. An entity OWNER is not a platform owner, and a platform owner's entity OWNER role cannot be downgraded or revoked.
+- Browser check: zero-entity sidebar showed Kyaw Thant Tin as OWNER. Temporary entity `TBOWN26` showed `OWNER · MMK` and exactly one OWNER role, then was removed. Final counts are again one user, one platform owner, and zero business rows.
+- Audit history records business and security actions only. New rows do not store user agent, request bodies, or accounting-event IP addresses. `request_id` remains for log correlation. Finance container logs rotate at 10 MB × 5 files.
+- PR #1 is Ready for Review and is not merged.
+
 Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
 

@@ -334,3 +334,21 @@ Finance API `/ready`, Finance web, MyanKafe `/healthz`, and Royal Masterpiece `/
 `/health` and `/ready` are still reachable on the public API hostname because the tunnel forwards them. Their bodies are status only (`{"ok":true}` and database/storage readiness). Hiding them is an infrastructure follow-up, not a tunnel change in this pass.
 
 PR #1 is Ready for Review. It is not merged.
+
+## 2026-09-26 platform owner and audit policy
+
+This section is the current production state. The deployed SHA above is superseded by this correction.
+
+Branch and deployed application commit `26b43af683f3a504f4236721950a4f4c1f2cf158`. Goose remains 15. Migration 16 was not required. The platform-owner rule is enforced in entity creation, startup reconciliation, and bootstrap, not by a schema change. Migration 15 was not edited.
+
+CI for this commit is green: push `36247687444` and pull request `36247690039`.
+
+`platform_owner` is the global ownership flag. Every active platform owner is automatically OWNER of every entity. Granting an entity OWNER role does not set `platform_owner`. An active platform owner cannot be downgraded to another entity role or removed from an entity. With zero entities, the signed-in platform owner is shown as OWNER and can create the first entity. After creation, the entity context shows `OWNER · <currency>`.
+
+Production was verified in the browser after deploy. With zero entities, the sidebar showed Kyaw Thant Tin, OWNER, and “No entities available.” A temporary entity `TBOWN26` / `TEST Owner Invariant` was created. `kyawthanttin` received exactly one active OWNER role on it, and the sidebar showed `OWNER · MMK`. That entity and the verification session/audit rows were removed with the same Finance-only business reset. The user row was kept.
+
+Final counts: users 1, platform owners 1, username `kyawthanttin`, entities 0, user-entity roles 0, and the other business tables 0. Currencies 4. Roles 5. Goose 15. Triggers are enabled.
+
+Audit rows are limited to accounting, configuration, and security actions. Ordinary reads no longer create audit events. New audit rows leave `user_agent` empty. Accounting events leave IP empty. `request_id` is still stored when the request has one. The `ENTITY_CREATE` row for the temporary entity had a request id and no user agent or IP. Finance API and web container logs use Docker json-file rotation, 10 MB × 5 files. MyanKafe and Royal Masterpiece were not restarted.
+
+`BOOTSTRAP_PASSWORD` remains absent. PR #1 stays Ready for Review and is not merged.
