@@ -326,6 +326,44 @@ WHERE u.public_id=$1 AND e.code=$2 AND uer.revoked_at IS NULL`, ownerPublic, cod
 	}
 }
 
+func TestGrantingEntityOwnerDoesNotSetPlatformOwner(t *testing.T) {
+	store := testHTTPStore(t)
+	principal, entity := seedHTTPRole(t, store, "OWNER")
+	router := testRouter(store)
+	var principalFlag bool
+	if err := store.Pool.QueryRow(context.Background(), `SELECT platform_owner FROM users WHERE public_id=$1`, principal).Scan(&principalFlag); err != nil {
+		t.Fatal(err)
+	}
+	if principalFlag {
+		t.Fatal("seeded entity owner was created as a platform owner")
+	}
+
+	created := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/users", principal, map[string]any{
+		"Username": "role-owner-" + strings.ToLower(principal), "DisplayName": "Role Owner", "Password": "CorrectHorseBattery1",
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create user status=%d body=%s", created.Code, created.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(created.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	userID, _ := body["id"].(string)
+	granted := performAuthorizedJSON(t, router, http.MethodPut, "/api/v1/entities/"+entity+"/users/role", principal, map[string]any{
+		"user_id": userID, "role": "OWNER",
+	})
+	if granted.Code != http.StatusOK {
+		t.Fatalf("grant owner status=%d body=%s", granted.Code, granted.Body.String())
+	}
+	var flag bool
+	if err := store.Pool.QueryRow(context.Background(), `SELECT platform_owner FROM users WHERE public_id=$1`, userID).Scan(&flag); err != nil {
+		t.Fatal(err)
+	}
+	if flag {
+		t.Fatal("granting entity OWNER set platform_owner")
+	}
+}
+
 func insertHTTPUser(t *testing.T, store *postgres.Store, platformOwner bool) string {
 	t.Helper()
 	userID, err := ids.UUIDv7()
