@@ -246,7 +246,7 @@ The section above describes the first pass, before database and R2 values were a
 - Cross-currency transfer was not posted. The stored USD/MMK rate exists, and every financial account is MMK.
 - The R2 system probe fails closed with AccessDenied on bucket `myankafe-finance`. The keys that work for the Royal Masterpiece buckets do not work for this bucket.
 - A logical backup and a restore into a disposable database succeeded. The disposable database was dropped. Provider PITR was not confirmed in the console.
-- Recommendation remains open until the migration 00014 deploy, browser acceptance, and CI for this branch are green. Do not merge PR #1.
+- Recommendation: ready for final human review. Do not merge PR #1.
 
 Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
 
@@ -260,4 +260,5 @@ Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPO
 - Migration `00014` adds `currencies.symbol`, entity-scoped `contact_types` seeded as Customer, Supplier, Employee, Owner, and Other, and optional transfer-fee columns.
 - Currency configuration is OWNER-only. Contact type configuration is OWNER, ADMIN, or ACCOUNTANT. New selections use active records. Referenced currencies and in-use contact types are deactivated rather than deleted.
 - A same-currency transfer with a fee posts debit destination, debit expense, credit source, and requires source = destination + fee.
+- Production is on commit `c1241d7202dbadb26b51b7cde02ba40dba7e5f51`, Goose version 14. CI runs 36220060219 and 36220062232 are green. Browser acceptance is in `docs/DEPLOYMENT_ACCEPTANCE_REPORT.md`.
 

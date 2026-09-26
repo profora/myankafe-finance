@@ -228,6 +228,30 @@ No debug container was left running.
 
 **READY FOR FINAL HUMAN REVIEW**
 
-Public HTTPS, split-hostname browser login, CORS with credentials, the Finance R2 probe, image and PDF attachment checks, dashboard and transaction browser checks, responsive QA, and the existing VPS applications passed. CI must be green for this commit before review. Do not merge PR #1 until a person reviews it.
+Public HTTPS, split-hostname browser login, CORS with credentials, the Finance R2 probe, image and PDF attachment checks, dashboard and transaction browser checks, responsive QA, and the existing VPS applications passed. The 2026-09-26 configuration round below is included. Do not merge PR #1 until a person reviews it.
 
 The owner still needs to change the temporary `owner` password and keep the rotated `doadmin` password. `/health` and `/ready` on the API hostname remain publicly reachable.
+
+## 2026-09-26 configuration, branding, and navigation
+
+Deployed commit `c1241d7202dbadb26b51b7cde02ba40dba7e5f51`. CI is green:
+
+- push run 36220060219
+- pull-request run 36220062232
+
+Production Goose is at version 14. Migration `00014_currency_contact_types_transfer_fees.sql` applied at 2026-09-26 05:20:15 UTC. Finance API `/ready` and the web login page returned 200. MyanKafe and Royal Masterpiece `/healthz` stayed 200. Disk remained about 90% with 4.9 GiB free.
+
+The Finance logo is the current MyanKafe admin brand, copied from `myankafe-platform` `admin/public/brand/logo-head.svg` and `logo-text.svg`. Those are the files the admin shell and login page render. `frontend/public/brand/chieftain-logo.webp` is no longer referenced by the UI and was left in the repository.
+
+Browser checks on `https://finance.myankafe.com`:
+
+- Login and sidebar show the MyanKafe mark with the words MyanKafe Finance.
+- Desktop navigation is grouped: Overview, Transactions, Accounting Setup, Reports & Control, Settings.
+- At 768px the drawer starts off-canvas and Open navigation shows the same groups, including Currencies and Contact Types.
+- Page overflow was 0 at 1440, 768, and 390. The transaction table scrolls inside its card.
+- Audit Action is a dropdown filled from `GET /audit-actions`, with All actions and exact action values.
+- Transactions use page size 25/50/100 and show the range. MyanKafe currently has one page. The list has no Running net or Functional effect column. The summary says Posted income, Posted expenses, and Net.
+- Currency create and unused delete were exercised. Deleting referenced MMK returned 400. Contact type create and unused delete were exercised. The five migrated types are present.
+- A same-currency transfer with a fee was posted in the browser: transaction `01M3E3D64G0XQ69MM9W9ZN00C9`. The journal debits TEST Cash Box 299 MMK and TEST Packaging 1 MMK, and credits TEST Bank Account 300 MMK.
+
+The earlier temporary UI password no longer signs in. It was reset on the server. The new value is only in `/root/.secrets/finance-ui-test-password`. It is not recorded here.
