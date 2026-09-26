@@ -303,5 +303,16 @@ This section is the current production state. The deployed SHA in the previous s
 - Audit history records business and security actions only. New rows do not store user agent, request bodies, or accounting-event IP addresses. `request_id` remains for log correlation. Finance container logs rotate at 10 MB × 5 files.
 - PR #1 is Ready for Review and is not merged.
 
+## 2026-09-26 accounting start date and opening balances
+
+This section is the current production state. The zero-entity sections above are historical.
+
+- Deployed commit `17bf53b886d965fa95118bf86c077828e7417bc7`. Goose 16. Migration 16 adds the accounting start date, opening-balance tables, four-digit COA codes, and the opening transaction types. Migrations 1–15 were not edited.
+- CI push `36256180955` and pull request `36256183955` are green.
+- Entities: `MYANKAFE` and `ROYAL_MASTERPIECE` are BUSINESS, MMK, Asia/Yangon, fiscal April 1. `PERSONAL` is PERSONAL, MMK, Asia/Yangon, fiscal January 1. All three have a NULL accounting start date. COA counts are 72, 73, and 49. Every code is four digits. `3980` and `3990` carry the opening-balance system roles.
+- `kyawthanttin` is the only user, remains `platform_owner`, and has one OWNER role on each entity. Financial accounts, contacts, transactions, journals, opening-balance sets, rates, and inter-entity mappings are 0.
+- Opening balances are edited only while the start date is unlocked. The first save posts an immutable `OPENING_BALANCE` journal. Later saves post delta `OPENING_BALANCE_ADJUSTMENT` journals. A disposable TEST entity verified that flow and was removed.
+- PR #1 is Ready for Review and is not merged.
+
 Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
 

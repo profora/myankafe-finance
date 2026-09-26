@@ -352,3 +352,27 @@ Final counts: users 1, platform owners 1, username `kyawthanttin`, entities 0, u
 Audit rows are limited to accounting, configuration, and security actions. Ordinary reads no longer create audit events. New audit rows leave `user_agent` empty. Accounting events leave IP empty. `request_id` is still stored when the request has one. The `ENTITY_CREATE` row for the temporary entity had a request id and no user agent or IP. Finance API and web container logs use Docker json-file rotation, 10 MB × 5 files. MyanKafe and Royal Masterpiece were not restarted.
 
 `BOOTSTRAP_PASSWORD` remains absent. PR #1 stays Ready for Review and is not merged.
+
+## 2026-09-26 accounting start date, opening balances, and restored entities
+
+This section is the current production state. The zero-entity baseline above is historical.
+
+Branch and deployed application commit `17bf53b886d965fa95118bf86c077828e7417bc7`. Goose 16. Migration `00016_accounting_start_opening_balances.sql` adds `entities.accounting_start_date`, the `OPENING_BALANCE` and `OPENING_BALANCE_ADJUSTMENT` transaction types, a four-digit chart-of-accounts check, and the opening-balance set and line tables. Migrations 1–15 were not edited.
+
+CI for this commit is green: push `36256180955` and pull request `36256183955`.
+
+Pre-migration backup: `/var/backups/myankafe-finance/myankafe-finance-20260926T164300Z.dump`, 2026-09-26T16:43:00Z, 140826 bytes, SHA-256 `086723b25b00c97d54d828adc5bcdd8e1e5ddb58b2b1e45f57261884cc36e1ae`. Entity identity was taken from `/var/backups/myankafe-finance/myankafe-finance-20260926T123210Z.dump` and was not restored as a database.
+
+Restored entities, all with `accounting_start_date` NULL:
+
+| Code | Name | Type | Currency | Timezone | Fiscal start | Template | COA |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| MYANKAFE | MyanKafe | BUSINESS | MMK | Asia/Yangon | April 1 | MYANKAFE_BUSINESS | 72 |
+| ROYAL_MASTERPIECE | Royal Masterpiece | BUSINESS | MMK | Asia/Yangon | April 1 | ROYAL_MASTERPIECE | 73 |
+| PERSONAL | Personal | PERSONAL | MMK | Asia/Yangon | January 1 | PERSONAL | 49 |
+
+Every COA code is four digits. `3980` is `OPENING_BALANCE_ADJUSTMENT` and `3990` is `OPENING_BALANCE_EQUITY` on each entity. `kyawthanttin` has one active OWNER role on each. Each entity has five default contact types. Financial accounts, contacts, transactions, journals, opening-balance sets, exchange rates, and inter-entity mappings are 0. No opening balances were invented.
+
+Posted opening journals stay immutable. The first save creates one `OPENING_BALANCE` journal on the start date and uses 3990 only for an imbalance. Later saves add `OPENING_BALANCE_ADJUSTMENT` journals and use 3980 only for a delta imbalance. Generic reversal of those types is rejected. A disposable `TESTOB` entity proved this in the browser, including lock through the start date, OWNER unlock, and same-day running balances of 5,000,000 then 5,250,000 then 5,249,000 on both the transaction list and the account ledger. That entity and its journals were deleted. Production is back to the three entities and zero journals. Triggers are enabled.
+
+PR #1 returns to Ready for Review after this acceptance. It is not merged.
