@@ -1,0 +1,33 @@
+# Copy or import this site block into the host Caddy configuration.
+# Environment variables come from the Caddy service environment, not Docker Compose.
+#
+# Required:
+#   FINANCE_HOST=finance.example.com
+# Optional:
+#   FINANCE_API_UPSTREAM=127.0.0.1:8180
+#   FINANCE_WEB_UPSTREAM=127.0.0.1:3100
+#   FINANCE_MAX_BODY=25MB
+
+{$FINANCE_HOST} {
+	encode zstd gzip
+
+	@finance_api path /api/*
+	handle @finance_api {
+		request_body {
+			max_size {$FINANCE_MAX_BODY:25MB}
+		}
+		reverse_proxy {$FINANCE_API_UPSTREAM:127.0.0.1:8180}
+	}
+
+	handle {
+		reverse_proxy {$FINANCE_WEB_UPSTREAM:127.0.0.1:3100}
+	}
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+}
