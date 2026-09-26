@@ -95,11 +95,11 @@ INSERT INTO financial_accounts(
 	}
 
 	return User{
-		ID: userID, PublicID: userPublic, Username: username, DisplayName: "Service Test User",
-	}, Entity{
-		ID: entityID, PublicID: entityPublic, Code: entityCode, Name: "Service Test " + suffix,
-		Type: "BUSINESS", FunctionalCurrency: "MMK", Timezone: "Asia/Yangon", FiscalMonth: 1, FiscalDay: 1,
-	}, expensePublic, faPublic
+			ID: userID, PublicID: userPublic, Username: username, DisplayName: "Service Test User",
+		}, Entity{
+			ID: entityID, PublicID: entityPublic, Code: entityCode, Name: "Service Test " + suffix,
+			Type: "BUSINESS", FunctionalCurrency: "MMK", Timezone: "Asia/Yangon", FiscalMonth: 1, FiscalDay: 1,
+		}, expensePublic, faPublic
 }
 
 func TestIdempotencyClaimCompleteAndReplay(t *testing.T) {
