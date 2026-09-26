@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import { fiscalYearLabel } from "@/lib/fiscal";
+import { canOperateLedger } from "@/lib/permissions";
 
 type DashboardData={
   cash_balances:{id:string;name:string;currency:string;balance:string}[];
@@ -36,7 +37,7 @@ export default function Dashboard() {
     <>
       <div className="page-head">
         <div><h1>Dashboard</h1><p>{entity?`Current-month overview for ${entity.Name}.`:"No entity is selected yet."}</p></div>
-        {entity&&<Link className="button" href="/transactions/new">New entry</Link>}
+        {entity&&canOperateLedger(entity.Role)&&<Link className="button" href="/transactions/new">New entry</Link>}
       </div>
       {error&&<div className="alert error" role="alert">{error}</div>}
       {!loading&&!entity&&<div className="alert" role="status">{platformOwner?"Create the first entity before recording any accounting.":"This account does not have an entity yet."}</div>}

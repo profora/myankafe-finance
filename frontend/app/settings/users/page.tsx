@@ -121,7 +121,7 @@ export default function Users(){
     {msg&&<div className="alert success" role="status" aria-live="polite">{msg}</div>}
     {!ownerAnywhere&&<div className="alert error">Platform user administration requires OWNER access on at least one entity.</div>}
 
-    {ownerAnywhere&&<div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(360px,1fr))",marginBottom:16}}>
+    {ownerAnywhere&&<div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",marginBottom:16}}>
       <div className="card form">
         <h3>New user</h3>
         <div className="field">

@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
 import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
+import { canOperateLedger } from "@/lib/permissions";
 import type { Account, FinancialAccount, Transaction } from "@/components/types";
 type Contact={id:string;display_name:string;contact_type:string;active:boolean};
 
@@ -12,6 +13,7 @@ type Split={AccountPublicID:string;Amount:string;Description:string};
 
 export default function NewTransaction(){
   const {entity}=useEntity();
+  const mayOperate=canOperateLedger(entity?.Role);
   const [accounts,setAccounts]=useState<Account[]>([]);
   const [financial,setFinancial]=useState<FinancialAccount[]>([]);
   const [contacts,setContacts]=useState<Contact[]>([]);
@@ -35,7 +37,7 @@ export default function NewTransaction(){
   },[]);
 
   useEffect(()=>{
-    if(!entity)return;
+    if(!entity||!mayOperate){setLoadingRefs(false);return;}
     let cancelled=false;
     setLoadingRefs(true);setError("");setMessage("");
     setAccounts([]);setFinancial([]);setContacts([]);
@@ -56,7 +58,7 @@ export default function NewTransaction(){
     }).catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
       .finally(()=>{if(!cancelled)setLoadingRefs(false)});
     return()=>{cancelled=true};
-  },[entity?.PublicID]);
+  },[entity?.PublicID,mayOperate]);
 
   const selectedFA=financial.find(x=>x.PublicID===fa);
   const eligible=accounts.filter(x=>x.Active&&x.Postable&&x.Type===type);
@@ -97,7 +99,8 @@ export default function NewTransaction(){
     <div className="page-head"><div><h1>New Entry</h1><p>Simple income/expense entry backed by double-entry journals.</p></div></div>
     {error&&<div className="alert error" role="alert">{error}</div>}
     {message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
-    <div className="card form" aria-busy={loadingRefs}>
+    {!mayOperate&&<div className="alert">Recording income and expenses requires Bookkeeper access or higher for the active entity.</div>}
+    {mayOperate&&<div className="card form" aria-busy={loadingRefs}>
       <div className="form-grid">
         <div className="field"><label>Type</label><select value={type} onChange={e=>setType(e.target.value)}><option>EXPENSE</option><option>INCOME</option></select></div>
         <div className="field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
@@ -119,6 +122,6 @@ export default function NewTransaction(){
         <span className="muted">{attachments.length?attachments.map(x=>x.name).join(", "):"Optional. Select multiple receipts/invoices; files upload before posting."}</span>
       </div>
       <div className="actions"><button type="button" disabled={loadingRefs||busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(false)}>{busy?"Saving…":"Save draft"}</button><button type="button" disabled={loadingRefs||busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(true)}>{busy?"Saving…":"Save & post"}</button></div>
-    </div>
+    </div>}
   </>;
 }

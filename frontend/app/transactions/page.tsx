@@ -6,7 +6,7 @@ import { api, apiBlob } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import type { FinancialAccount } from "@/components/types";
 import TransactionEntryModal, { type QuickEntryKind } from "@/components/TransactionEntryModal";
-import { canOperateLedger } from "@/lib/permissions";
+import { canCorrectPostedAccounting, canOperateLedger } from "@/lib/permissions";
 
 type TransactionRow={
   row_id:string;
@@ -63,6 +63,7 @@ function signedAmount(value?:string|null, currency?:string|null){
 export default function Transactions(){
   const {entity}=useEntity();
   const mayOperate=canOperateLedger(entity?.Role);
+  const mayCorrect=canCorrectPostedAccounting(entity?.Role);
   const [items,setItems]=useState<TransactionRow[]>([]);
   const [summary,setSummary]=useState<Omit<TransactionList,"items"|"has_more">>({count:0,income_total:"0",expense_total:"0",net_total:"0",functional_currency:"MMK"});
   const [financial,setFinancial]=useState<FinancialAccount[]>([]);
@@ -171,7 +172,7 @@ export default function Transactions(){
             <button type="button" onClick={()=>setEntryKind("TRANSFER")}><strong>Transfer</strong><span>Cash / bank / wallet move</span></button>
             <div className="menu-separator"/>
             <Link href="/pay-for-another-entity"><strong>Pay for Another Entity</strong><span>Pay a bill that belongs to another entity</span></Link>
-            <Link href="/manual-journal"><strong>Manual Journal</strong><span>Advanced debit / credit entry</span></Link>
+            {mayCorrect&&<Link href="/manual-journal"><strong>Manual Journal</strong><span>Advanced debit / credit entry</span></Link>}
           </div>
         </details>
       </div>}
