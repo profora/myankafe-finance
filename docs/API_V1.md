@@ -32,7 +32,7 @@ Multipart attachment uploads intentionally bypass the generic idempotency-body b
 ## Global
 
 - `GET /entities`
-- `POST /entities` — requires OWNER on an existing entity, or `platform_owner` on the signed-in user. The bootstrap user is a platform owner, so a blank installation can create its first entity. That create grants OWNER on the new entity. Ordinary user creation does not set `platform_owner`. `GET /auth/me` returns `platform_owner`.
+- `POST /entities` — requires OWNER on an existing entity, or `platform_owner` on the signed-in user. The bootstrap user is a platform owner, so a blank installation can create its first entity and manage platform settings (currencies, users, and the storage probe) before any entity exists. That create grants OWNER on the new entity. It does not grant access to entities the user is not a member of. Ordinary user creation does not set `platform_owner`. `GET /auth/me` returns `platform_owner`.
 - `GET /users`
 - `POST /users`
 - `POST /users/{user_ulid}/reset-password` — OWNER; revokes target sessions

@@ -34,6 +34,9 @@ func canCorrectPostedAccounting(role string) bool {
 }
 
 func (s *Server) ownerAnywhere(r *http.Request, user postgres.User) (bool, error) {
+	if user.PlatformOwner {
+		return true, nil
+	}
 	entities, err := s.Store.ListEntities(r.Context(), user.ID)
 	if err != nil {
 		return false, err

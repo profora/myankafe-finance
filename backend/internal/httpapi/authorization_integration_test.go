@@ -281,6 +281,19 @@ func TestPlatformOwnerCreatesFirstEntityWithoutExistingRole(t *testing.T) {
 		t.Fatalf("platform owner me status=%d body=%s", me.Code, me.Body.String())
 	}
 
+	ownerCurrencies := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/currencies", ownerPublic, nil)
+	if ownerCurrencies.Code != http.StatusOK {
+		t.Fatalf("platform owner currencies status=%d body=%s", ownerCurrencies.Code, ownerCurrencies.Body.String())
+	}
+	deniedCurrencies := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/currencies", deniedPublic, nil)
+	if deniedCurrencies.Code != http.StatusForbidden {
+		t.Fatalf("non-owner currencies status=%d body=%s", deniedCurrencies.Code, deniedCurrencies.Body.String())
+	}
+	activeCurrencies := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/currencies?active=1", deniedPublic, nil)
+	if activeCurrencies.Code != http.StatusOK {
+		t.Fatalf("active currencies status=%d body=%s", activeCurrencies.Code, activeCurrencies.Body.String())
+	}
+
 	denied := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/entities", deniedPublic, map[string]any{
 		"Code": "NOACCESS", "Name": "Should Fail", "EntityType": "BUSINESS",
 		"FunctionalCurrency": "MMK", "Timezone": "Asia/Yangon", "FiscalMonth": 4, "FiscalDay": 1,
