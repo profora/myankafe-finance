@@ -266,6 +266,7 @@ func TestAccessibleFinancialAccountsStayInsideGrantedEntities(t *testing.T) {
 	user, mine, _, myCash := seedServiceEntity(t, ctx, s, "DASHA")
 	_, personal, _, personalCash := seedServiceEntity(t, ctx, s, "DASHB")
 	_, hidden, _, hiddenCash := seedServiceEntity(t, ctx, s, "DASHC")
+	grantEntityRole(t, ctx, s, user.ID, mine.ID, "OWNER")
 	grantEntityRole(t, ctx, s, user.ID, personal.ID, "OWNER")
 	usd := insertCashAccount(t, ctx, s, mine, user, "USD")
 	_, incomePublic := seedTypedAccountCommitted(t, ctx, s, mine, user, "INCOME", "DASH_INCOME")
