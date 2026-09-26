@@ -170,9 +170,9 @@ RETURNING id::text,public_id::text,user_id::text,expires_at,last_seen_at`,
 	if _, err := tx.Exec(ctx, `
 INSERT INTO audit_events(
  id,public_id,actor_type,actor_user_id,action,resource_type,resource_id,
- outcome,source,metadata
-) VALUES($1,$2,'USER',$3,'AUTH_PASSWORD_CHANGED','USER',$3,'SUCCESS','WEB',$4::jsonb)`,
-		auditID, auditPublicID, user.ID, string(meta)); err != nil {
+ outcome,source,request_id,metadata
+) VALUES($1,$2,'USER',$3,'AUTH_PASSWORD_CHANGED','USER',$3,'SUCCESS','WEB',$4,$5::jsonb)`,
+		auditID, auditPublicID, user.ID, auditRequestID(ctx), string(meta)); err != nil {
 		return UserSession{}, err
 	}
 
@@ -191,7 +191,7 @@ func (s *Store) AuditAuth(ctx context.Context, userID *string, action, outcome s
 	if err != nil {
 		return err
 	}
-	body, err := json.Marshal(metadata)
+	body, err := json.Marshal(auditPayload(metadata))
 	if err != nil {
 		return err
 	}
@@ -203,9 +203,9 @@ func (s *Store) AuditAuth(ctx context.Context, userID *string, action, outcome s
 	}
 	_, err = s.Pool.Exec(ctx, `
 INSERT INTO audit_events(
- id,public_id,actor_type,actor_user_id,action,resource_type,outcome,source,metadata
-) VALUES($1,$2,$3,$4,$5,'AUTH',$6,'WEB',$7::jsonb)`,
-		id, pub, actorType, actor, action, outcome, string(body))
+ id,public_id,actor_type,actor_user_id,action,resource_type,outcome,source,request_id,metadata
+) VALUES($1,$2,$3,$4,$5,'AUTH',$6,'WEB',$7,$8::jsonb)`,
+		id, pub, actorType, actor, action, outcome, auditRequestID(ctx), string(body))
 	return err
 }
 
@@ -250,9 +250,9 @@ SET password_hash=EXCLUDED.password_hash,
 	}
 	if _, err := tx.Exec(ctx, `
 INSERT INTO audit_events(
- id,public_id,actor_type,actor_user_id,action,resource_type,resource_public_id,outcome,source,after_data
-) VALUES($1,$2,'USER',$3,'USER_PASSWORD_RESET','USER',$4,'SUCCESS','WEB',$5::jsonb)`,
-		auditID, auditPublic, actor.ID, targetPublicID, string(after)); err != nil {
+ id,public_id,actor_type,actor_user_id,action,resource_type,resource_public_id,outcome,source,request_id,after_data
+) VALUES($1,$2,'USER',$3,'USER_PASSWORD_RESET','USER',$4,'SUCCESS','WEB',$5,$6::jsonb)`,
+		auditID, auditPublic, actor.ID, targetPublicID, auditRequestID(ctx), string(after)); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

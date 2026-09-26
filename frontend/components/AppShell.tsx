@@ -101,6 +101,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="sidebar-user">
           {me&&<strong>{me.display_name}</strong>}
+          {platformOwner&&!entity&&<span className="sidebar-role">OWNER</span>}
           {me&&<span className="sidebar-username">{me.username}</span>}
           <button type="button" className="secondary sidebar-signout" onClick={signOut}>Sign out</button>
         </div>

@@ -40,7 +40,6 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), a.User, &a.Entity, "DASHBOARD_VIEW", "REPORT", nil, "SUCCESS", map[string]any{"from": from.Format("2006-01-02"), "to": to.Format("2006-01-02")})
 	write(w, http.StatusOK, v)
 }
 
@@ -62,7 +61,6 @@ func (s *Server) profitLoss(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), a.User, &a.Entity, "REPORT_VIEW", "PROFIT_LOSS", nil, "SUCCESS", map[string]any{"from": from.Format("2006-01-02"), "to": to.Format("2006-01-02")})
 	write(w, 200, map[string]any{"items": v, "from": from.Format("2006-01-02"), "to": to.Format("2006-01-02")})
 }
 
@@ -78,7 +76,6 @@ func (s *Server) trialBalance(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), a.User, &a.Entity, "REPORT_VIEW", "TRIAL_BALANCE", nil, "SUCCESS", map[string]any{"through": through.Format("2006-01-02")})
 	write(w, 200, map[string]any{"items": v, "through": through.Format("2006-01-02")})
 }
 
@@ -89,7 +86,6 @@ func (s *Server) listExchangeRates(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), a.User, &a.Entity, "EXCHANGE_RATE_LIST", "EXCHANGE_RATE", nil, "SUCCESS", nil)
 	write(w, 200, map[string]any{"items": v})
 }
 

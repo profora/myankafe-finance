@@ -29,6 +29,9 @@ func main() {
 		log.Fatal(err)
 	}
 	defer store.Close()
+	if err := store.ReconcilePlatformOwnerAccess(context.Background()); err != nil {
+		log.Fatal(err)
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

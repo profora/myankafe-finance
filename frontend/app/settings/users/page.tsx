@@ -10,8 +10,8 @@ type User={id:string;username:string;display_name:string;email?:string;status:st
 type Member={id:string;username:string;display_name:string;email?:string;role:string};
 
 export default function Users(){
-  const {entities,entity}=useEntity();
-  const ownerAnywhere=entities.some(x=>x.Role==="OWNER");
+  const {entities,entity,platformOwner}=useEntity();
+  const ownerAnywhere=platformOwner||entities.some(x=>x.Role==="OWNER");
   const mayViewEntityAccess=entity?.Role==="OWNER"||entity?.Role==="ADMIN";
   const mayManageEntityAccess=entity?.Role==="OWNER";
   const [users,setUsers]=useState<User[]>([]);

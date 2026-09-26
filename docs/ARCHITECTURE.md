@@ -68,12 +68,9 @@ The application service validates entity ownership before mutation. PostgreSQL a
 
 ## Audit model
 
-Two layers are intentional:
+Audit events record meaningful accounting, configuration, and security actions. Ordinary page and API reads do not create audit rows. Denied sensitive operations do.
 
-- Business audit events: richer atomic events written inside important accounting/database transactions.
-- HTTP request audit events: authenticated API actions recorded with method, path, status, entity when resolvable, and outcome.
-
-The audit log itself is append-only.
+Stored facts are the actor, action, resource, time, outcome, and concise before/after or metadata values such as a journal id or account. New audit rows do not store user agent, request or response bodies, headers, cookies, or query dumps. `request_id` is kept so an event can be correlated with runtime logs. Login success, login failure, and login rate limiting may keep a single IP in metadata. Accounting events leave IP empty. Container stdout logs rotate with a bounded Docker json-file limit. The audit log itself is append-only.
 
 ## Idempotency
 

@@ -42,6 +42,19 @@ func TestAuditListFiltersSearchAndPaginates(t *testing.T) {
 	if search.Count != 3 {
 		t.Fatalf("actor search count=%d want 3", search.Count)
 	}
+	var userAgent, ipAddress *string
+	if err := s.Pool.QueryRow(ctx, `
+SELECT user_agent, host(ip_address)::text
+FROM audit_events
+WHERE entity_id=$1 AND action='TRANSACTION_DRAFT_UPDATE'`, entity.ID).Scan(&userAgent, &ipAddress); err != nil {
+		t.Fatal(err)
+	}
+	if userAgent != nil || ipAddress != nil {
+		t.Fatalf("accounting audit stored user_agent=%v ip=%v", userAgent, ipAddress)
+	}
+	if _, ok := drafts.Items[0]["user_agent"]; ok {
+		t.Fatal("audit list still exposes user_agent")
+	}
 
 	first, err := s.ListAuditEvents(ctx, entity.ID, AuditEventFilter{Limit: 2, Offset: 0})
 	if err != nil {

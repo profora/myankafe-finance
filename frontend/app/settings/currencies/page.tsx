@@ -10,8 +10,8 @@ type Currency={code:string;name:string;symbol:string;decimal_places:number;activ
 const blank={Code:"",Name:"",Symbol:"",DecimalPlaces:2,Active:true};
 
 export default function Currencies(){
-  const {entities}=useEntity();
-  const owner=entities.some(x=>x.Role==="OWNER");
+  const {entities,platformOwner}=useEntity();
+  const owner=platformOwner||entities.some(x=>x.Role==="OWNER");
   const [items,setItems]=useState<Currency[]>([]);
   const [form,setForm]=useState(blank);
   const [editing,setEditing]=useState<Currency|null>(null);

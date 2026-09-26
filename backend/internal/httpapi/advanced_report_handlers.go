@@ -33,7 +33,6 @@ func (s *Server) balanceSheet(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), a.User, &a.Entity, "REPORT_VIEW", "BALANCE_SHEET", nil, "SUCCESS", map[string]any{"through": through.Format("2006-01-02")})
 	write(w, 200, v)
 }
 
@@ -50,7 +49,6 @@ func (s *Server) generalLedger(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), a.User, &a.Entity, "REPORT_VIEW", "GENERAL_LEDGER", nil, "SUCCESS", map[string]any{"from": from.Format("2006-01-02"), "to": to.Format("2006-01-02")})
 	write(w, 200, map[string]any{"items": v})
 }
 
@@ -72,7 +70,6 @@ func (s *Server) accountLedger(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), a.User, &a.Entity, "REPORT_VIEW", "ACCOUNT_LEDGER", nil, "SUCCESS", map[string]any{"account_id": account})
 	write(w, 200, map[string]any{"items": v})
 }
 
@@ -88,7 +85,6 @@ func (s *Server) cashMovement(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), a.User, &a.Entity, "REPORT_VIEW", "CASH_MOVEMENT", nil, "SUCCESS", nil)
 	write(w, 200, map[string]any{"items": v})
 }
 
@@ -104,7 +100,6 @@ func (s *Server) interEntityBalances(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), a.User, &a.Entity, "REPORT_VIEW", "INTER_ENTITY_BALANCES", nil, "SUCCESS", nil)
 	write(w, 200, map[string]any{"items": v})
 }
 

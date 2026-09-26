@@ -31,7 +31,6 @@ func (s *Server) combinedDashboard(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), u, nil, "COMBINED_DASHBOARD_VIEW", "REPORT", nil, "SUCCESS", map[string]any{"currency": currency, "from": from.Format("2006-01-02"), "to": to.Format("2006-01-02")})
 	write(w, 200, v)
 }
 
@@ -46,6 +45,5 @@ func (s *Server) financialAccountBalances(w http.ResponseWriter, r *http.Request
 		fail(w, 500, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), u, nil, "FINANCIAL_ACCOUNT_BALANCES_VIEW", "FINANCIAL_ACCOUNT", nil, "SUCCESS", nil)
 	write(w, 200, map[string]any{"items": v})
 }

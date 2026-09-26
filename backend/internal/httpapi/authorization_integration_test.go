@@ -362,6 +362,210 @@ func TestGrantingEntityOwnerDoesNotSetPlatformOwner(t *testing.T) {
 	if flag {
 		t.Fatal("granting entity OWNER set platform_owner")
 	}
+	var grantedRole string
+	if err := store.Pool.QueryRow(context.Background(), `
+SELECT r.code
+FROM user_entity_roles uer
+JOIN roles r ON r.id=uer.role_id
+JOIN users u ON u.id=uer.user_id
+JOIN entities e ON e.id=uer.entity_id
+WHERE u.public_id=$1 AND e.public_id=$2 AND uer.revoked_at IS NULL`, userID, entity).Scan(&grantedRole); err != nil {
+		t.Fatal(err)
+	}
+	if grantedRole != "OWNER" {
+		t.Fatalf("granted role=%s", grantedRole)
+	}
+}
+
+func TestActivePlatformOwnersRemainEntityOwners(t *testing.T) {
+	store := testHTTPStore(t)
+	ctx := context.Background()
+	router := testRouter(store)
+
+	ownerA := insertHTTPUser(t, store, true)
+	me := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/auth/me", ownerA, nil)
+	if me.Code != http.StatusOK || !strings.Contains(me.Body.String(), `"platform_owner":true`) {
+		t.Fatalf("zero-entity platform owner status=%d body=%s", me.Code, me.Body.String())
+	}
+	entities := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/entities", ownerA, nil)
+	if entities.Code != http.StatusOK || strings.Contains(entities.Body.String(), `"PublicID"`) {
+		t.Fatalf("expected zero entities status=%d body=%s", entities.Code, entities.Body.String())
+	}
+
+	first := createEntityAs(t, router, ownerA, "POA"+ownerA[len(ownerA)-6:])
+	if count := activeOwnerRoles(t, store, ownerA, first); count != 1 {
+		t.Fatalf("platform owner roles on first entity=%d want 1", count)
+	}
+
+	createdUser := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/users", ownerA, map[string]any{
+		"Username": "entity-owner-" + strings.ToLower(ownerA), "DisplayName": "Entity Owner", "Password": "CorrectHorseBattery1",
+	})
+	if createdUser.Code != http.StatusCreated {
+		t.Fatalf("create entity owner status=%d body=%s", createdUser.Code, createdUser.Body.String())
+	}
+	var userBody map[string]any
+	if err := json.Unmarshal(createdUser.Body.Bytes(), &userBody); err != nil {
+		t.Fatal(err)
+	}
+	ownerB, _ := userBody["id"].(string)
+	granted := performAuthorizedJSON(t, router, http.MethodPut, "/api/v1/entities/"+first+"/users/role", ownerA, map[string]any{
+		"user_id": ownerB, "role": "OWNER",
+	})
+	if granted.Code != http.StatusOK {
+		t.Fatalf("grant entity owner status=%d body=%s", granted.Code, granted.Body.String())
+	}
+	var ownerBFlag bool
+	if err := store.Pool.QueryRow(ctx, `SELECT platform_owner FROM users WHERE public_id=$1`, ownerB).Scan(&ownerBFlag); err != nil {
+		t.Fatal(err)
+	}
+	if ownerBFlag {
+		t.Fatal("ordinary entity OWNER became platform_owner")
+	}
+
+	second := createEntityAs(t, router, ownerB, "POB"+ownerB[len(ownerB)-6:])
+	if count := activeOwnerRoles(t, store, ownerA, second); count != 1 {
+		t.Fatalf("platform owner roles on entity created by another owner=%d want 1", count)
+	}
+	if count := activeOwnerRoles(t, store, ownerB, second); count != 1 {
+		t.Fatalf("creator roles=%d want 1", count)
+	}
+
+	downgrade := performAuthorizedJSON(t, router, http.MethodPut, "/api/v1/entities/"+second+"/users/role", ownerB, map[string]any{
+		"user_id": ownerA, "role": "ADMIN",
+	})
+	if downgrade.Code != http.StatusBadRequest || !strings.Contains(downgrade.Body.String(), "platform owner must remain OWNER of every entity") {
+		t.Fatalf("downgrade status=%d body=%s", downgrade.Code, downgrade.Body.String())
+	}
+	if count := activeOwnerRoles(t, store, ownerA, second); count != 1 {
+		t.Fatalf("roles after rejected downgrade=%d", count)
+	}
+
+	revoke := performAuthorizedJSON(t, router, http.MethodDelete, "/api/v1/entities/"+second+"/users/"+ownerA, ownerB, nil)
+	if revoke.Code != http.StatusBadRequest || !strings.Contains(revoke.Body.String(), "platform owner must remain OWNER of every entity") {
+		t.Fatalf("revoke status=%d body=%s", revoke.Code, revoke.Body.String())
+	}
+	if count := activeOwnerRoles(t, store, ownerA, second); count != 1 {
+		t.Fatalf("roles after rejected revoke=%d", count)
+	}
+
+	ownerC := insertHTTPUser(t, store, true)
+	third := createEntityAs(t, router, ownerB, "POC"+ownerC[len(ownerC)-6:])
+	if count := activeOwnerRoles(t, store, ownerA, third); count != 1 {
+		t.Fatalf("platform owner A roles on third entity=%d", count)
+	}
+	if count := activeOwnerRoles(t, store, ownerC, third); count != 1 {
+		t.Fatalf("platform owner C roles on third entity=%d", count)
+	}
+}
+
+func TestBusinessAuditOmitsRequestMaterial(t *testing.T) {
+	store := testHTTPStore(t)
+	ctx := context.Background()
+	router := testRouter(store)
+	owner := insertHTTPUser(t, store, true)
+	entityID := createEntityAs(t, router, owner, "AUD"+owner[len(owner)-6:])
+
+	var userAgent, ip, requestID *string
+	var after string
+	if err := store.Pool.QueryRow(ctx, `
+SELECT user_agent, host(ip_address)::text, request_id, after_data::text
+FROM audit_events ae
+JOIN entities e ON e.id=ae.entity_id
+WHERE e.public_id=$1 AND ae.action='ENTITY_CREATE'`, entityID).Scan(&userAgent, &ip, &requestID, &after); err != nil {
+		t.Fatal(err)
+	}
+	if userAgent != nil || ip != nil {
+		t.Fatalf("business audit stored user_agent=%v ip=%v", userAgent, ip)
+	}
+	if requestID == nil || *requestID == "" {
+		t.Fatal("business audit dropped request_id")
+	}
+	for _, forbidden := range []string{"password", "authorization", "cookie", "user_agent", "CorrectHorse"} {
+		if strings.Contains(strings.ToLower(after), forbidden) {
+			t.Fatalf("audit after_data contains %s: %s", forbidden, after)
+		}
+	}
+
+	dashboard := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/entities/"+entityID+"/dashboard", owner, nil)
+	if dashboard.Code != http.StatusOK {
+		t.Fatalf("dashboard status=%d body=%s", dashboard.Code, dashboard.Body.String())
+	}
+	var viewAudits int
+	if err := store.Pool.QueryRow(ctx, `
+SELECT count(*) FROM audit_events
+WHERE action IN ('DASHBOARD_VIEW','REPORT_VIEW','HTTP_REQUEST','TRANSACTION_VIEW','EXCHANGE_RATE_LIST')`).Scan(&viewAudits); err != nil {
+		t.Fatal(err)
+	}
+	if viewAudits != 0 {
+		t.Fatalf("read-only audit rows=%d", viewAudits)
+	}
+
+	viewer, viewerEntity := seedHTTPRole(t, store, "VIEWER")
+	denied := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/entities/"+viewerEntity+"/accounts", viewer, map[string]any{
+		"Code": "6000", "Name": "Denied", "Type": "EXPENSE", "Postable": true, "Password": "CorrectHorseBattery1",
+	})
+	if denied.Code != http.StatusForbidden {
+		t.Fatalf("denied status=%d body=%s", denied.Code, denied.Body.String())
+	}
+	var deniedAgent, deniedIP *string
+	var metadata string
+	if err := store.Pool.QueryRow(ctx, `
+SELECT user_agent, host(ip_address)::text, metadata::text
+FROM audit_events ae
+JOIN entities e ON e.id=ae.entity_id
+WHERE e.public_id=$1 AND ae.action='ACCESS_DENIED'`, viewerEntity).Scan(&deniedAgent, &deniedIP, &metadata); err != nil {
+		t.Fatal(err)
+	}
+	if deniedAgent != nil || deniedIP != nil {
+		t.Fatalf("denied audit stored user_agent=%v ip=%v", deniedAgent, deniedIP)
+	}
+	if !strings.Contains(metadata, `"method"`) || strings.Contains(strings.ToLower(metadata), "password") || strings.Contains(metadata, "CorrectHorse") {
+		t.Fatalf("denied metadata=%s", metadata)
+	}
+
+	listed := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/entities/"+entityID+"/audit-events", owner, nil)
+	if listed.Code != http.StatusOK || !strings.Contains(listed.Body.String(), "ENTITY_CREATE") {
+		t.Fatalf("audit list status=%d body=%s", listed.Code, listed.Body.String())
+	}
+	if strings.Contains(listed.Body.String(), "user_agent") {
+		t.Fatal("audit API still returns user_agent")
+	}
+}
+
+func createEntityAs(t *testing.T, router http.Handler, principal, code string) string {
+	t.Helper()
+	created := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/entities", principal, map[string]any{
+		"Code": code, "Name": "Platform Owner Entity", "EntityType": "BUSINESS",
+		"FunctionalCurrency": "MMK", "Timezone": "Asia/Yangon", "FiscalMonth": 1, "FiscalDay": 1,
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create entity status=%d body=%s", created.Code, created.Body.String())
+	}
+	var body struct {
+		PublicID string
+	}
+	if err := json.Unmarshal(created.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.PublicID == "" {
+		t.Fatalf("missing entity id: %s", created.Body.String())
+	}
+	return body.PublicID
+}
+
+func activeOwnerRoles(t *testing.T, store *postgres.Store, userPublic, entityPublic string) int {
+	t.Helper()
+	var count int
+	if err := store.Pool.QueryRow(context.Background(), `
+SELECT count(*)
+FROM user_entity_roles uer
+JOIN users u ON u.id=uer.user_id
+JOIN entities e ON e.id=uer.entity_id
+JOIN roles r ON r.id=uer.role_id
+WHERE u.public_id=$1 AND e.public_id=$2 AND uer.revoked_at IS NULL AND r.code='OWNER'`, userPublic, entityPublic).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	return count
 }
 
 func insertHTTPUser(t *testing.T, store *postgres.Store, platformOwner bool) string {

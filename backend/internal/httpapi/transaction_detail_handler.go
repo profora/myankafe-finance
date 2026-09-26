@@ -13,6 +13,5 @@ func (s *Server) transactionDetail(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusNotFound, err)
 		return
 	}
-	_ = s.Store.Audit(r.Context(), a.User, &a.Entity, "TRANSACTION_VIEW", "TRANSACTION", nil, "SUCCESS", map[string]any{"transaction_id": chi.URLParam(r, "tx")})
 	write(w, http.StatusOK, v)
 }

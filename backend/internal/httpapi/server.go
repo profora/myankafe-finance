@@ -67,7 +67,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireAuth)
-			r.Use(s.auditRequests)
+			r.Use(s.auditDeniedAccess)
 			r.Use(s.idempotency)
 
 			r.Get("/auth/me", s.me)

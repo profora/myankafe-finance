@@ -36,7 +36,7 @@ func (s *Store) ListAuditEvents(ctx context.Context, entityID string, f AuditEve
 WITH filtered AS (
   SELECT ae.public_id,ae.occurred_at,ae.action,ae.resource_type,ae.resource_public_id,
          ae.outcome,ae.source,ae.reason,ae.before_data,ae.after_data,ae.metadata,
-         ae.ip_address,ae.user_agent,ae.request_id,
+         ae.ip_address,ae.request_id,
          u.public_id user_public_id,u.display_name,
          COUNT(*) OVER() total_count
   FROM audit_events ae
@@ -59,7 +59,7 @@ WITH filtered AS (
 )
 SELECT public_id::text,occurred_at,action,resource_type,resource_public_id::text,
        outcome,source,reason,before_data,after_data,metadata,
-       host(ip_address)::text,user_agent,request_id,
+       host(ip_address)::text,request_id,
        user_public_id::text,display_name,total_count
 FROM filtered
 ORDER BY occurred_at DESC,public_id DESC
@@ -73,14 +73,14 @@ LIMIT $7 OFFSET $8`,
 	out := AuditEventList{Items: []map[string]any{}}
 	for rows.Next() {
 		var id, action, outcome, source string
-		var resourceType, resourceID, reason, ip, userAgent, requestID, userID, userName *string
+		var resourceType, resourceID, reason, ip, requestID, userID, userName *string
 		var occurred time.Time
 		var before, after, metadata any
 		var totalCount int
 		if err := rows.Scan(
 			&id, &occurred, &action, &resourceType, &resourceID,
 			&outcome, &source, &reason, &before, &after, &metadata,
-			&ip, &userAgent, &requestID, &userID, &userName, &totalCount,
+			&ip, &requestID, &userID, &userName, &totalCount,
 		); err != nil {
 			return AuditEventList{}, err
 		}
@@ -98,7 +98,6 @@ LIMIT $7 OFFSET $8`,
 			"after":         after,
 			"metadata":      metadata,
 			"ip_address":    ip,
-			"user_agent":    userAgent,
 			"request_id":    requestID,
 			"actor":         map[string]any{"id": userID, "display_name": userName},
 		})

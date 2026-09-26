@@ -205,7 +205,7 @@ func (s *Store) Audit(ctx context.Context, user User, e *Entity, action, resourc
 		eid = e.ID
 	}
 	_, err := s.Pool.Exec(ctx, `INSERT INTO audit_events(id,public_id,actor_type,actor_user_id,entity_id,action,resource_type,resource_public_id,outcome,source,request_id,after_data)
-VALUES($1,$2,'USER',$3,$4,$5,$6,$7,$8,'API',$9,$10)`, id, apub, user.ID, eid, action, resource, pub, outcome, fmt.Sprintf("req-%d", time.Now().UnixNano()), after)
+VALUES($1,$2,'USER',$3,$4,$5,$6,$7,$8,'API',$9,$10)`, id, apub, user.ID, eid, action, resource, pub, outcome, auditRequestID(ctx), auditPayload(after))
 	return err
 }
 

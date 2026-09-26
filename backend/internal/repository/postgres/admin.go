@@ -71,7 +71,11 @@ fiscal_year_start_month,fiscal_year_start_day,created_by
 
 	linkID, _ := ids.UUIDv7()
 	_, err = tx.Exec(ctx, `INSERT INTO user_entity_roles(id,user_id,entity_id,role_id,granted_by)
-VALUES($1,$2,$3,'00000000-0000-7000-8000-000000000001',$2)`, linkID, user.ID, id)
+VALUES($1,$2,$3,$4,$2)`, linkID, user.ID, id, ownerRoleID)
+	if err != nil {
+		return Entity{}, err
+	}
+	grantedPlatformOwners, err := grantActivePlatformOwners(ctx, tx, id)
 	if err != nil {
 		return Entity{}, err
 	}
@@ -79,6 +83,11 @@ VALUES($1,$2,$3,'00000000-0000-7000-8000-000000000001',$2)`, linkID, user.ID, id
 	e := Entity{ID: id, PublicID: pub, Code: in.Code, Name: in.Name, Type: in.EntityType, FunctionalCurrency: in.FunctionalCurrency, Timezone: in.Timezone, FiscalMonth: in.FiscalMonth, FiscalDay: in.FiscalDay}
 	if err := insertAuditTx(ctx, tx, user, e, "ENTITY_CREATE", "ENTITY", pub, map[string]any{"code": in.Code, "name": in.Name}); err != nil {
 		return Entity{}, err
+	}
+	for _, platformOwnerPublicID := range grantedPlatformOwners {
+		if err := insertAuditTx(ctx, tx, user, e, "USER_ROLE_CHANGE", "USER", platformOwnerPublicID, map[string]any{"role": "OWNER", "reason": "platform_owner"}); err != nil {
+			return Entity{}, err
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Entity{}, err
@@ -138,8 +147,12 @@ func (s *Store) CreateUser(ctx context.Context, actor User, in CreateUserInput, 
 
 func (s *Store) SetUserEntityRole(ctx context.Context, actor User, targetUserPub string, e Entity, roleCode string) (map[string]any, error) {
 	var targetID, roleID string
-	if err := s.Pool.QueryRow(ctx, `SELECT id::text FROM users WHERE public_id=$1 AND status='ACTIVE'`, targetUserPub).Scan(&targetID); err != nil {
+	var platformOwner bool
+	if err := s.Pool.QueryRow(ctx, `SELECT id::text, platform_owner FROM users WHERE public_id=$1 AND status='ACTIVE'`, targetUserPub).Scan(&targetID, &platformOwner); err != nil {
 		return nil, err
+	}
+	if platformOwner && roleCode != "OWNER" {
+		return nil, fmt.Errorf("platform owner must remain OWNER of every entity")
 	}
 	if err := s.Pool.QueryRow(ctx, `SELECT id::text FROM roles WHERE code=$1`, roleCode).Scan(&roleID); err != nil {
 		return nil, err
@@ -202,11 +215,12 @@ func (s *Store) SetUserStatus(ctx context.Context, actor User, targetUserPublicI
 	defer tx.Rollback(ctx)
 
 	var targetID, currentStatus, displayName string
+	var platformOwner bool
 	if err := tx.QueryRow(ctx, `
-SELECT id::text,status,display_name
+SELECT id::text,status,display_name,platform_owner
 FROM users
 WHERE public_id=$1
-FOR UPDATE`, targetUserPublicID).Scan(&targetID, &currentStatus, &displayName); err != nil {
+FOR UPDATE`, targetUserPublicID).Scan(&targetID, &currentStatus, &displayName, &platformOwner); err != nil {
 		return err
 	}
 
@@ -254,6 +268,30 @@ SET status=$2,updated_at=now()
 WHERE id=$1`, targetID, status); err != nil {
 		return err
 	}
+	if status == "ACTIVE" && platformOwner {
+		entityRows, err := tx.Query(ctx, `SELECT id::text FROM entities`)
+		if err != nil {
+			return err
+		}
+		var entityIDs []string
+		for entityRows.Next() {
+			var entityID string
+			if err := entityRows.Scan(&entityID); err != nil {
+				entityRows.Close()
+				return err
+			}
+			entityIDs = append(entityIDs, entityID)
+		}
+		entityRows.Close()
+		if err := entityRows.Err(); err != nil {
+			return err
+		}
+		for _, entityID := range entityIDs {
+			if _, err := grantActivePlatformOwners(ctx, tx, entityID); err != nil {
+				return err
+			}
+		}
+	}
 
 	if status == "DISABLED" {
 		if _, err := tx.Exec(ctx, `
@@ -279,7 +317,7 @@ INSERT INTO audit_events(
 ) VALUES(
   $1,$2,'USER',$3,'USER_STATUS_CHANGE','USER',$4,
   'SUCCESS','API',$5,jsonb_build_object('status',$6::text)
-)`, auditID, auditPublicID, actor.ID, targetUserPublicID, fmt.Sprintf("req-%d", time.Now().UnixNano()), status); err != nil {
+)`, auditID, auditPublicID, actor.ID, targetUserPublicID, auditRequestID(ctx), status); err != nil {
 		return err
 	}
 
@@ -352,8 +390,10 @@ func (s *Store) RevokeUserEntityAccess(ctx context.Context, actor User, targetUs
 	defer tx.Rollback(ctx)
 
 	var targetID, role string
+	var platformOwner bool
+	var status string
 	if err := tx.QueryRow(ctx, `
-SELECT u.id::text,r.code
+SELECT u.id::text,r.code,u.platform_owner,u.status
 FROM users u
 JOIN user_entity_roles uer ON uer.user_id=u.id
 JOIN roles r ON r.id=uer.role_id
@@ -362,8 +402,11 @@ WHERE u.public_id=$1
   AND uer.revoked_at IS NULL
 ORDER BY CASE r.code WHEN 'OWNER' THEN 1 WHEN 'ADMIN' THEN 2 WHEN 'ACCOUNTANT' THEN 3 WHEN 'BOOKKEEPER' THEN 4 ELSE 5 END
 LIMIT 1
-FOR UPDATE OF uer`, targetUserPublicID, e.ID).Scan(&targetID, &role); err != nil {
+FOR UPDATE OF uer`, targetUserPublicID, e.ID).Scan(&targetID, &role, &platformOwner, &status); err != nil {
 		return err
+	}
+	if platformOwner && status == "ACTIVE" {
+		return fmt.Errorf("platform owner must remain OWNER of every entity")
 	}
 
 	if role == "OWNER" {
@@ -402,4 +445,93 @@ WHERE user_id=$1 AND entity_id=$2 AND revoked_at IS NULL`, targetID, e.ID)
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func (s *Store) ReconcilePlatformOwnerAccess(ctx context.Context) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	rows, err := tx.Query(ctx, `SELECT id::text FROM entities`)
+	if err != nil {
+		return err
+	}
+	var entityIDs []string
+	for rows.Next() {
+		var entityID string
+		if err := rows.Scan(&entityID); err != nil {
+			rows.Close()
+			return err
+		}
+		entityIDs = append(entityIDs, entityID)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, entityID := range entityIDs {
+		if _, err := grantActivePlatformOwners(ctx, tx, entityID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+func GrantActivePlatformOwners(ctx context.Context, tx pgx.Tx, entityID string) error {
+	_, err := grantActivePlatformOwners(ctx, tx, entityID)
+	return err
+}
+
+func grantActivePlatformOwners(ctx context.Context, tx pgx.Tx, entityID string) ([]string, error) {
+	rows, err := tx.Query(ctx, `
+SELECT u.id::text, u.public_id::text
+FROM users u
+WHERE u.platform_owner = true
+  AND u.status = 'ACTIVE'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM user_entity_roles uer
+    WHERE uer.user_id = u.id
+      AND uer.entity_id = $1
+      AND uer.revoked_at IS NULL
+      AND uer.role_id = $2
+  )`, entityID, ownerRoleID)
+	if err != nil {
+		return nil, err
+	}
+	type ownerRow struct{ id, publicID string }
+	var owners []ownerRow
+	for rows.Next() {
+		var row ownerRow
+		if err := rows.Scan(&row.id, &row.publicID); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		owners = append(owners, row)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	granted := make([]string, 0, len(owners))
+	for _, owner := range owners {
+		if _, err := tx.Exec(ctx, `
+UPDATE user_entity_roles
+SET revoked_at=now()
+WHERE user_id=$1 AND entity_id=$2 AND revoked_at IS NULL AND role_id<>$3`, owner.id, entityID, ownerRoleID); err != nil {
+			return nil, err
+		}
+		linkID, err := ids.UUIDv7()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := tx.Exec(ctx, `
+INSERT INTO user_entity_roles(id,user_id,entity_id,role_id,granted_by)
+VALUES($1,$2,$3,$4,$2)`, linkID, owner.id, entityID, ownerRoleID); err != nil {
+			return nil, err
+		}
+		granted = append(granted, owner.publicID)
+	}
+	return granted, nil
 }

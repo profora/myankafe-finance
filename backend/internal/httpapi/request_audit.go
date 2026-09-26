@@ -29,10 +29,13 @@ func (w *statusRecorder) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }
 
-func (s *Server) auditRequests(next http.Handler) http.Handler {
+func (s *Server) auditDeniedAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec := &statusRecorder{ResponseWriter: w}
 		next.ServeHTTP(rec, r)
+		if rec.status != http.StatusForbidden {
+			return
+		}
 
 		p, ok := auth.From(r.Context())
 		if !ok {
@@ -50,28 +53,13 @@ func (s *Server) auditRequests(next http.Handler) http.Handler {
 				entityPtr = &e
 			}
 		}
-
-		outcome := "SUCCESS"
-		if rec.status >= 400 && rec.status < 500 {
-			outcome = "DENIED"
+		route := ""
+		if rc := chi.RouteContext(r.Context()); rc != nil {
+			route = rc.RoutePattern()
 		}
-		if rec.status >= 500 {
-			outcome = "FAILED"
-		}
-
-		_ = s.Store.Audit(
-			r.Context(),
-			u,
-			entityPtr,
-			"HTTP_REQUEST",
-			"API",
-			nil,
-			outcome,
-			map[string]any{
-				"method": r.Method,
-				"path":   r.URL.Path,
-				"status": rec.status,
-			},
-		)
+		_ = s.Store.Audit(r.Context(), u, entityPtr, "ACCESS_DENIED", "API", nil, "DENIED", map[string]any{
+			"method": r.Method,
+			"route":  route,
+		})
 	})
 }

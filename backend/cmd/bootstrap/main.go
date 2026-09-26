@@ -133,6 +133,29 @@ ON CONFLICT DO NOTHING`, roleLinkID, userID, entityID); err != nil {
 		}
 	}
 
+	entityRows, err := tx.Query(ctx, `SELECT id::text FROM entities`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var entityIDs []string
+	for entityRows.Next() {
+		var entityID string
+		if err = entityRows.Scan(&entityID); err != nil {
+			entityRows.Close()
+			log.Fatal(err)
+		}
+		entityIDs = append(entityIDs, entityID)
+	}
+	entityRows.Close()
+	if err = entityRows.Err(); err != nil {
+		log.Fatal(err)
+	}
+	for _, entityID := range entityIDs {
+		if err = postgres.GrantActivePlatformOwners(ctx, tx, entityID); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		log.Fatal(err)
 	}

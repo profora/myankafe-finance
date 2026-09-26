@@ -32,7 +32,7 @@ Multipart attachment uploads intentionally bypass the generic idempotency-body b
 ## Global
 
 - `GET /entities`
-- `POST /entities` — requires OWNER on an existing entity, or `platform_owner` on the signed-in user. The bootstrap user is a platform owner, so a blank installation can create its first entity and manage platform settings (currencies, users, and the storage probe) before any entity exists. That create grants OWNER on the new entity. It does not grant access to entities the user is not a member of. Ordinary user creation does not set `platform_owner`. `GET /auth/me` returns `platform_owner`.
+- `POST /entities` — requires OWNER on an existing entity, or `platform_owner` on the signed-in user. `platform_owner` is the global ownership flag: every active platform owner is automatically OWNER of every entity, including a newly created one, in the same transaction. With zero entities there is no role row yet, and the platform owner is still treated as OWNER. Creating or granting an entity OWNER role does not set `platform_owner`. Ordinary user creation leaves it false. An active platform owner cannot be downgraded or removed from an entity. `GET /auth/me` returns `platform_owner`.
 - `GET /users`
 - `POST /users`
 - `POST /users/{user_ulid}/reset-password` — OWNER; revokes target sessions
@@ -102,7 +102,7 @@ Transaction-list query parameters:
 
 The list response includes `income_total`, `expense_total`, `net_total`, `functional_currency`, `count`, `has_more`, and per-row `attachment_count`. Summary totals are functional-currency P&L for the filtered set. Per-row running net and functional effect are not returned. Use `limit` and `offset`; the default page size in the UI is 25. CSV export walks every matching row, not only the visible page.
 
-`GET /api/v1/entities/{entity}/audit-actions` returns the distinct audit `action` values for that entity, sorted alphabetically. `GET /audit-events?action=` filters by that exact value. Search remains a separate free-text filter.
+`GET /api/v1/entities/{entity}/audit-actions` returns the distinct audit `action` values for that entity, sorted alphabetically. `GET /audit-events?action=` filters by that exact value. Search remains a separate free-text filter. Audit events are written for accounting, configuration, and security actions, including denied sensitive operations. Ordinary reads are not audited. Responses include `request_id` when one was present and do not include `user_agent`. Accounting events do not store an IP address.
 
 `GET /api/v1/currencies?active=1` lists currencies that can be selected for new entities, financial accounts, and exchange rates. Currency create, update, and delete require OWNER. A referenced currency cannot be deleted; deactivate it instead. Historical rows keep their stored currency code.
 

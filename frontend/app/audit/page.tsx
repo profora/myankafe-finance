@@ -18,7 +18,6 @@ type Event={
   after?:unknown;
   metadata?:unknown;
   ip_address?:string|null;
-  user_agent?:string|null;
   request_id?:string|null;
   actor?:{id?:string|null;display_name?:string|null};
 };
@@ -100,7 +99,7 @@ export default function Audit(){
 
   return <>
     <div className="page-head">
-      <div><h1>Audit Log</h1><p>Append-only business, security and request activity. Viewing this page is itself audited.</p></div>
+      <div><h1>Audit Log</h1><p>Append-only record of accounting, configuration, and security actions.</p></div>
     </div>
     {error&&<div className="alert error" role="alert">{error}</div>}
 
@@ -132,7 +131,6 @@ export default function Audit(){
               <summary>Inspect</summary>
               <div className="audit-detail-panel">
                 {x.request_id&&<div><strong>Request:</strong> <code>{x.request_id}</code></div>}
-                {x.user_agent&&<div><strong>User agent:</strong> <span className="muted">{x.user_agent}</span></div>}
                 {x.before!=null&&<><strong>Before</strong><pre>{pretty(x.before)}</pre></>}
                 {x.after!=null&&<><strong>After</strong><pre>{pretty(x.after)}</pre></>}
                 {x.metadata!=null&&<><strong>Metadata</strong><pre>{pretty(x.metadata)}</pre></>}

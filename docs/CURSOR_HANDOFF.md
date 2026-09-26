@@ -286,7 +286,7 @@ Current state:
 - Branch `feat/v1-accounting-foundation`. Deployed application commit `58bcfd467f61b7ac840709e45da54780ac31f0e9`. Goose 15.
 - CI for that commit: push `36241798004`, pull request `36241799915`, both green.
 - Next.js 15.5.26 and React 19.1.2 address CVE-2025-66478 on the 15.5 line. Residual `npm audit` findings for PostCSS and `sharp` have no compatible fix in this pass.
-- One application user: `kyawthanttin`, display name Kyaw Thant Tin, `platform_owner=true`, no entity role. The password is not stored in git, docs, or the production env file.
+- One application user: `kyawthanttin`, display name Kyaw Thant Tin, `platform_owner=true`. With zero entities there is no `user_entity_roles` row yet. An active platform owner is OWNER of every entity once one exists, and is shown as OWNER before that. An entity OWNER is not promoted to `platform_owner`. The password is not stored in git, docs, or the production env file.
 - Business counts are zero for entities, roles, COA, financial accounts, contacts, rates, transactions, journals, inter-entity records, attachments, idempotency, audit, and sessions. Currencies and system roles remain. Finance R2 application object count is 0.
 - Pre-reset backup: `/var/backups/myankafe-finance/myankafe-finance-20260926T123210Z.dump`, 2026-09-26T12:32:10Z, 264651 bytes, SHA-256 `50aa93679b05f10b2be0e503abdfecb1c11113d50bb2fdcf65416859a88ef41d`. Restore into a disposable PostgreSQL 18 database matched production counts and was dropped.
 - `/health` and `/ready` remain public through the existing tunnel and do not reveal secrets. Restricting them is an infrastructure follow-up.

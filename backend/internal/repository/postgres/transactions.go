@@ -219,7 +219,7 @@ func insertAuditTx(ctx context.Context, tx pgx.Tx, user User, e Entity, action, 
 	id, _ := ids.UUIDv7()
 	apub, _ := ids.ULID()
 	_, err := tx.Exec(ctx, `INSERT INTO audit_events(id,public_id,actor_type,actor_user_id,entity_id,action,resource_type,resource_public_id,outcome,source,request_id,after_data)
-VALUES($1,$2,'USER',$3,$4,$5,$6,$7,'SUCCESS','API',$8,$9)`, id, apub, user.ID, e.ID, action, resource, pub, fmt.Sprintf("req-%d", time.Now().UnixNano()), after)
+VALUES($1,$2,'USER',$3,$4,$5,$6,$7,'SUCCESS','API',$8,$9)`, id, apub, user.ID, e.ID, action, resource, pub, auditRequestID(ctx), auditPayload(after))
 	return err
 }
 
