@@ -255,3 +255,30 @@ Browser checks on `https://finance.myankafe.com`:
 - A same-currency transfer with a fee was posted in the browser: transaction `01M3E3D64G0XQ69MM9W9ZN00C9`. The journal debits TEST Cash Box 299 MMK and TEST Packaging 1 MMK, and credits TEST Bank Account 300 MMK.
 
 The earlier temporary UI password no longer signs in. It was reset on the server. The new value is only in `/root/.secrets/finance-ui-test-password`. It is not recorded here.
+
+## 2026-09-26 movements, fiscal year, and inter-entity separation
+
+Deployed application commit `2b36b7dd91d6f86cd11caeb079caef6e6edf2bbe`. CI is green:
+
+- push run 36224772744
+- pull-request run 36224776283
+
+Goose reported no migrations to run. Current version is 14. Finance API `/ready` and the web login page returned 200 on loopback and on the public hostnames. MyanKafe `https://api.myankafe.com/healthz` and Royal Masterpiece `https://royalmasterpiecefloral.com/` returned 200. Disk remained about 90% with 4.9 GiB free after `docker builder prune`.
+
+The API image includes the IANA timezone database. Saving entity timezone `Asia/Yangon` succeeded after this deploy. MyanKafe and Royal Masterpiece now start their fiscal year on April 1 and display `Apr 1 → Mar 31`. Personal remains `Jan 1 → Dec 31`.
+
+Browser checks on `https://finance.myankafe.com` as the owner UI user:
+
+- Sidebar groups are Overview, Transactions, Accounting Setup, Reports & Control, and Settings. Pay for Another Entity is under Transactions. Inter-Entity Setup is under Accounting Setup. The UUIDv7 / double-entry sidebar note is gone.
+- Transactions show Date, Movement, Description, Account, Status, Amount, and Balance. The fee transfer `01M3E3D64G0XQ69MM9W9ZN00C9` is two rows: Transfer out TEST Bank Account −300 MMK balance 250 MMK, and Transfer in TEST Cash Box +299 MMK balance 1,404 MMK. There is no fee movement row.
+- Filtering type Account Transfer and financial account TEST Bank Account returned only that account's rows, `1–3 of 3`, including Transfer out for the fee transfer and not the cash side.
+- Page overflow was 0 at 1440, 768, and 390. At 768 and 390 the drawer starts off-canvas (`translateX(-294px)`).
+- Dashboard fiscal year for MyanKafe reads Apr 1 → Mar 31. Selected-entity income, expenses, and net profit remain. Combined all-entities P&L remains. Financial Accounts lists MyanKafe and Royal Masterpiece accounts in MMK, not a mixed-currency total. TEST Bank Account fell from 250 MMK to 150 MMK after the payment below. Personal has no financial accounts, so it has no balance row.
+- Inter-Entity Setup lists the MyanKafe ↔ Royal Masterpiece pair and its four due-from / due-to accounts. Pay for Another Entity does not show mapping controls. Personal shows that inter-entity accounting has not been set up, with Open Inter-Entity Setup for this owner.
+- A same-currency payment was posted: MyanKafe pays 100 MMK from TEST Bank Account for Royal Masterpiece TEST RM Expense, description "Browser QA pay for Royal Masterpiece". Paying transaction `01M3E7H0S1ZS9JSRJ666PEKHQC` debits TEST Due From 100 and credits TEST Bank 100. Counterparty transaction `01M3E7H0S1RREDN3CAWTPST3BN` debits TEST RM Expense 100 and credits TEST RM Due To 100. The counterparty link switched entity context. Posted TEST rows were not deleted.
+
+ACCOUNTANT, BOOKKEEPER, and VIEWER setup denial, payer-only posting denial, atomic pair save, and running-balance cases are covered by the Go integration tests in the green CI run. Those roles were not signed in through the browser.
+
+Different-currency Pay for Another Entity was not posted. Every entity and financial account in this environment is MMK. The form uses one amount when functional currencies match.
+
+PR #1 stays unmerged.

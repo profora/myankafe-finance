@@ -246,7 +246,7 @@ The section above describes the first pass, before database and R2 values were a
 - Cross-currency transfer was not posted. The stored USD/MMK rate exists, and every financial account is MMK.
 - The R2 system probe fails closed with AccessDenied on bucket `myankafe-finance`. The keys that work for the Royal Masterpiece buckets do not work for this bucket.
 - A logical backup and a restore into a disposable database succeeded. The disposable database was dropped. Provider PITR was not confirmed in the console.
-- Recommendation stays open until the movement-list, dashboard, and inter-entity separation deploy is accepted. Do not merge PR #1.
+- The movement-list, dashboard, and inter-entity separation deploy is accepted on commit `2b36b7dd91d6f86cd11caeb079caef6e6edf2bbe`. PR #1 can return to Ready for Review. Do not merge it.
 
 Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
 
@@ -271,5 +271,9 @@ Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPO
 - Fiscal year start is a month and day. April 1 displays as Apr 1 → Mar 31. February 29, February 30, and April 31 are rejected. Existing stored fiscal dates are not migrated.
 - The dashboard Financial Accounts section lists accounts from every entity the session can access. The server decides that list. Balances are not combined across currencies. Account names open that entity's ledger.
 - The sidebar no longer shows the UUIDv7/ULID note. Daily entry is Pay for Another Entity. Inter-Entity Setup is OWNER/ADMIN only and saves both sides of a pair in one transaction.
-- No new Goose migration was required. Production remains on version 14 until this commit is deployed.
+- No new Goose migration was required. Production Goose remains version 14.
+- Deployed application commit `2b36b7dd91d6f86cd11caeb079caef6e6edf2bbe`. That commit embeds the IANA timezone database so `Asia/Yangon` saves. CI runs 36224772744 and 36224776283 are green.
+- MyanKafe and Royal Masterpiece fiscal years are April 1, displayed as Apr 1 → Mar 31. Personal remains January 1.
+- Browser post `01M3E7H0S1ZS9JSRJ666PEKHQC` (MyanKafe) and `01M3E7H0S1RREDN3CAWTPST3BN` (Royal Masterpiece) is the same-currency Pay for Another Entity example: 100 MMK from TEST Bank Account to TEST RM Expense. Both journals posted. TEST rows were not deleted.
+- The VPS git metadata is older than the running tree because deploy syncs source without `.git`. The images were built from the synced `2b36b7d` tree.
 
