@@ -35,11 +35,11 @@ type UserSessionInfo struct {
 func (s *Store) CredentialByUsername(ctx context.Context, username string) (UserCredential, error) {
 	var out UserCredential
 	err := s.Pool.QueryRow(ctx, `
-SELECT u.id::text,u.public_id::text,u.username,u.display_name,uc.password_hash
+SELECT u.id::text,u.public_id::text,u.username,u.display_name,u.platform_owner,uc.password_hash
 FROM users u
 JOIN user_credentials uc ON uc.user_id=u.id
 WHERE u.username=$1 AND u.status='ACTIVE'`, username).
-		Scan(&out.User.ID, &out.User.PublicID, &out.User.Username, &out.User.DisplayName, &out.PasswordHash)
+		Scan(&out.User.ID, &out.User.PublicID, &out.User.Username, &out.User.DisplayName, &out.User.PlatformOwner, &out.PasswordHash)
 	return out, err
 }
 
@@ -83,7 +83,7 @@ func (s *Store) ResolveSession(ctx context.Context, tokenHash []byte) (User, Use
 	var u User
 	var sess UserSession
 	err := s.Pool.QueryRow(ctx, `
-SELECT u.id::text,u.public_id::text,u.username,u.display_name,
+SELECT u.id::text,u.public_id::text,u.username,u.display_name,u.platform_owner,
        us.id::text,COALESCE(us.public_id::text,''),us.user_id::text,us.expires_at,us.last_seen_at
 FROM user_sessions us
 JOIN users u ON u.id=us.user_id
@@ -91,7 +91,7 @@ WHERE us.token_hash=$1
   AND us.revoked_at IS NULL
   AND us.expires_at>now()
   AND u.status='ACTIVE'`, tokenHash).
-		Scan(&u.ID, &u.PublicID, &u.Username, &u.DisplayName, &sess.ID, &sess.PublicID, &sess.UserID, &sess.ExpiresAt, &sess.LastSeenAt)
+		Scan(&u.ID, &u.PublicID, &u.Username, &u.DisplayName, &u.PlatformOwner, &sess.ID, &sess.PublicID, &sess.UserID, &sess.ExpiresAt, &sess.LastSeenAt)
 	return u, sess, err
 }
 

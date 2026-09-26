@@ -78,6 +78,39 @@ jobs:
             IF (SELECT symbol FROM currencies WHERE code='MMK') = '' THEN
               RAISE EXCEPTION 'MMK symbol was not backfilled';
             END IF;
+            IF (SELECT platform_owner FROM users WHERE username='upgrade-owner') THEN
+              RAISE EXCEPTION 'user without an OWNER role became a platform owner';
+            END IF;
+          END $$;
+          SQL
+      - name: Upgrade from migration 14
+        run: |
+          BASE="postgres://myankafe:myankafe_test@localhost:5432"
+          psql "$BASE/postgres?sslmode=disable" -c "CREATE DATABASE myankafe_finance_upgrade14"
+          UPGRADE_URL="$BASE/myankafe_finance_upgrade14?sslmode=disable"
+          goose -dir backend/db/migrations postgres "$UPGRADE_URL" up-to 14
+          psql "$UPGRADE_URL" <<'SQL'
+          INSERT INTO users(id,public_id,username,display_name)
+          VALUES
+            ('00000000-0000-7000-8000-000000000091','01ARZ3NDEKTSV4RRFFQ69G5FB1','upgrade14-owner','Upgrade 14 Owner'),
+            ('00000000-0000-7000-8000-000000000090','01ARZ3NDEKTSV4RRFFQ69G5FB2','upgrade14-viewer','Upgrade 14 Viewer');
+          INSERT INTO entities(id,public_id,code,name,entity_type,functional_currency_code,timezone,created_by)
+          VALUES('00000000-0000-7000-8000-000000000089','01ARZ3NDEKTSV4RRFFQ69G5FB3','UPGRADE14','Upgrade 14 Entity','BUSINESS','MMK','Asia/Yangon','00000000-0000-7000-8000-000000000091');
+          INSERT INTO user_entity_roles(id,user_id,entity_id,role_id,granted_by)
+          VALUES
+            ('00000000-0000-7000-8000-000000000088','00000000-0000-7000-8000-000000000091','00000000-0000-7000-8000-000000000089','00000000-0000-7000-8000-000000000001','00000000-0000-7000-8000-000000000091'),
+            ('00000000-0000-7000-8000-000000000087','00000000-0000-7000-8000-000000000090','00000000-0000-7000-8000-000000000089','00000000-0000-7000-8000-000000000005','00000000-0000-7000-8000-000000000091');
+          SQL
+          goose -dir backend/db/migrations postgres "$UPGRADE_URL" up
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT (SELECT platform_owner FROM users WHERE username='upgrade14-owner') THEN
+              RAISE EXCEPTION 'existing OWNER was not marked platform owner';
+            END IF;
+            IF (SELECT platform_owner FROM users WHERE username='upgrade14-viewer') THEN
+              RAISE EXCEPTION 'non-owner was marked platform owner';
+            END IF;
           END $$;
           SQL
       - name: Tests

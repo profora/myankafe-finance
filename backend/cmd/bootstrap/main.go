@@ -54,12 +54,14 @@ func main() {
 			log.Fatal(err)
 		}
 		if _, err = tx.Exec(ctx,
-			"INSERT INTO users(id,public_id,username,display_name,email) VALUES($1,$2,$3,$4,NULLIF($5,''))",
+			"INSERT INTO users(id,public_id,username,display_name,email,platform_owner) VALUES($1,$2,$3,$4,NULLIF($5,''),true)",
 			userID, publicID, username, display, email,
 		); err != nil {
 			log.Fatal(err)
 		}
 	} else if err != nil {
+		log.Fatal(err)
+	} else if _, err = tx.Exec(ctx, "UPDATE users SET platform_owner=true WHERE id=$1", userID); err != nil {
 		log.Fatal(err)
 	}
 

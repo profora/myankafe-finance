@@ -34,10 +34,11 @@ type Me={user:{public_id:string;username:string;display_name:string}};
 
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { entities, entity, setEntityID, error, loading } = useEntity();
+  const { entities, entity, setEntityID, error, loading, platformOwner } = useEntity();
   const [me,setMe]=useState<Me["user"]|null>(null);
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
   const ownerAnywhere=entities.some(x=>x.Role==="OWNER");
+  const mayCreateEntities=ownerAnywhere||platformOwner;
 
   useEffect(()=>{api<Me>("/auth/me").then(x=>setMe(x.user)).catch(()=>{})},[]);
   useEffect(()=>{setMobileNavOpen(false)},[pathname]);
@@ -84,7 +85,8 @@ function Shell({ children }: { children: React.ReactNode }) {
           {["Overview","Transactions","Accounting Setup","Reports & Control","Settings"].map(group=>{
             const items=nav.filter(item=>{
               if(item.group!==group)return false;
-              if(item.ownerOnly)return ownerAnywhere;
+              if(item.ownerOnly)return mayCreateEntities;
+              if(item.href==="/settings/entities")return canManageEntitySettings(entity?.Role)||platformOwner;
               return !item.show||item.show(entity?.Role);
             });
             if(items.length===0)return null;
@@ -108,7 +110,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <button type="button" className="secondary mobile-nav-button" aria-label="Open navigation" aria-expanded={mobileNavOpen} onClick={()=>setMobileNavOpen(true)}>☰</button>
         <section id="main-content" tabIndex={-1} className="content">
           {error && <div className="alert error" role="alert">{error}</div>}
-          {!loading&&!error&&entities.length===0&&<div className="alert" role="status">No finance entities are available for this account.</div>}
+          {!loading&&!error&&entities.length===0&&<div className="alert" role="status">{platformOwner?<>No entities yet. <Link href="/settings/entities">Create the first entity</Link>.</>:"No finance entities are available for this account."}</div>}
           {children}
         </section>
       </main>

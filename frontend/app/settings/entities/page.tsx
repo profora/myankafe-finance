@@ -9,9 +9,9 @@ import FiscalYearFields from "@/components/FiscalYearFields";
 import { fiscalYearLabel } from "@/lib/fiscal";
 
 export default function EntitySettings(){
-  const {entities,entity,reload}=useEntity();
+  const {entities,entity,reload,platformOwner}=useEntity();
   const mayEdit=canManageEntitySettings(entity?.Role);
-  const ownerAnywhere=entities.some(x=>x.Role==="OWNER");
+  const mayCreate=entities.some(x=>x.Role==="OWNER")||platformOwner;
   const {items:currencies}=useActiveCurrencies();
   const [err,setErr]=useState("");
   const [msg,setMsg]=useState("");
@@ -65,7 +65,7 @@ export default function EntitySettings(){
       <button disabled={busy||!edit.Name.trim()||!edit.Timezone.trim()||edit.FiscalDay<1} onClick={saveEntity}>{busy?"Saving…":"Save entity settings"}</button>
     </div>}
 
-    {ownerAnywhere&&<div className="card form" style={{marginBottom:16}}>
+    {mayCreate&&<div className="card form" style={{marginBottom:16}}>
       <h3>New entity</h3>
       <div className="form-grid">
         <div className="field"><label>Code</label><input value={f.Code} onChange={e=>setF({...f,Code:e.target.value.toUpperCase()})}/></div>
@@ -79,7 +79,7 @@ export default function EntitySettings(){
     </div>}
 
     {!mayEdit&&entity&&<div className="alert">Your {entity.Role} role can view this entity but cannot change entity settings.</div>}
-    {!ownerAnywhere&&<div className="alert">Creating additional entities requires OWNER access somewhere in the platform.</div>}
+    {!mayCreate&&<div className="alert">Creating additional entities requires OWNER access somewhere in the platform.</div>}
 
     <div className="table-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Currency</th><th>Timezone</th><th>Fiscal year</th><th>Your role</th></tr></thead><tbody>{entities.map(x=><tr key={x.PublicID}><td>{x.Code}</td><td>{x.Name}</td><td>{x.Type}</td><td>{x.FunctionalCurrency}</td><td>{x.Timezone}</td><td>{fiscalYearLabel(x.FiscalMonth,x.FiscalDay)||"—"}</td><td><span className="badge">{x.Role}</span></td></tr>)}</tbody></table></div>
   </>;

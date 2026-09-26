@@ -268,6 +268,70 @@ func TestDailyInterEntityPostingRequiresBothEntities(t *testing.T) {
 	}
 }
 
+func TestPlatformOwnerCreatesFirstEntityWithoutExistingRole(t *testing.T) {
+	store := testHTTPStore(t)
+	ctx := context.Background()
+	router := testRouter(store)
+
+	ownerPublic := insertHTTPUser(t, store, true)
+	deniedPublic := insertHTTPUser(t, store, false)
+
+	me := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/auth/me", ownerPublic, nil)
+	if me.Code != http.StatusOK || !strings.Contains(me.Body.String(), `"platform_owner":true`) {
+		t.Fatalf("platform owner me status=%d body=%s", me.Code, me.Body.String())
+	}
+
+	denied := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/entities", deniedPublic, map[string]any{
+		"Code": "NOACCESS", "Name": "Should Fail", "EntityType": "BUSINESS",
+		"FunctionalCurrency": "MMK", "Timezone": "Asia/Yangon", "FiscalMonth": 4, "FiscalDay": 1,
+	})
+	if denied.Code != http.StatusForbidden {
+		t.Fatalf("non-owner first entity status=%d body=%s", denied.Code, denied.Body.String())
+	}
+
+	code := "BOOT" + ownerPublic
+	created := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/entities", ownerPublic, map[string]any{
+		"Code": code, "Name": "First Entity", "EntityType": "BUSINESS",
+		"FunctionalCurrency": "MMK", "Timezone": "Asia/Yangon", "FiscalMonth": 4, "FiscalDay": 1,
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("platform owner create status=%d body=%s", created.Code, created.Body.String())
+	}
+
+	var role string
+	if err := store.Pool.QueryRow(ctx, `
+SELECT r.code
+FROM user_entity_roles uer
+JOIN roles r ON r.id = uer.role_id
+JOIN users u ON u.id = uer.user_id
+JOIN entities e ON e.id = uer.entity_id
+WHERE u.public_id=$1 AND e.code=$2 AND uer.revoked_at IS NULL`, ownerPublic, code).Scan(&role); err != nil {
+		t.Fatal(err)
+	}
+	if role != "OWNER" {
+		t.Fatalf("first entity role=%s", role)
+	}
+}
+
+func insertHTTPUser(t *testing.T, store *postgres.Store, platformOwner bool) string {
+	t.Helper()
+	userID, err := ids.UUIDv7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	userPublic, err := ids.ULID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Pool.Exec(context.Background(), `
+INSERT INTO users(id,public_id,username,display_name,platform_owner)
+VALUES($1,$2,$3,$4,$5)`,
+		userID, userPublic, strings.ToLower("blank-"+userPublic), "Blank User", platformOwner); err != nil {
+		t.Fatal(err)
+	}
+	return userPublic
+}
+
 func grantPublicRole(t *testing.T, store *postgres.Store, userPublic, entityPublic, role string) {
 	t.Helper()
 	ctx := context.Background()

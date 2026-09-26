@@ -137,9 +137,10 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	write(w, 200, map[string]any{"user": map[string]any{
-		"public_id":    u.PublicID,
-		"username":     u.Username,
-		"display_name": u.DisplayName,
+		"public_id":      u.PublicID,
+		"username":       u.Username,
+		"display_name":   u.DisplayName,
+		"platform_owner": u.PlatformOwner,
 	}})
 }
 

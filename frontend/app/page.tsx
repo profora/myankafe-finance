@@ -14,13 +14,13 @@ type DashboardData={
 };
 
 export default function Dashboard() {
-  const { entity } = useEntity();
+  const { entity, platformOwner } = useEntity();
   const [data,setData]=useState<DashboardData>({cash_balances:[],income:"0",expenses:"0",net_profit:"0"});
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(true);
   const [combined,setCombined]=useState<{reporting_currency:string;income:string;expenses:string;net_profit:string;entities:{entity_id:string;entity_name:string;functional_currency:string;income:string;expenses:string;net_profit:string;reporting_rate:string}[]}|null>(null);
   useEffect(()=>{
-    if(!entity)return;
+    if(!entity){setLoading(false);return;}
     let cancelled=false;
     setLoading(true);
     setError("");
@@ -35,10 +35,11 @@ export default function Dashboard() {
   return (
     <>
       <div className="page-head">
-        <div><h1>Dashboard</h1><p>Current-month overview for {entity?.Name ?? "the selected entity"}.</p></div>
-        <Link className="button" href="/transactions/new">New entry</Link>
+        <div><h1>Dashboard</h1><p>{entity?`Current-month overview for ${entity.Name}.`:"No entity is selected yet."}</p></div>
+        {entity&&<Link className="button" href="/transactions/new">New entry</Link>}
       </div>
       {error&&<div className="alert error" role="alert">{error}</div>}
+      {!loading&&!entity&&<div className="alert" role="status">{platformOwner?"Create the first entity before recording any accounting.":"This account does not have an entity yet."}</div>}
       <div className="grid cards" aria-busy={loading}>
         <div className="card"><div className="muted">Income</div><div className="metric">{loading?<span className="skeleton skeleton-metric" aria-hidden="true"/>:<>{Number(data.income).toLocaleString()} {entity?.FunctionalCurrency}</>}</div></div>
         <div className="card"><div className="muted">Expenses</div><div className="metric">{loading?<span className="skeleton skeleton-metric" aria-hidden="true"/>:<>{Number(data.expenses).toLocaleString()} {entity?.FunctionalCurrency}</>}</div></div>

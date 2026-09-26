@@ -7,6 +7,7 @@ import type { Entity } from "./types";
 type Value = {
   entities: Entity[];
   entity?: Entity;
+  platformOwner: boolean;
   setEntityID: (id: string) => void;
   error: string;
   loading: boolean;
@@ -17,6 +18,7 @@ const Ctx = createContext<Value | null>(null);
 
 export function EntityProvider({ children }: { children: React.ReactNode }) {
   const [entities, setEntities] = useState<Entity[]>([]);
+  const [platformOwner, setPlatformOwner] = useState(false);
   const [entityID, setEntityIDState] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,11 @@ export function EntityProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError("");
     try {
-      const x=await api<{ items: Entity[] }>("/entities");
+      const [me, x] = await Promise.all([
+        api<{ user: { platform_owner?: boolean } }>("/auth/me"),
+        api<{ items: Entity[] }>("/entities"),
+      ]);
+      setPlatformOwner(Boolean(me.user.platform_owner));
       setEntities(x.items);
       setEntityIDState((current) => x.items.some(item=>item.PublicID===current) ? current : (x.items[0]?.PublicID || ""));
     } catch (e) {
@@ -44,7 +50,7 @@ export function EntityProvider({ children }: { children: React.ReactNode }) {
   const entity = useMemo(() => entities.find((x) => x.PublicID === entityID), [entities, entityID]);
 
   return (
-    <Ctx.Provider value={{ entities, entity, setEntityID: setEntityIDState, error, loading, reload: ()=>{void load()} }}>
+    <Ctx.Provider value={{ entities, entity, platformOwner, setEntityID: setEntityIDState, error, loading, reload: ()=>{void load()} }}>
       {children}
     </Ctx.Provider>
   );

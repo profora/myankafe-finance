@@ -21,7 +21,7 @@ func (s *Server) createEntity(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, err)
 		return
 	}
-	if !isOwner {
+	if !isOwner && !u.PlatformOwner {
 		fail(w, 403, errors.New("OWNER access required"))
 		return
 	}

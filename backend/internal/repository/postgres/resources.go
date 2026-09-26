@@ -11,7 +11,10 @@ import (
 	"github.com/profora/myankafe-finance/backend/internal/ids"
 )
 
-type User struct{ ID, PublicID, Username, DisplayName string }
+type User struct {
+	ID, PublicID, Username, DisplayName string
+	PlatformOwner                       bool
+}
 type Entity struct {
 	ID, PublicID, Code, Name, Type, FunctionalCurrency, Timezone, Role string
 	FiscalMonth, FiscalDay                                             int
@@ -29,7 +32,7 @@ type FinancialAccount struct {
 
 func (s *Store) ResolveUser(ctx context.Context, pub string) (User, error) {
 	var u User
-	err := s.Pool.QueryRow(ctx, `SELECT id::text,public_id::text,username,display_name FROM users WHERE public_id=$1 AND status='ACTIVE'`, pub).Scan(&u.ID, &u.PublicID, &u.Username, &u.DisplayName)
+	err := s.Pool.QueryRow(ctx, `SELECT id::text,public_id::text,username,display_name,platform_owner FROM users WHERE public_id=$1 AND status='ACTIVE'`, pub).Scan(&u.ID, &u.PublicID, &u.Username, &u.DisplayName, &u.PlatformOwner)
 	return u, err
 }
 
