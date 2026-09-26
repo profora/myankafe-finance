@@ -508,19 +508,19 @@ WHERE action IN ('DASHBOARD_VIEW','REPORT_VIEW','HTTP_REQUEST','TRANSACTION_VIEW
 		t.Fatalf("denied status=%d body=%s", denied.Code, denied.Body.String())
 	}
 	var deniedAgent, deniedIP *string
-	var metadata string
+	var afterData string
 	if err := store.Pool.QueryRow(ctx, `
-SELECT user_agent, host(ip_address)::text, metadata::text
+SELECT user_agent, host(ip_address)::text, after_data::text
 FROM audit_events ae
 JOIN entities e ON e.id=ae.entity_id
-WHERE e.public_id=$1 AND ae.action='ACCESS_DENIED'`, viewerEntity).Scan(&deniedAgent, &deniedIP, &metadata); err != nil {
+WHERE e.public_id=$1 AND ae.action='ACCESS_DENIED'`, viewerEntity).Scan(&deniedAgent, &deniedIP, &afterData); err != nil {
 		t.Fatal(err)
 	}
 	if deniedAgent != nil || deniedIP != nil {
 		t.Fatalf("denied audit stored user_agent=%v ip=%v", deniedAgent, deniedIP)
 	}
-	if !strings.Contains(metadata, `"method"`) || strings.Contains(strings.ToLower(metadata), "password") || strings.Contains(metadata, "CorrectHorse") {
-		t.Fatalf("denied metadata=%s", metadata)
+	if !strings.Contains(afterData, `"method"`) || strings.Contains(strings.ToLower(afterData), "password") || strings.Contains(afterData, "CorrectHorse") {
+		t.Fatalf("denied audit payload=%s", afterData)
 	}
 
 	listed := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/entities/"+entityID+"/audit-events", owner, nil)
