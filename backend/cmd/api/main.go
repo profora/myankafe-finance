@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/profora/myankafe-finance/backend/internal/config"
 	"github.com/profora/myankafe-finance/backend/internal/httpapi"
