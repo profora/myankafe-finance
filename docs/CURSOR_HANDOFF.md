@@ -277,3 +277,20 @@ Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPO
 - Browser post `01M3E7H0S1ZS9JSRJ666PEKHQC` (MyanKafe) and `01M3E7H0S1RREDN3CAWTPST3BN` (Royal Masterpiece) is the same-currency Pay for Another Entity example: 100 MMK from TEST Bank Account to TEST RM Expense. Both journals posted. TEST rows were not deleted.
 - The VPS git metadata is older than the running tree because deploy syncs source without `.git`. The images were built from the synced `2b36b7d` tree.
 
+## 2026-09-26 clean production baseline
+
+Earlier sections are historical. They are not the current production state. In particular, Goose is no longer 14, cross-currency posting is no longer blocked, TEST accounting and TEST users are gone, and `BOOTSTRAP_PASSWORD` is no longer in the production environment.
+
+Current state:
+
+- Branch `feat/v1-accounting-foundation`. Deployed application commit `58bcfd467f61b7ac840709e45da54780ac31f0e9`. Goose 15.
+- CI for that commit: push `36241798004`, pull request `36241799915`, both green.
+- Next.js 15.5.26 and React 19.1.2 address CVE-2025-66478 on the 15.5 line. Residual `npm audit` findings for PostCSS and `sharp` have no compatible fix in this pass.
+- One application user: `kyawthanttin`, display name Kyaw Thant Tin, `platform_owner=true`, no entity role. The password is not stored in git, docs, or the production env file.
+- Business counts are zero for entities, roles, COA, financial accounts, contacts, rates, transactions, journals, inter-entity records, attachments, idempotency, audit, and sessions. Currencies and system roles remain. Finance R2 application object count is 0.
+- Pre-reset backup: `/var/backups/myankafe-finance/myankafe-finance-20260926T123210Z.dump`, 2026-09-26T12:32:10Z, 264651 bytes, SHA-256 `50aa93679b05f10b2be0e503abdfecb1c11113d50bb2fdcf65416859a88ef41d`. Restore into a disposable PostgreSQL 18 database matched production counts and was dropped.
+- `/health` and `/ready` remain public through the existing tunnel and do not reveal secrets. Restricting them is an infrastructure follow-up.
+- PR #1 is Ready for Review and is not merged.
+
+Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
+

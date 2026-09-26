@@ -1,7 +1,9 @@
 # MyanKafe Finance overnight deployment and acceptance report
 
 Date: 2026-09-25  
-Recommendation: **READY FOR FINAL HUMAN REVIEW**
+Recommendation: **READY FOR FINAL HUMAN REVIEW — CLEAN PRODUCTION BASELINE**
+
+Sections before "2026-09-26 clean production baseline" are historical. They describe earlier deploys, TEST data, Goose 13/14, and the temporary `owner` bootstrap password. Those statements are superseded by the final section.
 
 PR #1 was moved from Draft to Ready for Review after this continuation. It was not merged. No force-push was performed.
 
@@ -282,3 +284,53 @@ ACCOUNTANT, BOOKKEEPER, and VIEWER setup denial, payer-only posting denial, atom
 Different-currency Pay for Another Entity was not posted. Every entity and financial account in this environment is MMK. The form uses one amount when functional currencies match.
 
 PR #1 stays unmerged.
+
+## 2026-09-26 clean production baseline
+
+This section is the current production state.
+
+Deployed application commit `58bcfd467f61b7ac840709e45da54780ac31f0e9` on `feat/v1-accounting-foundation`. The VPS checkout does not carry `.git`, so the running tree is the rsynced source for that commit. Goose version is 15. Migration `00015_platform_owner.sql` stays applied and was not edited.
+
+CI for that application commit is green:
+
+- push run 36241798004
+- pull-request run 36241799915
+
+Next.js is 15.5.26 and React is 19.1.2. That is the compatible 15.5-line fix for CVE-2025-66478. The production web build log reports Next.js 15.5.26. `npm audit` still reports three issues with no compatible fix in this pass: a moderate Next.js advisory via PostCSS, a high PostCSS `<style>` XSS advisory, and a high `sharp`/libvips advisory. They were not force-fixed.
+
+Every required acceptance gate passed before the Finance-only reset:
+
+- Platform-owner backfill was inspected. Migration 15 had promoted `owner` and `finance-ui-test`. `finance-ui-test` was an unintended promotion from an active entity OWNER role and was set back to `platform_owner=false` in application data. Only `owner` remained a platform owner before the reset. Granting an entity OWNER role does not set the flag. Ordinary user creation leaves it false. Regression coverage is `TestGrantingEntityOwnerDoesNotSetPlatformOwner`.
+- Browser and API role checks for temporary OWNER, ADMIN, ACCOUNTANT, BOOKKEEPER, and VIEWER users matched the existing permission model. Inter-Entity Setup is OWNER/ADMIN. Platform currency, user, and storage-probe administration follows entity OWNER or `platform_owner`. Ledger posting is Bookkeeper and above. Manual journal, reversal, and unlock follow the existing OWNER/ACCOUNTANT and OWNER-only rules. Viewers do not see income/expense entry.
+- A real TEST cross-currency transfer posted at the stored manual rate 4500. A later rate of 5000 did not change that posted snapshot. Transaction Detail showed 4500 and not 5000.
+- A different-functional-currency Pay for Another Entity posted 4500 MMK and 1 USD atomically. Both journals balanced. The UI states that both amounts are the stored historical values and that no live rate is looked up. An invalid counterparty account returned 400 and left no partial transaction.
+- Attachment upload, thumbnail, fullscreen preview, zoom, keyboard navigation, reorder, and removal were exercised in the browser. Content is served by the Finance API. A cross-entity outsider received 403. The transaction stayed posted after removal. The system R2 probe passed and left no probe object.
+- Repeated idempotency keys did not duplicate income, transfer, inter-entity, or reversal records. Two concurrent creates with one key produced one transaction.
+- Movement rows, running balances, report tie-out, responsive widths 1440, 768, 390, 375, and 430, and the security checks passed before reset. Report cards use a shrinkable grid so wide tables scroll inside the card.
+
+Pre-reset backup, taken before any deletion:
+
+```text
+File: /var/backups/myankafe-finance/myankafe-finance-20260926T123210Z.dump
+UTC: 2026-09-26T12:32:10Z
+Size: 264651 bytes
+SHA-256: 50aa93679b05f10b2be0e503abdfecb1c11113d50bb2fdcf65416859a88ef41d
+Goose: 15
+Mode: 600
+```
+
+Restore drill: the dump restored into disposable database `restore_drill` on a temporary local PostgreSQL 18 container. Goose was 15. Representative users, entities, accounts, financial accounts, contacts, contact types, transactions, journals, audit, and inter-entity counts matched production. The container and its image were removed. Production was not overwritten. The stored `doadmin` secret did not authenticate, so the drill was not created on the managed cluster.
+
+Pre-reset production counts included 13 users, 4 entities, 25 COA rows, 8 financial accounts, 34 transactions, 30 journals, 64 journal lines, 1378 audit events, 4 inter-entity mappings, and 3 inter-entity transactions. Finance R2 had 2 objects, 157649 bytes, all under the transactions prefix.
+
+The reset ran in one transaction on database `myankafe-finance` only. It used an explicit table list. User triggers were disabled for that transaction and re-enabled before commit. `disabled_triggers` is 0. Goose history, roles, the empty permission tables, currencies, functions, and constraints remain. MyanKafe and Royal Masterpiece databases and buckets were not modified.
+
+The single application user is `kyawthanttin`, display name Kyaw Thant Tin, `platform_owner=true`, with an Argon2id credential and no entity role. `BOOTSTRAP_PASSWORD` is absent from `/opt/myankafe-finance/.env.production`. The API process does not carry that variable. Login still succeeds from the database credential. A temporary entity `TEST Bootstrap Cleanup` was created in the browser, granted OWNER, and then removed with the same business-data reset. Verification sessions and audit rows from that check were cleared.
+
+Final business counts: users 1, platform owners 1, entities 0, user-entity roles 0, COA 0, financial accounts 0, contacts 0, contact types 0, exchange rates 0, transactions 0, splits 0, journals 0, journal lines 0, inter-entity mappings 0, inter-entity transactions 0, attachments 0, idempotency 0, audit 0, lock events 0, sessions 0. Currencies 4. Roles 5. Goose 15. Finance R2 object count 0 after the system probe.
+
+Finance API `/ready`, Finance web, MyanKafe `/healthz`, and Royal Masterpiece `/healthz` returned 200. Public Finance, MyanKafe, and Royal Masterpiece homepages returned 200. Loopback binds are unchanged. Disk remains about 90% with 4.9 GiB free.
+
+`/health` and `/ready` are still reachable on the public API hostname because the tunnel forwards them. Their bodies are status only (`{"ok":true}` and database/storage readiness). Hiding them is an infrastructure follow-up, not a tunnel change in this pass.
+
+PR #1 is Ready for Review. It is not merged.
