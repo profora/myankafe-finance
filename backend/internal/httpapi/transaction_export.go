@@ -49,8 +49,7 @@ func (s *Server) exportTransactionsCSV(w http.ResponseWriter, r *http.Request) {
 	defer writer.Flush()
 	_ = writer.Write([]string{
 		"Date", "Type", "Status", "Description", "Contact", "Financial Account",
-		"Transaction Amount", "Transaction Currency",
-		"Functional Effect", "Running Net", "Functional Currency",
+		"Transaction Amount", "Transaction Currency", "Functional Currency",
 		"Attachment Count", "Transaction ULID",
 	})
 
@@ -72,7 +71,7 @@ func (s *Server) exportTransactionsCSV(w http.ResponseWriter, r *http.Request) {
 			}
 			_ = writer.Write([]string{
 				item.Date, item.Type, item.Status, item.Description, contact, financial,
-				item.Total, item.Currency, item.FunctionalEffect, item.RunningNet, result.FunctionalCurrency,
+				item.Total, item.Currency, result.FunctionalCurrency,
 				strconv.Itoa(item.AttachmentCount), item.PublicID,
 			})
 		}

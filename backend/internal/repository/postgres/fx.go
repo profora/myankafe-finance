@@ -76,6 +76,12 @@ func (s *Store) CreateExchangeRate(ctx context.Context, user User, e Entity, dat
 	if err := validateExchangeRateInput(date, from, to, rate, source); err != nil {
 		return nil, err
 	}
+	if err := s.RequireActiveCurrency(ctx, from); err != nil {
+		return nil, err
+	}
+	if err := s.RequireActiveCurrency(ctx, to); err != nil {
+		return nil, err
+	}
 	id, _ := ids.UUIDv7()
 	pub, _ := ids.ULID()
 	_, err := s.Pool.Exec(ctx, `INSERT INTO exchange_rates(id,public_id,entity_id,rate_date,from_currency_code,to_currency_code,rate,source,source_reference,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,''),$10)`, id, pub, e.ID, date, from, to, rate, source, strings.TrimSpace(reference), user.ID)
@@ -107,13 +113,23 @@ func (s *Store) UpdateExchangeRate(ctx context.Context, user User, e Entity, pub
 	}
 	defer tx.Rollback(ctx)
 
-	var source string
+	var source, currentFrom, currentTo string
 	if err := tx.QueryRow(ctx, `
-SELECT source
+SELECT source, from_currency_code, to_currency_code
 FROM exchange_rates
 WHERE entity_id=$1 AND public_id=$2
-FOR UPDATE`, e.ID, publicID).Scan(&source); err != nil {
+FOR UPDATE`, e.ID, publicID).Scan(&source, &currentFrom, &currentTo); err != nil {
 		return nil, err
+	}
+	if strings.TrimSpace(in.FromCurrency) != strings.TrimSpace(currentFrom) {
+		if err := s.RequireActiveCurrency(ctx, in.FromCurrency); err != nil {
+			return nil, err
+		}
+	}
+	if strings.TrimSpace(in.ToCurrency) != strings.TrimSpace(currentTo) {
+		if err := s.RequireActiveCurrency(ctx, in.ToCurrency); err != nil {
+			return nil, err
+		}
 	}
 	if source != "MANUAL" {
 		return nil, fmt.Errorf("only MANUAL exchange rates can be edited")

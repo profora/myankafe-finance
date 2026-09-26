@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import { canManageEntitySettings } from "@/lib/permissions";
+import { useActiveCurrencies } from "@/components/CurrencySelect";
 
 export default function EntitySettings(){
   const {entities,entity,reload}=useEntity();
   const mayEdit=canManageEntitySettings(entity?.Role);
   const ownerAnywhere=entities.some(x=>x.Role==="OWNER");
+  const {items:currencies}=useActiveCurrencies();
   const [err,setErr]=useState("");
   const [msg,setMsg]=useState("");
   const [busy,setBusy]=useState(false);
@@ -67,7 +69,7 @@ export default function EntitySettings(){
         <div className="field"><label>Code</label><input value={f.Code} onChange={e=>setF({...f,Code:e.target.value.toUpperCase()})}/></div>
         <div className="field"><label>Name</label><input value={f.Name} onChange={e=>setF({...f,Name:e.target.value})}/></div>
         <div className="field"><label>Type</label><select value={f.EntityType} onChange={e=>setF({...f,EntityType:e.target.value})}><option>BUSINESS</option><option>PERSONAL</option><option>OTHER</option></select></div>
-        <div className="field"><label>Functional currency</label><input value={f.FunctionalCurrency} onChange={e=>setF({...f,FunctionalCurrency:e.target.value.toUpperCase()})}/></div>
+        <div className="field"><label>Functional currency</label><select value={f.FunctionalCurrency} onChange={e=>setF({...f,FunctionalCurrency:e.target.value})}><option value="">Choose…</option>{currencies.map(item=><option key={item.code} value={item.code}>{item.code} · {item.name}</option>)}</select></div>
         <div className="field"><label>Timezone</label><input value={f.Timezone} onChange={e=>setF({...f,Timezone:e.target.value})}/></div>
         <div className="field"><label>Fiscal year start</label><div style={{display:"flex",gap:8}}><input type="number" min={1} max={12} value={f.FiscalMonth} onChange={e=>setF({...f,FiscalMonth:Number(e.target.value)})}/><input type="number" min={1} max={31} value={f.FiscalDay} onChange={e=>setF({...f,FiscalDay:Number(e.target.value)})}/></div></div>
       </div>

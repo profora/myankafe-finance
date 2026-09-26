@@ -27,8 +27,6 @@ type TransactionListItem struct {
 	ContactName        *string `json:"contact_name"`
 	FinancialAccountID *string `json:"financial_account_id"`
 	FinancialAccount   *string `json:"financial_account_name"`
-	FunctionalEffect   string  `json:"functional_effect"`
-	RunningNet         string  `json:"running_net"`
 	AttachmentCount    int     `json:"attachment_count"`
 }
 
@@ -112,11 +110,6 @@ effects AS (
 ),
 enriched AS (
   SELECT f.*,
-         COALESCE(e.functional_effect,0) functional_effect,
-         SUM(COALESCE(e.functional_effect,0)) OVER(
-           ORDER BY f.transaction_date,f.created_at,f.public_id
-           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-         ) running_net,
          COUNT(*) OVER() total_count,
          COALESCE(SUM(COALESCE(e.income_effect,0)) OVER(),0) income_total,
          COALESCE(SUM(COALESCE(e.expense_effect,0)) OVER(),0) expense_total,
@@ -127,7 +120,7 @@ enriched AS (
 SELECT e.public_id::text,e.transaction_type,e.status,e.transaction_date::text,e.description,
        e.currency_code,e.total_amount::text,e.contact_name,
        e.financial_account_public_id::text,e.financial_account_name,
-       e.functional_effect::text,e.running_net::text,e.attachment_count,
+       e.attachment_count,
        e.total_count,e.income_total::text,e.expense_total::text,e.net_total::text,
        ent.functional_currency_code
 FROM enriched e
@@ -148,7 +141,7 @@ LIMIT $8 OFFSET $9`,
 		if err := rows.Scan(
 			&item.PublicID, &item.Type, &item.Status, &item.Date, &item.Description,
 			&item.Currency, &item.Total, &item.ContactName, &item.FinancialAccountID, &item.FinancialAccount,
-			&item.FunctionalEffect, &item.RunningNet, &item.AttachmentCount,
+			&item.AttachmentCount,
 			&totalCount, &income, &expense, &net, &functionalCurrency,
 		); err != nil {
 			return TransactionListResult{}, err

@@ -80,6 +80,11 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 			r.Get("/system/status", s.systemStatus)
 			r.Post("/system/storage-probe", s.storageProbe)
 
+			r.Get("/currencies", s.listCurrencies)
+			r.Post("/currencies", s.createCurrency)
+			r.Put("/currencies/{code}", s.updateCurrency)
+			r.Delete("/currencies/{code}", s.deleteCurrency)
+
 			r.Get("/entities", s.listEntities)
 			r.Post("/entities", s.createEntity)
 			r.Get("/users", s.listUsers)
@@ -114,6 +119,11 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 				r.Post("/contacts", s.createContact)
 				r.Put("/contacts/{contact}", s.updateContact)
 
+				r.Get("/contact-types", s.listContactTypes)
+				r.Post("/contact-types", s.createContactType)
+				r.Put("/contact-types/{code}", s.updateContactType)
+				r.Delete("/contact-types/{code}", s.deleteContactType)
+
 				r.Get("/exchange-rates", s.listExchangeRates)
 				r.Post("/exchange-rates", s.createExchangeRate)
 				r.Put("/exchange-rates/{rate}", s.updateExchangeRate)
@@ -143,6 +153,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 				r.Put("/users/role", s.setUserRole)
 				r.Delete("/users/{user}", s.revokeUserEntityAccess)
 
+				r.Get("/audit-actions", s.listAuditActions)
 				r.Get("/audit-events", s.listAuditEvents)
 
 				r.Get("/accounting-lock", s.getLock)

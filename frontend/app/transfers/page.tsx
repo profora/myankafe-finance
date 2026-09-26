@@ -5,28 +5,33 @@ import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
 import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
-import type { FinancialAccount } from "@/components/types";
+import type { Account, FinancialAccount } from "@/components/types";
 
 export default function Transfers(){
   const {entity}=useEntity();
   const [accounts,setAccounts]=useState<FinancialAccount[]>([]);
+  const [expenses,setExpenses]=useState<Account[]>([]);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
   const [attachments,setAttachments]=useState<File[]>([]);
   const [busy,setBusy]=useState(false);
   const [loadingRefs,setLoadingRefs]=useState(true);
-  const [form,setForm]=useState({Date:dateInTimeZone(entity?.Timezone??"Asia/Yangon"),FromFinancialAccountPublicID:"",ToFinancialAccountPublicID:"",FromAmount:"",ToAmount:"",Description:""});
+  const [form,setForm]=useState({Date:dateInTimeZone(entity?.Timezone??"Asia/Yangon"),FromFinancialAccountPublicID:"",ToFinancialAccountPublicID:"",FromAmount:"",ToAmount:"",FeeAmount:"",FeeExpenseAccountPublicID:"",Description:""});
 
   useEffect(()=>{
     if(!entity)return;
     let cancelled=false;
     setLoadingRefs(true);setError("");setMessage("");setAccounts([]);setAttachments([]);
-    setForm({Date:dateInTimeZone(entity.Timezone),FromFinancialAccountPublicID:"",ToFinancialAccountPublicID:"",FromAmount:"",ToAmount:"",Description:""});
-    api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`)
-      .then(x=>{
+    setForm({Date:dateInTimeZone(entity.Timezone),FromFinancialAccountPublicID:"",ToFinancialAccountPublicID:"",FromAmount:"",ToAmount:"",FeeAmount:"",FeeExpenseAccountPublicID:"",Description:""});
+    Promise.all([
+      api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
+      api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`)
+    ])
+      .then(([financial,chart])=>{
         if(cancelled)return;
-        const active=x.items.filter(a=>a.Active);
+        const active=financial.items.filter(a=>a.Active);
         setAccounts(active);
+        setExpenses(chart.items.filter(a=>a.Active&&a.Postable&&a.Type==="EXPENSE"));
         setForm(v=>({...v,FromFinancialAccountPublicID:active[0]?.PublicID||"",ToFinancialAccountPublicID:active[1]?.PublicID||""}));
       })
       .catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
@@ -53,6 +58,16 @@ export default function Transfers(){
 
   const from=accounts.find(x=>x.PublicID===form.FromFinancialAccountPublicID);
   const to=accounts.find(x=>x.PublicID===form.ToFinancialAccountPublicID);
+  const sameCurrency=Boolean(from&&to&&from.Currency===to.Currency);
+
+  function syncToAmount(fromAmount:string, feeAmount:string){
+    if(!sameCurrency)return form.ToAmount;
+    const fee=Number(feeAmount||"0");
+    const source=Number(fromAmount);
+    if(!fromAmount||Number.isNaN(source)||Number.isNaN(fee)||fee<0||source<=fee&&fee>0)return form.ToAmount;
+    const next=fee>0?source-fee:source;
+    return String(next);
+  }
 
   return <>
     <div className="page-head"><div><h1>Account Transfer</h1><p>Move money between cash, bank, wallet and card accounts.</p></div></div>
@@ -62,13 +77,18 @@ export default function Transfers(){
         <div className="field"><label>Date</label><input type="date" value={form.Date} onChange={e=>setForm({...form,Date:e.target.value})}/></div>
         <div className="field"><label>Description</label><input value={form.Description} onChange={e=>setForm({...form,Description:e.target.value})}/></div>
         <div className="field"><label>From</label><select value={form.FromFinancialAccountPublicID} disabled={loadingRefs} onChange={e=>setForm({...form,FromFinancialAccountPublicID:e.target.value})}><option value="">{loadingRefs?"Loading accounts…":"Choose…"}</option>{accounts.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
-        <div className="field"><label>From amount ({from?.Currency??"—"})</label><input inputMode="decimal" value={form.FromAmount} onChange={e=>setForm({...form,FromAmount:e.target.value})}/></div>
+        <div className="field"><label>From amount ({from?.Currency??"—"})</label><input inputMode="decimal" value={form.FromAmount} onChange={e=>setForm({...form,FromAmount:e.target.value,ToAmount:syncToAmount(e.target.value,form.FeeAmount)})}/></div>
         <div className="field"><label>To</label><select value={form.ToFinancialAccountPublicID} disabled={loadingRefs} onChange={e=>setForm({...form,ToFinancialAccountPublicID:e.target.value})}><option value="">{loadingRefs?"Loading accounts…":"Choose…"}</option>{accounts.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
         <div className="field"><label>To amount ({to?.Currency??"—"})</label><input inputMode="decimal" value={form.ToAmount} onChange={e=>setForm({...form,ToAmount:e.target.value})}/></div>
+        {sameCurrency&&<>
+          <div className="field"><label>Transfer fee <span className="muted">(optional)</span></label><input inputMode="decimal" value={form.FeeAmount} onChange={e=>setForm({...form,FeeAmount:e.target.value,ToAmount:syncToAmount(form.FromAmount,e.target.value)})}/></div>
+          <div className="field"><label>Fee expense account</label><select value={form.FeeExpenseAccountPublicID} onChange={e=>setForm({...form,FeeExpenseAccountPublicID:e.target.value})}><option value="">None</option>{expenses.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
+        </>}
       </div>
-      {from&&to&&from.Currency!==to.Currency&&<div className="alert">Cross-currency transfers use stored rates. The entered source/destination amounts must translate to the same functional value in V1.</div>}
+      {sameCurrency&&<div className="alert">{form.FeeAmount?"The source amount must equal the destination amount plus the fee. The fee posts to the expense account you choose.":"Same-currency transfers keep the source and destination amounts equal unless you enter a transfer fee."}</div>}
+      {from&&to&&from.Currency!==to.Currency&&<div className="alert">Cross-currency transfers use stored rates. The entered source and destination amounts must translate to the same functional value.</div>}
       <div className="field"><label>Attachments</label><input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,text/csv,.docx,.xlsx" onChange={e=>setAttachments(Array.from(e.target.files??[]))}/><span className="muted">{attachments.length?attachments.map(x=>x.name).join(", "):"Optional receipts or transfer confirmations."}</span></div>
-      <button type="button" disabled={loadingRefs||busy||!form.Description||!form.FromFinancialAccountPublicID||!form.ToFinancialAccountPublicID||!form.FromAmount||!form.ToAmount||form.FromFinancialAccountPublicID===form.ToFinancialAccountPublicID} onClick={submit}>{busy?"Posting…":"Post transfer"}</button>
+      <button type="button" disabled={loadingRefs||busy||!form.Description||!form.FromFinancialAccountPublicID||!form.ToFinancialAccountPublicID||!form.FromAmount||!form.ToAmount||form.FromFinancialAccountPublicID===form.ToFinancialAccountPublicID||(sameCurrency&&Number(form.FeeAmount)>0&&!form.FeeExpenseAccountPublicID)} onClick={submit}>{busy?"Posting…":"Post transfer"}</button>
     </div>
   </>;
 }

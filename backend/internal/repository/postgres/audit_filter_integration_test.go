@@ -16,11 +16,11 @@ func TestAuditListFiltersSearchAndPaginates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	drafts, err := s.ListAuditEvents(ctx, entity.ID, AuditEventFilter{Action: "DRAFT", Limit: 100})
+	drafts, err := s.ListAuditEvents(ctx, entity.ID, AuditEventFilter{Action: "TRANSACTION_DRAFT_UPDATE", Limit: 100})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if drafts.Count != 2 || len(drafts.Items) != 2 {
+	if drafts.Count != 1 || len(drafts.Items) != 1 {
 		t.Fatalf("draft filter count=%d items=%d", drafts.Count, len(drafts.Items))
 	}
 

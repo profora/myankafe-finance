@@ -41,6 +41,7 @@ export default function Audit(){
   const [search,setSearch]=useState("");
   const [debounced,setDebounced]=useState("");
   const [action,setAction]=useState("");
+  const [actions,setActions]=useState<string[]>([]);
   const [outcome,setOutcome]=useState("");
   const [from,setFrom]=useState("");
   const [to,setTo]=useState("");
@@ -53,7 +54,7 @@ export default function Audit(){
   const query=useMemo(()=>{
     const p=new URLSearchParams();
     if(debounced)p.set("q",debounced);
-    if(action.trim())p.set("action",action.trim());
+    if(action)p.set("action",action);
     if(outcome)p.set("outcome",outcome);
     if(from)p.set("from",from);
     if(to)p.set("to",to);
@@ -77,6 +78,16 @@ export default function Audit(){
   }
 
   useEffect(()=>{
+    if(!entity)return;
+    let cancelled=false;
+    setActions([]);
+    api<{items:string[]}>(`/entities/${entity.PublicID}/audit-actions`)
+      .then(result=>{if(!cancelled)setActions(result.items??[])})
+      .catch(()=>{});
+    return()=>{cancelled=true};
+  },[entity?.PublicID]);
+
+  useEffect(()=>{
     setItems([]);
     setCount(0);
     setHasMore(false);
@@ -95,8 +106,8 @@ export default function Audit(){
 
     <div className="card transaction-filters" style={{marginBottom:16}}>
       <div className="transaction-filter-grid audit-filter-grid">
-        <div className="field transaction-search"><label>Search</label><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Action, resource ULID, actor, request ID or reason"/></div>
-        <div className="field"><label>Action contains</label><input value={action} onChange={e=>setAction(e.target.value)} placeholder="e.g. TRANSACTION"/></div>
+        <div className="field transaction-search"><label>Search</label><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Actor, resource, reason, or request ID"/></div>
+        <div className="field"><label>Action</label><select value={action} onChange={e=>setAction(e.target.value)}><option value="">All actions</option>{actions.map(item=><option key={item} value={item}>{item}</option>)}</select></div>
         <div className="field"><label>Outcome</label><select value={outcome} onChange={e=>setOutcome(e.target.value)}><option value="">All</option><option>SUCCESS</option><option>FAILED</option><option>DENIED</option></select></div>
         <div className="field"><label>From</label><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></div>
         <div className="field"><label>To</label><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></div>

@@ -43,7 +43,7 @@ WITH filtered AS (
   LEFT JOIN users u ON u.id=ae.actor_user_id
   WHERE ae.entity_id=$1
     AND ($2='' OR ae.outcome=$2)
-    AND ($3='' OR ae.action ILIKE '%'||$3||'%')
+    AND ($3='' OR ae.action=$3)
     AND ($4='' OR ae.occurred_at>=NULLIF($4,'')::date)
     AND ($5='' OR ae.occurred_at<(NULLIF($5,'')::date + INTERVAL '1 day'))
     AND (
@@ -108,4 +108,25 @@ LIMIT $7 OFFSET $8`,
 	}
 	out.HasMore = f.Offset+len(out.Items) < out.Count
 	return out, nil
+}
+
+func (s *Store) ListAuditActions(ctx context.Context, entityID string) ([]string, error) {
+	rows, err := s.Pool.Query(ctx, `
+SELECT DISTINCT action
+FROM audit_events
+WHERE entity_id=$1
+ORDER BY action`, entityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var action string
+		if err := rows.Scan(&action); err != nil {
+			return nil, err
+		}
+		out = append(out, action)
+	}
+	return out, rows.Err()
 }

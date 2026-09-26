@@ -16,12 +16,11 @@ type UpdateContactInput struct {
 }
 
 func (s *Store) UpdateContact(ctx context.Context, user User, e Entity, publicID string, in UpdateContactInput) (map[string]any, error) {
-	in.Type = strings.ToUpper(strings.TrimSpace(in.Type))
-	switch in.Type {
-	case "OTHER", "SUPPLIER", "CUSTOMER", "EMPLOYEE", "OWNER":
-	default:
-		return nil, fmt.Errorf("invalid contact type")
+	normalized, err := NormalizeContactTypeCode(in.Type)
+	if err != nil {
+		return nil, err
 	}
+	in.Type = normalized
 	in.DisplayName = strings.TrimSpace(in.DisplayName)
 	if in.DisplayName == "" {
 		return nil, fmt.Errorf("display name is required")
@@ -33,12 +32,15 @@ func (s *Store) UpdateContact(ctx context.Context, user User, e Entity, publicID
 	}
 	defer tx.Rollback(ctx)
 
-	var id string
+	var id, currentType string
 	if err := tx.QueryRow(ctx, `
-SELECT id::text
+SELECT id::text, contact_type
 FROM contacts
 WHERE entity_id=$1 AND public_id=$2
-FOR UPDATE`, e.ID, publicID).Scan(&id); err != nil {
+FOR UPDATE`, e.ID, publicID).Scan(&id, &currentType); err != nil {
+		return nil, err
+	}
+	if err := s.usableContactType(ctx, e.ID, in.Type, in.Type == currentType); err != nil {
 		return nil, err
 	}
 

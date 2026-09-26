@@ -99,7 +99,15 @@ Transaction-list query parameters:
 - `limit` — maximum 500
 - `offset`
 
-The list response includes `income_total`, `expense_total`, `net_total`, `functional_currency`, count/pagination metadata, and per-row `functional_effect`, `running_net`, and `attachment_count`.
+The list response includes `income_total`, `expense_total`, `net_total`, `functional_currency`, `count`, `has_more`, and per-row `attachment_count`. Summary totals are functional-currency P&L for the filtered set. Per-row running net and functional effect are not returned. Use `limit` and `offset`; the default page size in the UI is 25. CSV export walks every matching row, not only the visible page.
+
+`GET /api/v1/entities/{entity}/audit-actions` returns the distinct audit `action` values for that entity, sorted alphabetically. `GET /audit-events?action=` filters by that exact value. Search remains a separate free-text filter.
+
+`GET /api/v1/currencies?active=1` lists currencies that can be selected for new entities, financial accounts, and exchange rates. Currency create, update, and delete require OWNER. A referenced currency cannot be deleted; deactivate it instead. Historical rows keep their stored currency code.
+
+`/entities/{entity}/contact-types` is the entity-scoped contact type master. New contacts must use an active type from that entity. Deactivating a type leaves existing contacts valid.
+
+Same-currency transfers require `from amount = to amount`, or `from amount = to amount + fee` when `fee_amount` and an EXPENSE `fee_expense_account` are supplied. The fee is an explicit debit. Cross-currency transfers still balance in functional currency using the stored FX snapshot and do not accept a transfer fee.
 
 Running/summary values are journal-derived in entity functional currency. Reversals unwind prior income/expense effects.
 

@@ -7,6 +7,7 @@ import { useEntity } from "@/components/EntityContext";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { canConfigureAccounting } from "@/lib/permissions";
 import TableStateRows from "@/components/TableStateRows";
+import { currencyChoices, useActiveCurrencies } from "@/components/CurrencySelect";
 
 type Rate={
   id:string;
@@ -22,6 +23,7 @@ type Rate={
 export default function ExchangeRates(){
   const {entity}=useEntity();
   const mayConfigure=canConfigureAccounting(entity?.Role);
+  const {items:currencies}=useActiveCurrencies();
   const [items,setItems]=useState<Rate[]>([]);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
@@ -103,8 +105,8 @@ export default function ExchangeRates(){
       <div className="form-grid">
         <div className="field"><label>Date</label><input type="date" value={edit.RateDate} onChange={e=>setEdit({...edit,RateDate:e.target.value})}/></div>
         <div className="field"><label>Rate</label><input inputMode="decimal" value={edit.Rate} onChange={e=>setEdit({...edit,Rate:e.target.value})}/></div>
-        <div className="field"><label>From</label><input value={edit.FromCurrency} onChange={e=>setEdit({...edit,FromCurrency:e.target.value.toUpperCase()})}/></div>
-        <div className="field"><label>To</label><input value={edit.ToCurrency} onChange={e=>setEdit({...edit,ToCurrency:e.target.value.toUpperCase()})}/></div>
+        <div className="field"><label>From</label><select value={edit.FromCurrency} onChange={e=>setEdit({...edit,FromCurrency:e.target.value})}>{currencyChoices(currencies,[edit.FromCurrency,edit.ToCurrency]).map(item=><option key={item.code} value={item.code} disabled={item.code===edit.ToCurrency}>{item.code} · {item.name}</option>)}</select></div>
+        <div className="field"><label>To</label><select value={edit.ToCurrency} onChange={e=>setEdit({...edit,ToCurrency:e.target.value})}>{currencyChoices(currencies,[edit.FromCurrency,edit.ToCurrency]).map(item=><option key={item.code} value={item.code} disabled={item.code===edit.FromCurrency}>{item.code} · {item.name}</option>)}</select></div>
         <div className="field span-2"><label>Source reference</label><input value={edit.SourceReference} onChange={e=>setEdit({...edit,SourceReference:e.target.value})}/></div>
       </div>
       <button type="button" disabled={busy||!edit.Rate} onClick={saveEdit}>{busy?"Saving…":"Save correction"}</button>
@@ -115,8 +117,8 @@ export default function ExchangeRates(){
       <div className="form-grid">
         <div className="field"><label>Date</label><input type="date" value={form.rate_date} onChange={e=>setForm({...form,rate_date:e.target.value})}/></div>
         <div className="field"><label>Rate</label><input inputMode="decimal" value={form.rate} onChange={e=>setForm({...form,rate:e.target.value})}/></div>
-        <div className="field"><label>From</label><input value={form.from_currency} onChange={e=>setForm({...form,from_currency:e.target.value.toUpperCase()})}/></div>
-        <div className="field"><label>To</label><input value={form.to_currency} onChange={e=>setForm({...form,to_currency:e.target.value.toUpperCase()})}/></div>
+        <div className="field"><label>From</label><select value={form.from_currency} onChange={e=>setForm({...form,from_currency:e.target.value})}>{currencies.map(item=><option key={item.code} value={item.code} disabled={item.code===form.to_currency}>{item.code} · {item.name}</option>)}</select></div>
+        <div className="field"><label>To</label><select value={form.to_currency} onChange={e=>setForm({...form,to_currency:e.target.value})}>{currencies.map(item=><option key={item.code} value={item.code} disabled={item.code===form.from_currency}>{item.code} · {item.name}</option>)}</select></div>
         <div className="field span-2"><label>Source reference</label><input value={form.source_reference} onChange={e=>setForm({...form,source_reference:e.target.value})}/></div>
       </div>
       <button type="button" disabled={busy||!form.rate} onClick={create}>Save rate</button>

@@ -6,10 +6,12 @@ import { useEntity } from "@/components/EntityContext";
 import type { Account, FinancialAccount } from "@/components/types";
 import { canConfigureAccounting } from "@/lib/permissions";
 import TableStateRows from "@/components/TableStateRows";
+import { useActiveCurrencies } from "@/components/CurrencySelect";
 
 export default function FinancialAccounts() {
   const { entity } = useEntity();
   const mayConfigure=canConfigureAccounting(entity?.Role);
+  const {items:currencies}=useActiveCurrencies();
   const [items,setItems]=useState<FinancialAccount[]>([]);
   const [accounts,setAccounts]=useState<Account[]>([]);
   const [error,setError]=useState("");
@@ -72,7 +74,7 @@ export default function FinancialAccounts() {
   }
 
   return <>
-    <div className="page-head"><div><h1>Cash / Bank Accounts</h1><p>Cash, banks, mobile wallets, cards and other definable accounts.</p></div></div>
+    <div className="page-head"><div><h1>Financial Accounts</h1><p>Cash, banks, mobile wallets, cards and other definable accounts.</p></div></div>
     {error&&<div className="alert error" role="alert">{error}</div>}
     {message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
 
@@ -97,12 +99,12 @@ export default function FinancialAccounts() {
         <div className="field"><label>Code</label><input value={form.Code} onChange={e=>setForm({...form,Code:e.target.value.toUpperCase().replace(/\s+/g,"_")})}/></div>
         <div className="field"><label>Name</label><input value={form.Name} onChange={e=>setForm({...form,Name:e.target.value})}/></div>
         <div className="field"><label>Kind</label><select value={form.Kind} onChange={e=>setForm({...form,Kind:e.target.value})}>{["CASH","BANK","MOBILE_WALLET","CREDIT_CARD","OTHER"].map(x=><option key={x}>{x}</option>)}</select></div>
-        <div className="field"><label>Currency</label><input value={form.Currency} onChange={e=>setForm({...form,Currency:e.target.value.toUpperCase()})}/></div>
+        <div className="field"><label>Currency</label><select value={form.Currency} onChange={e=>setForm({...form,Currency:e.target.value})}><option value="">Choose…</option>{currencies.map(item=><option key={item.code} value={item.code}>{item.code} · {item.name}</option>)}</select></div>
         <div className="field span-2"><label>Linked COA account</label><select value={form.AccountPublicID} onChange={e=>setForm({...form,AccountPublicID:e.target.value})}><option value="">Choose…</option>{accounts.map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
         <div className="field"><label>Institution</label><input value={form.Institution} onChange={e=>setForm({...form,Institution:e.target.value})}/></div>
         <div className="field"><label>Reference</label><input value={form.Reference} onChange={e=>setForm({...form,Reference:e.target.value})}/></div>
       </div>
-      <button type="button" disabled={busy||!form.Code||!form.Name||!form.AccountPublicID} onClick={create}>Add financial account</button>
+      <button type="button" disabled={busy||!form.Code||!form.Name||!form.AccountPublicID||!form.Currency} onClick={create}>Add financial account</button>
     </div>}
 
     {!mayConfigure&&<div className="alert">Your {entity?.Role??"VIEWER"} role can view financial accounts but cannot change their accounting configuration.</div>}

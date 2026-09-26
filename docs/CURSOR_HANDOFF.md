@@ -7,7 +7,7 @@ PR: `#1 feat: V1 multi-entity accounting foundation`
 
 ### Backend and database
 
-- PostgreSQL 17 schema and Goose migrations through 00013
+- PostgreSQL 17 schema and Goose migrations through 00014
 - UUIDv7 internal IDs / canonical ULID public IDs
 - multi-entity books and deterministic effective per-entity roles
 - hierarchical Chart of Accounts
@@ -128,8 +128,7 @@ Do not merge if CI is red. CI run #772 passed the complete frontend/backend/cont
    - richer table sorting/export if desired (CSV export is already shipped for transactions, reports, General Ledger and Account Ledger)
    - final accessibility/browser review
    - visual polish of forms and attachment gallery
-   - preserve the supplied Chieftain logo; do not replace it with the old MK placeholder
-   - the Chieftain logo supplied by the user is the canonical Finance brand asset for sidebar, login and app icon
+   - the MyanKafe logo from `profora/myankafe-platform` `admin/public/brand/logo-head.svg` and `logo-text.svg` is the Finance brand; do not substitute the Chieftain mark or a generic icon
 
 4. **Optional future integrations**
    - Royal Masterpiece ingestion connector using integration events/external references
@@ -247,6 +246,18 @@ The section above describes the first pass, before database and R2 values were a
 - Cross-currency transfer was not posted. The stored USD/MMK rate exists, and every financial account is MMK.
 - The R2 system probe fails closed with AccessDenied on bucket `myankafe-finance`. The keys that work for the Royal Masterpiece buckets do not work for this bucket.
 - A logical backup and a restore into a disposable database succeeded. The disposable database was dropped. Provider PITR was not confirmed in the console.
-- Recommendation is **READY FOR FINAL HUMAN REVIEW**. PR #1 is Ready for Review and must not be merged until a person reviews it.
+- Recommendation remains open until the migration 00014 deploy, browser acceptance, and CI for this branch are green. Do not merge PR #1.
 
 Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
+
+## 2026-09-26 branding, navigation, currencies, contact types, transfer fees
+
+- Finance branding uses the MyanKafe mark and wordmark copied from `profora/myankafe-platform` `admin/public/brand/logo-head.svg` and `logo-text.svg`. The sidebar and app icon use the mark with the words MyanKafe Finance. Login shows both assets. `chieftain-logo.webp` is unused by the UI and remains in the repo.
+- The sidebar is grouped: Overview, Transactions, Accounting Setup, Reports & Control, Settings. Authorization filtering is unchanged. Cash / Bank is labeled Financial Accounts.
+- Audit Action is an exact-match dropdown filled from `GET /entities/{entity}/audit-actions`.
+- Transactions use limit/offset pagination, default 25, page sizes 25/50/100. Filters, entity changes, and page-size changes return to page 1. CSV export still walks the full filtered set.
+- The transaction table no longer shows Running net or Functional effect. The summary card is Net, in the entity functional currency.
+- Migration `00014` adds `currencies.symbol`, entity-scoped `contact_types` seeded as Customer, Supplier, Employee, Owner, and Other, and optional transfer-fee columns.
+- Currency configuration is OWNER-only. Contact type configuration is OWNER, ADMIN, or ACCOUNTANT. New selections use active records. Referenced currencies and in-use contact types are deactivated rather than deleted.
+- A same-currency transfer with a fee posts debit destination, debit expense, credit source, and requires source = destination + fee.
+

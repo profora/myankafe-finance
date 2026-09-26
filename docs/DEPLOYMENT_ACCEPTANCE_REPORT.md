@@ -153,7 +153,7 @@ Transaction search for Packaging, type EXPENSE, status POSTED, and 2026-09-01 th
 
 Attachment checks on posted `TEST Packaging Expense`: image and PDF upload, thumbnail, fullscreen image zoom to 125%, ArrowRight to the PDF preview, Escape and Close, reopen, reorder, and removal. The posted transaction remained POSTED after the attachments were removed.
 
-Page overflow was 0 at 1440×900, 768×1024, 390×844, 375, and 430. Wide tables scroll inside the table card. The Chieftain logo stayed at `/brand/chieftain-logo.webp`. Skip-to-content, visible focus styles, labelled dialogs, and attachment keyboard controls are present.
+Page overflow was 0 at 1440×900, 768×1024, 390×844, 375, and 430. Wide tables scroll inside the table card. Skip-to-content, visible focus styles, labelled dialogs, and attachment keyboard controls are present. The Chieftain logo was the brand asset at that time; the current brand is the MyanKafe logo described in the later section.
 
 A USD/MMK rate of 4500 is stored. Every financial account is MMK, so a cross-currency transfer was not posted.
 

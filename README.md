@@ -128,7 +128,7 @@ The legacy development ULID bearer path exists only when `AUTH_MODE=dev` is expl
 
 ## Branding
 
-The web app uses the Chieftain Chin Coffee logo supplied for MyanKafe Finance at `frontend/public/brand/chieftain-logo.webp` on login, sidebar, and app metadata/icon surfaces.
+The web app uses the MyanKafe logo copied from `profora/myankafe-platform` `admin/public/brand/logo-head.svg` and `logo-text.svg`. Login shows the mark and wordmark. The sidebar and app icon use the mark with the words MyanKafe Finance. `frontend/public/brand/chieftain-logo.webp` remains in the repository and is no longer referenced by the UI.
 
 ## Operations
 

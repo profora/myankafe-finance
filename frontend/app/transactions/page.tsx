@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { api, apiBlob } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
 import { useEntity } from "@/components/EntityContext";
@@ -21,8 +21,6 @@ type TransactionRow={
   contact_name?:string|null;
   financial_account_id?:string|null;
   financial_account_name?:string|null;
-  functional_effect:string;
-  running_net:string;
   attachment_count:number;
 };
 
@@ -58,7 +56,6 @@ export default function Transactions(){
   const mayReverse=canCorrectPostedAccounting(entity?.Role);
   const [items,setItems]=useState<TransactionRow[]>([]);
   const [summary,setSummary]=useState<Omit<TransactionList,"items"|"has_more">>({count:0,income_total:"0",expense_total:"0",net_total:"0",functional_currency:"MMK"});
-  const [hasMore,setHasMore]=useState(false);
   const [financial,setFinancial]=useState<FinancialAccount[]>([]);
   const [filters,setFilters]=useState<Filters>(emptyFilters);
   const [applied,setApplied]=useState<Filters>(emptyFilters);
@@ -69,24 +66,31 @@ export default function Transactions(){
   const [reverseID,setReverseID]=useState("");
   const [reverseReason,setReverseReason]=useState("");
   const [reverseDate,setReverseDate]=useState(()=>dateInTimeZone(entity?.Timezone??"Asia/Yangon"));
+  const [page,setPage]=useState(1);
+  const [pageSize,setPageSize]=useState(25);
+  const requestID=useRef(0);
 
-  const query=useMemo(()=>{
+  const filterQuery=useMemo(()=>{
     const q=new URLSearchParams();
     Object.entries(applied).forEach(([k,v])=>{if(v)q.set(k,v)});
-    q.set("limit","100");
-    q.set("offset","0");
     return q;
   },[applied]);
 
-  async function load(reset=true){
+  const query=useMemo(()=>{
+    const q=new URLSearchParams(filterQuery);
+    q.set("limit",String(pageSize));
+    q.set("offset",String((page-1)*pageSize));
+    return q;
+  },[filterQuery,page,pageSize]);
+
+  async function load(){
     if(!entity)return;
+    const seq=++requestID.current;
     setLoading(true);setError("");
     try{
-      const offset=reset?0:items.length;
-      const q=new URLSearchParams(query);
-      q.set("offset",String(offset));
-      const result=await api<TransactionList>(`/entities/${entity.PublicID}/transactions?${q.toString()}`);
-      setItems(current=>reset?result.items:[...current,...result.items]);
+      const result=await api<TransactionList>(`/entities/${entity.PublicID}/transactions?${query.toString()}`);
+      if(requestID.current!==seq)return;
+      setItems(result.items??[]);
       setSummary({
         count:result.count,
         income_total:result.income_total,
@@ -94,9 +98,8 @@ export default function Transactions(){
         net_total:result.net_total,
         functional_currency:result.functional_currency
       });
-      setHasMore(result.has_more);
-    }catch(e){setError(e instanceof Error?e.message:String(e))}
-    finally{setLoading(false)}
+    }catch(e){if(requestID.current===seq)setError(e instanceof Error?e.message:String(e))}
+    finally{if(requestID.current===seq)setLoading(false)}
   }
 
   useEffect(()=>{
@@ -104,6 +107,7 @@ export default function Transactions(){
     let cancelled=false;
     setFilters(emptyFilters);
     setApplied(emptyFilters);
+    setPage(1);
     setItems([]);
     setFinancial([]);
     api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`)
@@ -116,8 +120,7 @@ export default function Transactions(){
     if(!entity)return;
     setError("");
     try{
-      const q=new URLSearchParams(query);
-      q.delete("limit");q.delete("offset");
+      const q=new URLSearchParams(filterQuery);
       const blob=await apiBlob(`/entities/${entity.PublicID}/transactions/export.csv?${q.toString()}`);
       const href=URL.createObjectURL(blob);
       const a=document.createElement("a");
@@ -135,7 +138,7 @@ export default function Transactions(){
     setBusy(id);setError("");
     try{
       await api(`/entities/${entity.PublicID}/transactions/${id}/post`,{method:"POST",body:"{}"});
-      await load(true);
+      await load();
     }catch(e){setError(e instanceof Error?e.message:String(e))}
     finally{setBusy("")}
   }
@@ -146,27 +149,34 @@ export default function Transactions(){
     try{
       await api(`/entities/${entity.PublicID}/transactions/${reverseID}/reverse`,{method:"POST",body:JSON.stringify({reversal_date:reverseDate,reason:reverseReason.trim()})});
       setReverseID("");setReverseReason("");
-      await load(true);
+      await load();
     }catch(e){setError(e instanceof Error?e.message:String(e))}
     finally{setBusy("")}
   }
 
   function applyFilters(e?:FormEvent){
     e?.preventDefault();
+    setPage(1);
     setApplied({...filters});
   }
 
   function clearFilters(){
+    setPage(1);
     setFilters(emptyFilters);setApplied(emptyFilters);
   }
 
-  useEffect(()=>{if(entity)void load(true)},[entity?.PublicID,query.toString()]);
+  useEffect(()=>{if(entity)void load()},[entity?.PublicID,query.toString()]);
+
+  const pageCount=Math.max(1,Math.ceil(summary.count/pageSize));
+  const fromRow=summary.count===0?0:(page-1)*pageSize+1;
+  const toRow=Math.min(page*pageSize,summary.count);
+  const pageNumbers=Array.from({length:pageCount},(_,i)=>i+1).filter(n=>n===1||n===pageCount||Math.abs(n-page)<=1);
 
   return <>
     <div className="page-head transaction-head">
       <div>
         <h1>Transactions</h1>
-        <p>Search, filter and enter daily transactions. Running totals are in the entity functional currency.</p>
+        <p>Search and filter daily transactions. Totals are in the entity functional currency.</p>
       </div>
       {mayOperate&&<div className="entry-actions">
         <details className="entry-menu">
@@ -205,12 +215,12 @@ export default function Transactions(){
     <div className="transaction-summary">
       <div className="card"><div className="muted">Posted income</div><div className="metric money-positive">{Number(summary.income_total).toLocaleString()} <small>{summary.functional_currency}</small></div></div>
       <div className="card"><div className="muted">Posted expenses</div><div className="metric money-negative">{Number(summary.expense_total).toLocaleString()} <small>{summary.functional_currency}</small></div></div>
-      <div className="card"><div className="muted">Running net</div><div className={`metric ${signedClass(summary.net_total)}`}>{Number(summary.net_total).toLocaleString()} <small>{summary.functional_currency}</small></div></div>
+      <div className="card"><div className="muted">Net</div><div className={`metric ${signedClass(summary.net_total)}`}>{Number(summary.net_total).toLocaleString()} <small>{summary.functional_currency}</small></div></div>
     </div>
 
     <div className="table-wrap transaction-table" aria-busy={loading}>
       {items.length?<table>
-        <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Account / Contact</th><th>Status</th><th>Amount</th><th>Functional effect</th><th>Running net</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Account / Contact</th><th>Status</th><th>Amount</th><th></th></tr></thead>
         <tbody>{items.map(t=><tr key={t.id}>
           <td>{t.date}</td>
           <td><span className="type-pill">{t.type.replaceAll("_"," ")}</span></td>
@@ -218,8 +228,6 @@ export default function Transactions(){
           <td><div>{t.financial_account_name||"—"}</div>{t.contact_name&&<div className="muted">{t.contact_name}</div>}</td>
           <td><span className={`badge ${t.status}`}>{t.status}</span></td>
           <td>{Number(t.total).toLocaleString()} {t.currency}</td>
-          <td className={signedClass(t.functional_effect)}>{Number(t.functional_effect).toLocaleString()} {summary.functional_currency}</td>
-          <td className={signedClass(t.running_net)}><strong>{Number(t.running_net).toLocaleString()}</strong> {summary.functional_currency}</td>
           <td><div className="actions compact-actions">
             {mayOperate&&t.status==="DRAFT"&&<button disabled={busy===t.id} onClick={()=>post(t.id)}>{busy===t.id?"Posting…":"Post"}</button>}
             {mayReverse&&t.status==="POSTED"&&<button className="danger" disabled={busy===t.id} onClick={()=>{setReverseID(t.id);setReverseReason("");setReverseDate(dateInTimeZone(entity?.Timezone??"Asia/Yangon"))}}>Reverse</button>}
@@ -233,9 +241,22 @@ export default function Transactions(){
       </div>:<div className="empty">No transactions match these filters.</div>}
     </div>
 
-    {hasMore&&<div className="load-more"><button className="secondary" disabled={loading} onClick={()=>load(false)}>{loading?"Loading…":"Load more"}</button></div>}
+    <div className="pager">
+      <span className="muted">{summary.count===0?"0 transactions":`${fromRow.toLocaleString()}–${toRow.toLocaleString()} of ${summary.count.toLocaleString()}`}</span>
+      <label className="muted">Rows
+        <select aria-label="Rows per page" value={pageSize} onChange={e=>{setPage(1);setPageSize(Number(e.target.value))}}>
+          {[25,50,100].map(size=><option key={size} value={size}>{size}</option>)}
+        </select>
+      </label>
+      <button type="button" className="secondary" disabled={loading||page<=1} onClick={()=>setPage(page-1)}>Previous</button>
+      {pageNumbers.map((n,index)=>{
+        const prev=pageNumbers[index-1];
+        return <span key={n}>{prev&&n-prev>1&&<span className="muted">…</span>}<button type="button" className={n===page?"current":"secondary"} disabled={loading||n===page} aria-current={n===page?"page":undefined} onClick={()=>setPage(n)}>{n}</button></span>;
+      })}
+      <button type="button" className="secondary" disabled={loading||page>=pageCount} onClick={()=>setPage(page+1)}>Next</button>
+    </div>
 
-    {mayOperate&&<TransactionEntryModal open={Boolean(entryKind)} kind={entryKind} entity={entity??null} onClose={()=>setEntryKind(null)} onSaved={()=>load(true)}/>} 
+    {mayOperate&&<TransactionEntryModal open={Boolean(entryKind)} kind={entryKind} entity={entity??null} onClose={()=>setEntryKind(null)} onSaved={()=>load()}/>} 
 
     <ConfirmDialog
       open={Boolean(reverseID)}

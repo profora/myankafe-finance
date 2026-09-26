@@ -170,6 +170,10 @@ func (s *Store) CreateFinancialAccount(ctx context.Context, user User, e Entity,
 	if strings.Trim(in.Code, "_") == "" {
 		return FinancialAccount{}, fmt.Errorf("code is required")
 	}
+	in.Currency = strings.ToUpper(strings.TrimSpace(in.Currency))
+	if err := s.RequireActiveCurrency(ctx, in.Currency); err != nil {
+		return FinancialAccount{}, err
+	}
 	var aid, typ string
 	var postable bool
 	if err := s.Pool.QueryRow(ctx, `SELECT id::text,account_type,is_postable FROM accounts WHERE entity_id=$1 AND public_id=$2 AND active=true AND active=true`, e.ID, in.AccountPublicID).Scan(&aid, &typ, &postable); err != nil {

@@ -44,6 +44,42 @@ jobs:
         run: go install github.com/pressly/goose/v3/cmd/goose@v3.24.3
       - name: Fresh DB migrations
         run: goose -dir backend/db/migrations postgres "$TEST_DATABASE_URL" up
+      - name: Upgrade from migration 13
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+          BASE="postgres://myankafe:myankafe_test@localhost:5432"
+          psql "$BASE/postgres?sslmode=disable" -c "CREATE DATABASE myankafe_finance_upgrade"
+          UPGRADE_URL="$BASE/myankafe_finance_upgrade?sslmode=disable"
+          goose -dir backend/db/migrations postgres "$UPGRADE_URL" up-to 13
+          psql "$UPGRADE_URL" <<'SQL'
+          INSERT INTO users(id,public_id,username,display_name)
+          VALUES('00000000-0000-7000-8000-000000000099','01ARZ3NDEKTSV4RRFFQ69G5FAV','upgrade-owner','Upgrade Owner');
+          INSERT INTO entities(id,public_id,code,name,entity_type,functional_currency_code,timezone,created_by)
+          VALUES('00000000-0000-7000-8000-000000000098','01ARZ3NDEKTSV4RRFFQ69G5FAW','UPGRADE_ENTITY','Upgrade Entity','BUSINESS','MMK','Asia/Yangon','00000000-0000-7000-8000-000000000099');
+          INSERT INTO contacts(id,public_id,entity_id,contact_type,display_name,created_by)
+          VALUES('00000000-0000-7000-8000-000000000097','01ARZ3NDEKTSV4RRFFQ69G5FAX','00000000-0000-7000-8000-000000000098','CUSTOMER','Upgrade Customer','00000000-0000-7000-8000-000000000099');
+          INSERT INTO transactions(id,public_id,entity_id,transaction_type,status,transaction_date,description,currency_code,total_amount,created_by)
+          VALUES('00000000-0000-7000-8000-000000000096','01ARZ3NDEKTSV4RRFFQ69G5FAY','00000000-0000-7000-8000-000000000098','EXPENSE','DRAFT','2026-09-01','Upgrade expense','MMK',10,'00000000-0000-7000-8000-000000000099');
+          SQL
+          goose -dir backend/db/migrations postgres "$UPGRADE_URL" up
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF (SELECT count(*) FROM contact_types WHERE entity_id='00000000-0000-7000-8000-000000000098') <> 5 THEN
+              RAISE EXCEPTION 'expected five seeded contact types';
+            END IF;
+            IF (SELECT contact_type FROM contacts WHERE public_id='01ARZ3NDEKTSV4RRFFQ69G5FAX') <> 'CUSTOMER' THEN
+              RAISE EXCEPTION 'historical contact type changed';
+            END IF;
+            IF (SELECT count(*) FROM transactions WHERE public_id='01ARZ3NDEKTSV4RRFFQ69G5FAY') <> 1 THEN
+              RAISE EXCEPTION 'upgrade transaction was lost';
+            END IF;
+            IF (SELECT symbol FROM currencies WHERE code='MMK') = '' THEN
+              RAISE EXCEPTION 'MMK symbol was not backfilled';
+            END IF;
+          END $$;
+          SQL
       - name: Tests
         working-directory: backend
         run: go test ./...

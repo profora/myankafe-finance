@@ -9,12 +9,15 @@ import TableStateRows from "@/components/TableStateRows";
 type Contact={
   id:string;
   contact_type:string;
+  contact_type_name?:string;
   display_name:string;
   phone?:string|null;
   email?:string|null;
   notes?:string|null;
   active:boolean;
 };
+
+type ContactType={code:string;name:string;active:boolean};
 
 type ContactForm={
   contact_type:string;
@@ -30,6 +33,7 @@ export default function Contacts(){
   const {entity}=useEntity();
   const mayOperate=canOperateLedger(entity?.Role);
   const [items,setItems]=useState<Contact[]>([]);
+  const [types,setTypes]=useState<ContactType[]>([]);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
   const [form,setForm]=useState<ContactForm>(blank);
@@ -42,8 +46,14 @@ export default function Contacts(){
     if(!entity)return;
     setLoading(true);setError("");
     try{
-      const result=await api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`);
+      const [result,typeResult]=await Promise.all([
+        api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`),
+        api<{items:ContactType[]}>(`/entities/${entity.PublicID}/contact-types`)
+      ]);
       setItems(result.items);
+      setTypes(typeResult.items);
+      const active=typeResult.items.filter(item=>item.active);
+      setForm(current=>({...current,contact_type:active.some(item=>item.code===current.contact_type)?current.contact_type:(active[0]?.code??"")}));
     }catch(e){setError(e instanceof Error?e.message:String(e))}
     finally{setLoading(false)}
   };
@@ -106,7 +116,7 @@ export default function Contacts(){
       </div>
       <div className="form-grid">
         <div className="field"><label>Name</label><input value={edit.display_name} onChange={e=>setEdit({...edit,display_name:e.target.value})}/></div>
-        <div className="field"><label>Type</label><select value={edit.contact_type} onChange={e=>setEdit({...edit,contact_type:e.target.value})}>{["OTHER","SUPPLIER","CUSTOMER","EMPLOYEE","OWNER"].map(x=><option key={x}>{x}</option>)}</select></div>
+        <div className="field"><label>Type</label><select value={edit.contact_type} onChange={e=>setEdit({...edit,contact_type:e.target.value})}>{types.filter(item=>item.active||item.code===edit.contact_type).map(item=><option key={item.code} value={item.code}>{item.name}{item.active?"":" (inactive)"}</option>)}</select></div>
         <div className="field"><label>Phone</label><input value={edit.phone} onChange={e=>setEdit({...edit,phone:e.target.value})}/></div>
         <div className="field"><label>Email</label><input type="email" value={edit.email} onChange={e=>setEdit({...edit,email:e.target.value})}/></div>
         <div className="field span-2"><label>Notes</label><textarea rows={3} value={edit.notes} onChange={e=>setEdit({...edit,notes:e.target.value})}/></div>
@@ -119,7 +129,7 @@ export default function Contacts(){
       <h3>New contact</h3>
       <div className="form-grid">
         <div className="field"><label>Name</label><input value={form.display_name} onChange={e=>setForm({...form,display_name:e.target.value})}/></div>
-        <div className="field"><label>Type</label><select value={form.contact_type} onChange={e=>setForm({...form,contact_type:e.target.value})}>{["OTHER","SUPPLIER","CUSTOMER","EMPLOYEE","OWNER"].map(x=><option key={x}>{x}</option>)}</select></div>
+        <div className="field"><label>Type</label><select value={form.contact_type} onChange={e=>setForm({...form,contact_type:e.target.value})}>{types.filter(item=>item.active).map(item=><option key={item.code} value={item.code}>{item.name}</option>)}</select></div>
         <div className="field"><label>Phone</label><input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></div>
         <div className="field"><label>Email</label><input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
         <div className="field span-2"><label>Notes</label><input value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div>
@@ -130,7 +140,7 @@ export default function Contacts(){
     {!mayOperate&&<div className="alert">Your VIEWER role can read contacts but cannot create or edit them.</div>}
 
     <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id}>
-      <td>{x.display_name}</td><td>{x.contact_type}</td><td>{x.phone||"—"}</td><td>{x.email||"—"}</td>
+      <td>{x.display_name}</td><td>{x.contact_type_name||x.contact_type}</td><td>{x.phone||"—"}</td><td>{x.email||"—"}</td>
       <td><span className={`badge ${x.active?"POSTED":"VOIDED"}`}>{x.active?"ACTIVE":"INACTIVE"}</span></td>
       <td>{mayOperate?<button type="button" className="secondary compact" onClick={()=>startEdit(x)}>Edit</button>:<span className="muted">Read-only</span>}</td>
     </tr>)}<TableStateRows loading={loading&&items.length===0} empty={!loading&&items.length===0} columns={6} emptyText="No contacts for this entity yet."/></tbody></table></div>

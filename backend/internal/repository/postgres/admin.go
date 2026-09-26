@@ -31,6 +31,14 @@ func (s *Store) CreateEntity(ctx context.Context, user User, in CreateEntityInpu
 	if in.FunctionalCurrency == "" {
 		in.FunctionalCurrency = "MMK"
 	}
+	normalizedCurrency, err := normalizeCurrencyCode(in.FunctionalCurrency)
+	if err != nil {
+		return Entity{}, err
+	}
+	in.FunctionalCurrency = normalizedCurrency
+	if err := s.RequireActiveCurrency(ctx, in.FunctionalCurrency); err != nil {
+		return Entity{}, err
+	}
 	if in.Timezone == "" {
 		in.Timezone = "Asia/Yangon"
 	}
