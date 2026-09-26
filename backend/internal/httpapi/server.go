@@ -93,6 +93,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 			r.Put("/users/{user}/status", s.setUserStatus)
 			r.Post("/inter-entity-transactions", s.createInterEntityExpense)
 			r.Get("/dashboard/combined", s.combinedDashboard)
+			r.Get("/financial-account-balances", s.financialAccountBalances)
 
 			r.Route("/entities/{entity}", func(r chi.Router) {
 				r.Use(s.entityAccess)
@@ -148,6 +149,9 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 
 				r.Get("/inter-entity-mappings", s.listInterEntityMappings)
 				r.Put("/inter-entity-mappings/{counterparty}", s.upsertInterEntityMapping)
+				r.Get("/inter-entity-setup", s.listInterEntitySetup)
+				r.Put("/inter-entity-pairs/{counterparty}", s.saveInterEntityPair)
+				r.Get("/inter-entity-status/{counterparty}", s.interEntityStatus)
 
 				r.Get("/users", s.listEntityUsers)
 				r.Put("/users/role", s.setUserRole)

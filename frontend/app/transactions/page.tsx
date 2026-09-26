@@ -11,16 +11,20 @@ import TransactionEntryModal, { type QuickEntryKind } from "@/components/Transac
 import { canCorrectPostedAccounting, canOperateLedger } from "@/lib/permissions";
 
 type TransactionRow={
+  row_id:string;
   id:string;
+  movement_label:string;
   type:string;
   status:"DRAFT"|"POSTED"|"VOIDED";
   date:string;
   description:string;
-  currency:string;
-  total:string;
   contact_name?:string|null;
   financial_account_id?:string|null;
   financial_account_name?:string|null;
+  account_currency?:string|null;
+  ledger_account_id?:string|null;
+  signed_movement?:string|null;
+  balance?:string|null;
   attachment_count:number;
 };
 
@@ -48,6 +52,14 @@ const emptyFilters:Filters={q:"",status:"",type:"",from:"",to:"",financial_accou
 function signedClass(v:string){
   const n=Number(v);
   return n>0?"money-positive":n<0?"money-negative":"";
+}
+
+function signedAmount(value?:string|null, currency?:string|null){
+  if(value==null||value==="")return "—";
+  const amount=Number(value);
+  const body=Math.abs(amount).toLocaleString(undefined,{maximumFractionDigits:2});
+  const sign=amount>0?"+":amount<0?"−":"";
+  return `${sign}${body}${currency?` ${currency}`:""}`;
 }
 
 export default function Transactions(){
@@ -186,7 +198,7 @@ export default function Transactions(){
             <button type="button" onClick={()=>setEntryKind("EXPENSE")}><strong>Expense</strong><span>Money paid</span></button>
             <button type="button" onClick={()=>setEntryKind("TRANSFER")}><strong>Transfer</strong><span>Cash / bank / wallet move</span></button>
             <div className="menu-separator"/>
-            <Link href="/inter-entity"><strong>Inter-Entity</strong><span>Pay or move value across entities</span></Link>
+            <Link href="/pay-for-another-entity"><strong>Pay for Another Entity</strong><span>Pay a bill that belongs to another entity</span></Link>
             <Link href="/manual-journal"><strong>Manual Journal</strong><span>Advanced debit / credit entry</span></Link>
           </div>
         </details>
@@ -208,7 +220,7 @@ export default function Transactions(){
         <button type="submit" disabled={loading}>Apply filters</button>
         <button type="button" className="secondary" onClick={clearFilters}>Clear</button>
         <button type="button" className="secondary" disabled={loading||summary.count===0} onClick={exportCSV}>Export CSV</button>
-        <span className="muted">{summary.count.toLocaleString()} matching transaction{summary.count===1?"":"s"}</span>
+        <span className="muted">{summary.count.toLocaleString()} matching movement{summary.count===1?"":"s"}</span>
       </div>
     </form>
 
@@ -220,14 +232,15 @@ export default function Transactions(){
 
     <div className="table-wrap transaction-table" aria-busy={loading}>
       {items.length?<table>
-        <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Account / Contact</th><th>Status</th><th>Amount</th><th></th></tr></thead>
-        <tbody>{items.map(t=><tr key={t.id}>
+        <thead><tr><th>Date</th><th>Movement</th><th>Description</th><th>Account</th><th>Status</th><th>Amount</th><th>Balance</th><th></th></tr></thead>
+        <tbody>{items.map(t=><tr key={t.row_id}>
           <td>{t.date}</td>
-          <td><span className="type-pill">{t.type.replaceAll("_"," ")}</span></td>
-          <td><Link className="table-link transaction-description" href={`/transactions/${t.id}`}>{t.description}</Link>{t.attachment_count>0&&<div className="muted">📎 {t.attachment_count} attachment{t.attachment_count===1?"":"s"}</div>}</td>
-          <td><div>{t.financial_account_name||"—"}</div>{t.contact_name&&<div className="muted">{t.contact_name}</div>}</td>
+          <td><span className="type-pill">{t.movement_label}</span></td>
+          <td><Link className="table-link transaction-description" href={`/transactions/${t.id}`}>{t.description}</Link>{t.contact_name&&<div className="muted">{t.contact_name}</div>}{t.attachment_count>0&&<div className="muted">📎 {t.attachment_count} attachment{t.attachment_count===1?"":"s"}</div>}</td>
+          <td>{t.financial_account_name&&t.ledger_account_id&&entity?<Link className="table-link" href={`/accounts/${t.ledger_account_id}/ledger?entity=${entity.PublicID}`}>{t.financial_account_name}</Link>:<span>{t.financial_account_name||"—"}</span>}</td>
           <td><span className={`badge ${t.status}`}>{t.status}</span></td>
-          <td>{Number(t.total).toLocaleString()} {t.currency}</td>
+          <td className={signedClass(t.signed_movement||"0")}>{signedAmount(t.signed_movement, t.account_currency)}</td>
+          <td>{t.balance==null?"—":`${Number(t.balance).toLocaleString(undefined,{maximumFractionDigits:2})}${t.account_currency?` ${t.account_currency}`:""}`}</td>
           <td><div className="actions compact-actions">
             {mayOperate&&t.status==="DRAFT"&&<button disabled={busy===t.id} onClick={()=>post(t.id)}>{busy===t.id?"Posting…":"Post"}</button>}
             {mayReverse&&t.status==="POSTED"&&<button className="danger" disabled={busy===t.id} onClick={()=>{setReverseID(t.id);setReverseReason("");setReverseDate(dateInTimeZone(entity?.Timezone??"Asia/Yangon"))}}>Reverse</button>}

@@ -54,6 +54,44 @@ WHERE je.entity_id=$1 AND je.journal_date BETWEEN $2 AND $3`, entityID, from, to
 	return Dashboard{CashBalances: balances, Income: income, Expenses: expense, NetProfit: profit}, nil
 }
 
+func (s *Store) AccessibleFinancialAccounts(ctx context.Context, userID string) ([]map[string]any, error) {
+	rows, err := s.Pool.Query(ctx, `
+SELECT e.public_id::text,e.name,
+       fa.public_id::text,fa.name,fa.kind,fa.currency_code,fa.active,
+       a.public_id::text,
+       COALESCE(SUM(CASE WHEN je.id IS NOT NULL AND je.status IN ('POSTED','REVERSED') THEN jl.transaction_debit_amount-jl.transaction_credit_amount ELSE 0 END),0)::text
+FROM financial_accounts fa
+JOIN entities e ON e.id=fa.entity_id
+JOIN accounts a ON a.id=fa.account_id
+LEFT JOIN journal_lines jl ON jl.financial_account_id=fa.id
+LEFT JOIN journal_entries je ON je.id=jl.journal_entry_id AND je.status IN ('POSTED','REVERSED')
+WHERE e.active=true
+  AND EXISTS (
+    SELECT 1 FROM user_entity_roles uer
+    WHERE uer.entity_id=e.id AND uer.user_id=$1 AND uer.revoked_at IS NULL
+  )
+GROUP BY e.public_id,e.name,fa.id,fa.public_id,fa.name,fa.kind,fa.currency_code,fa.active,a.public_id
+ORDER BY e.name,fa.name`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []map[string]any{}
+	for rows.Next() {
+		var entityID, entityName, id, name, kind, currency, ledgerID, balance string
+		var active bool
+		if err := rows.Scan(&entityID, &entityName, &id, &name, &kind, &currency, &active, &ledgerID, &balance); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{
+			"entity_id": entityID, "entity_name": entityName,
+			"id": id, "name": name, "kind": kind, "currency": currency,
+			"active": active, "ledger_account_id": ledgerID, "balance": balance,
+		})
+	}
+	return out, rows.Err()
+}
+
 func (s *Store) ProfitLoss(ctx context.Context, entityID string, from, to time.Time) ([]map[string]any, error) {
 	rows, err := s.Pool.Query(ctx, `
 SELECT a.public_id::text,a.code,a.name,a.account_type,

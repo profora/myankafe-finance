@@ -32,7 +32,10 @@ func (s *Store) PostManualJournal(ctx context.Context, user User, e Entity, in M
 		return nil, err
 	}
 
-	type resolved struct{ id, debit, credit, desc string }
+	type resolved struct {
+		id, debit, credit, desc string
+		financialAccountID      any
+	}
 	lines := make([]resolved, 0, len(in.Lines))
 	totalD, totalC := new(big.Rat), new(big.Rat)
 	for _, l := range in.Lines {
@@ -57,7 +60,34 @@ func (s *Store) PostManualJournal(ctx context.Context, user User, e Entity, in M
 		if !postable {
 			return nil, fmt.Errorf("journal account is not postable")
 		}
-		lines = append(lines, resolved{aid, l.Debit, l.Credit, l.Description})
+		faRows, err := tx.Query(ctx, `SELECT id::text,currency_code FROM financial_accounts WHERE entity_id=$1 AND account_id=$2`, e.ID, aid)
+		if err != nil {
+			return nil, err
+		}
+		var financialAccountID any
+		faCount := 0
+		for faRows.Next() {
+			var faID, faCurrency string
+			if err := faRows.Scan(&faID, &faCurrency); err != nil {
+				faRows.Close()
+				return nil, err
+			}
+			faCount++
+			if faCurrency == e.FunctionalCurrency {
+				financialAccountID = faID
+			}
+		}
+		faRows.Close()
+		if err := faRows.Err(); err != nil {
+			return nil, err
+		}
+		if faCount > 1 {
+			return nil, fmt.Errorf("journal account is linked to more than one financial account")
+		}
+		if faCount == 1 && financialAccountID == nil {
+			return nil, fmt.Errorf("manual journal cannot post a financial account in a different currency")
+		}
+		lines = append(lines, resolved{aid, l.Debit, l.Credit, l.Description, financialAccountID})
 	}
 	if totalD.Cmp(totalC) != 0 {
 		return nil, fmt.Errorf("manual journal is not balanced")
@@ -75,7 +105,7 @@ func (s *Store) PostManualJournal(ctx context.Context, user User, e Entity, in M
 	}
 	for i, l := range lines {
 		lid, _ := ids.UUIDv7()
-		if _, err := tx.Exec(ctx, `INSERT INTO journal_lines(id,journal_entry_id,entity_id,line_no,account_id,description,transaction_currency_code,transaction_debit_amount,transaction_credit_amount,functional_currency_code,fx_rate_to_functional,debit_amount,credit_amount) VALUES($1,$2,$3,$4,$5,NULLIF($6,''),$7,$8,$9,$7,1,$8,$9)`, lid, jid, e.ID, i+1, l.id, l.desc, e.FunctionalCurrency, l.debit, l.credit); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO journal_lines(id,journal_entry_id,entity_id,line_no,account_id,financial_account_id,description,transaction_currency_code,transaction_debit_amount,transaction_credit_amount,functional_currency_code,fx_rate_to_functional,debit_amount,credit_amount) VALUES($1,$2,$3,$4,$5,$6,NULLIF($7,''),$8,$9,$10,$8,1,$9,$10)`, lid, jid, e.ID, i+1, l.id, l.financialAccountID, l.desc, e.FunctionalCurrency, l.debit, l.credit); err != nil {
 			return nil, err
 		}
 	}

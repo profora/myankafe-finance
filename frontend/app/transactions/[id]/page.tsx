@@ -52,13 +52,14 @@ type Detail={
 };
 
 export default function TransactionDetailPage(){
-  const {entity}=useEntity();
+  const {entity,entities,setEntityID,loading:entitiesLoading}=useEntity();
   const mayOperate=canOperateLedger(entity?.Role);
   const params=useParams<{id:string}>();
   const id=Array.isArray(params.id)?params.id[0]:params.id;
   const [detail,setDetail]=useState<Detail|null>(null);
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
+  const [requestedEntity,setRequestedEntity]=useState<string|undefined>();
 
   async function load(){
     if(!entity||!id)return;
@@ -70,9 +71,24 @@ export default function TransactionDetailPage(){
   }
 
   useEffect(()=>{
+    setRequestedEntity(new URLSearchParams(window.location.search).get("entity")??"");
+  },[]);
+
+  useEffect(()=>{
+    if(requestedEntity===undefined||entitiesLoading)return;
+    if(requestedEntity && !entities.some(item=>item.PublicID===requestedEntity)){
+      setError("That entity is not available to this account.");
+      return;
+    }
+    if(requestedEntity && entity?.PublicID!==requestedEntity) setEntityID(requestedEntity);
+  },[requestedEntity,entities,entitiesLoading,entity?.PublicID,setEntityID]);
+
+  useEffect(()=>{
+    if(requestedEntity===undefined)return;
+    if(requestedEntity && entity?.PublicID!==requestedEntity)return;
     setDetail(null);
     void load();
-  },[entity?.PublicID,id]);
+  },[entity?.PublicID,id,requestedEntity]);
 
   if(loading&&!detail)return <div className="card detail-loading" role="status" aria-live="polite"><span className="skeleton skeleton-wide" aria-hidden="true"/><span className="skeleton skeleton-line" aria-hidden="true"/><span className="sr-only">Loading transaction…</span></div>;
 

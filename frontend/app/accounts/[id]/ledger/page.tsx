@@ -23,7 +23,7 @@ type LedgerLine = {
 };
 
 export default function AccountLedgerPage(){
-  const {entity}=useEntity();
+  const {entity,entities,setEntityID,loading:entitiesLoading}=useEntity();
   const params=useParams<{id:string}>();
   const accountID=Array.isArray(params.id)?params.id[0]:params.id;
   const [accounts,setAccounts]=useState<Account[]>([]);
@@ -32,6 +32,7 @@ export default function AccountLedgerPage(){
   const [to,setTo]=useState(()=>dateInTimeZone());
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
+  const [requestedEntity,setRequestedEntity]=useState<string|undefined>();
 
   const account=useMemo(()=>accounts.find(x=>x.PublicID===accountID),[accounts,accountID]);
 
@@ -53,7 +54,21 @@ export default function AccountLedgerPage(){
   }
 
   useEffect(()=>{
-    if(!entity)return;
+    setRequestedEntity(new URLSearchParams(window.location.search).get("entity")??"");
+  },[]);
+
+  useEffect(()=>{
+    if(requestedEntity===undefined||entitiesLoading)return;
+    if(requestedEntity && !entities.some(item=>item.PublicID===requestedEntity)){
+      setError("That entity is not available to this account.");
+      return;
+    }
+    if(requestedEntity && entity?.PublicID!==requestedEntity) setEntityID(requestedEntity);
+  },[requestedEntity,entities,entitiesLoading,entity?.PublicID,setEntityID]);
+
+  useEffect(()=>{
+    if(!entity||requestedEntity===undefined)return;
+    if(requestedEntity && entity.PublicID!==requestedEntity)return;
     const nextFrom=fiscalYearStartInTimeZone(entity.Timezone,entity.FiscalMonth,entity.FiscalDay);
     const nextTo=dateInTimeZone(entity.Timezone);
     setFrom(nextFrom);
@@ -61,7 +76,7 @@ export default function AccountLedgerPage(){
     setAccounts([]);
     setItems([]);
     void loadRange(nextFrom,nextTo);
-  },[entity?.PublicID,accountID]);
+  },[entity?.PublicID,accountID,requestedEntity]);
 
   function exportLedger(){
     const label=account?`${account.Code}-${account.Name}`:accountID;

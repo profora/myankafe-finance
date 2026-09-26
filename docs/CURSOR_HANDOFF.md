@@ -246,7 +246,7 @@ The section above describes the first pass, before database and R2 values were a
 - Cross-currency transfer was not posted. The stored USD/MMK rate exists, and every financial account is MMK.
 - The R2 system probe fails closed with AccessDenied on bucket `myankafe-finance`. The keys that work for the Royal Masterpiece buckets do not work for this bucket.
 - A logical backup and a restore into a disposable database succeeded. The disposable database was dropped. Provider PITR was not confirmed in the console.
-- Recommendation: ready for final human review. Do not merge PR #1.
+- Recommendation stays open until the movement-list, dashboard, and inter-entity separation deploy is accepted. Do not merge PR #1.
 
 Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
 
@@ -261,4 +261,15 @@ Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPO
 - Currency configuration is OWNER-only. Contact type configuration is OWNER, ADMIN, or ACCOUNTANT. New selections use active records. Referenced currencies and in-use contact types are deactivated rather than deleted.
 - A same-currency transfer with a fee posts debit destination, debit expense, credit source, and requires source = destination + fee.
 - Production is on commit `c1241d7202dbadb26b51b7cde02ba40dba7e5f51`, Goose version 14. CI runs 36220060219 and 36220062232 are green. Browser acceptance is in `docs/DEPLOYMENT_ACCEPTANCE_REPORT.md`.
+
+## 2026-09-26 movements, fiscal year, and inter-entity separation
+
+- The Transactions list is movement-oriented. A transfer is one accounting transaction and two displayed rows, Transfer out and Transfer in. A transfer fee stays on the journal and does not add a third financial-account row. A journal with no financial account remains visible with Account and Balance blank.
+- Balance is the financial account's own-currency running balance after that movement, using posted and reversed journal lines in the same order as Account Ledger. Filters and pagination do not restart the balance at zero.
+- Pagination applies to displayed movement rows. CSV exports the same movement rows for the full filtered set.
+- Posted income, Posted expenses, and Net remain functional-currency profit and loss summaries.
+- Fiscal year start is a month and day. April 1 displays as Apr 1 → Mar 31. February 29, February 30, and April 31 are rejected. Existing stored fiscal dates are not migrated.
+- The dashboard Financial Accounts section lists accounts from every entity the session can access. The server decides that list. Balances are not combined across currencies. Account names open that entity's ledger.
+- The sidebar no longer shows the UUIDv7/ULID note. Daily entry is Pay for Another Entity. Inter-Entity Setup is OWNER/ADMIN only and saves both sides of a pair in one transaction.
+- No new Goose migration was required. Production remains on version 14 until this commit is deployed.
 

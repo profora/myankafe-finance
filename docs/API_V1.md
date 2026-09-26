@@ -37,6 +37,7 @@ Multipart attachment uploads intentionally bypass the generic idempotency-body b
 - `POST /users`
 - `POST /users/{user_ulid}/reset-password` — OWNER; revokes target sessions
 - `GET /dashboard/combined?currency=MMK&from=YYYY-MM-DD&to=YYYY-MM-DD`
+- `GET /financial-account-balances` — financial accounts for every entity the signed-in user can access. Balances stay in each account currency.
 - `POST /inter-entity-transactions`
 
 ## Entity-scoped
@@ -129,10 +130,16 @@ Supported upload types currently include JPEG, PNG, WebP, GIF, PDF, text, CSV, D
 
 ### Inter-entity
 
+Daily posting and setup are separate.
+
+- `GET /inter-entity-status/{counterparty_entity_ulid}` — whether the pair is configured, plus currencies and the due-account names needed for a read-only preview. Does not accept mapping changes.
+- `POST /inter-entity-transactions` — atomic payment for another entity. The caller must be allowed to operate the ledger on both entities. Same functional currency requires one equal amount.
+- `GET /inter-entity-setup`
+- `PUT /inter-entity-pairs/{counterparty_entity_ulid}` — saves both directions in one database transaction. OWNER or ADMIN on both entities.
 - `GET /inter-entity-mappings`
 - `PUT /inter-entity-mappings/{counterparty_entity_ulid}`
 
-Both sides must have the appropriate mapping before an inter-entity expense can post.
+ACCOUNTANT, BOOKKEEPER, and VIEWER receive 403 on setup routes. A missing pair returns a setup message rather than posting.
 
 ### Access
 

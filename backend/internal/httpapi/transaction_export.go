@@ -48,8 +48,8 @@ func (s *Server) exportTransactionsCSV(w http.ResponseWriter, r *http.Request) {
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 	_ = writer.Write([]string{
-		"Date", "Type", "Status", "Description", "Contact", "Financial Account",
-		"Transaction Amount", "Transaction Currency", "Functional Currency",
+		"Date", "Movement", "Type", "Status", "Description", "Contact",
+		"Financial Account", "Account Currency", "Signed Movement", "Balance",
 		"Attachment Count", "Transaction ULID",
 	})
 
@@ -69,9 +69,21 @@ func (s *Server) exportTransactionsCSV(w http.ResponseWriter, r *http.Request) {
 			if item.FinancialAccount != nil {
 				financial = *item.FinancialAccount
 			}
+			accountCurrency := ""
+			if item.AccountCurrency != nil {
+				accountCurrency = *item.AccountCurrency
+			}
+			movement := ""
+			if item.SignedMovement != nil {
+				movement = *item.SignedMovement
+			}
+			balance := ""
+			if item.Balance != nil {
+				balance = *item.Balance
+			}
 			_ = writer.Write([]string{
-				item.Date, item.Type, item.Status, item.Description, contact, financial,
-				item.Total, item.Currency, result.FunctionalCurrency,
+				item.Date, item.MovementLabel, item.Type, item.Status, item.Description, contact,
+				financial, accountCurrency, movement, balance,
 				strconv.Itoa(item.AttachmentCount), item.PublicID,
 			})
 		}

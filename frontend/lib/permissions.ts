@@ -21,6 +21,9 @@ export function canUnlockAccounting(role?:EntityRole){
 export function canManageEntitySettings(role?:EntityRole){
   return role==="OWNER"||role==="ADMIN";
 }
+export function canManageInterEntitySetup(role?:EntityRole){
+  return role==="OWNER"||role==="ADMIN";
+}
 export function canManagePlatformUsers(role?:EntityRole){
   return role==="OWNER";
 }

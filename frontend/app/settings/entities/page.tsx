@@ -5,6 +5,8 @@ import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import { canManageEntitySettings } from "@/lib/permissions";
 import { useActiveCurrencies } from "@/components/CurrencySelect";
+import FiscalYearFields from "@/components/FiscalYearFields";
+import { fiscalYearLabel } from "@/lib/fiscal";
 
 export default function EntitySettings(){
   const {entities,entity,reload}=useEntity();
@@ -58,9 +60,9 @@ export default function EntitySettings(){
         <div className="field"><label>Functional currency</label><input value={entity.FunctionalCurrency} disabled/></div>
         <div className="field"><label>Name</label><input value={edit.Name} onChange={e=>setEdit({...edit,Name:e.target.value})}/></div>
         <div className="field"><label>Timezone</label><input value={edit.Timezone} onChange={e=>setEdit({...edit,Timezone:e.target.value})} placeholder="Asia/Yangon"/></div>
-        <div className="field"><label>Fiscal year start</label><div style={{display:"flex",gap:8}}><input type="number" min={1} max={12} value={edit.FiscalMonth} onChange={e=>setEdit({...edit,FiscalMonth:Number(e.target.value)})}/><input type="number" min={1} max={31} value={edit.FiscalDay} onChange={e=>setEdit({...edit,FiscalDay:Number(e.target.value)})}/></div></div>
+        <FiscalYearFields month={edit.FiscalMonth} day={edit.FiscalDay} onChange={(FiscalMonth,FiscalDay)=>setEdit({...edit,FiscalMonth,FiscalDay})}/>
       </div>
-      <button disabled={busy||!edit.Name.trim()||!edit.Timezone.trim()} onClick={saveEntity}>{busy?"Saving…":"Save entity settings"}</button>
+      <button disabled={busy||!edit.Name.trim()||!edit.Timezone.trim()||edit.FiscalDay<1} onClick={saveEntity}>{busy?"Saving…":"Save entity settings"}</button>
     </div>}
 
     {ownerAnywhere&&<div className="card form" style={{marginBottom:16}}>
@@ -71,14 +73,14 @@ export default function EntitySettings(){
         <div className="field"><label>Type</label><select value={f.EntityType} onChange={e=>setF({...f,EntityType:e.target.value})}><option>BUSINESS</option><option>PERSONAL</option><option>OTHER</option></select></div>
         <div className="field"><label>Functional currency</label><select value={f.FunctionalCurrency} onChange={e=>setF({...f,FunctionalCurrency:e.target.value})}><option value="">Choose…</option>{currencies.map(item=><option key={item.code} value={item.code}>{item.code} · {item.name}</option>)}</select></div>
         <div className="field"><label>Timezone</label><input value={f.Timezone} onChange={e=>setF({...f,Timezone:e.target.value})}/></div>
-        <div className="field"><label>Fiscal year start</label><div style={{display:"flex",gap:8}}><input type="number" min={1} max={12} value={f.FiscalMonth} onChange={e=>setF({...f,FiscalMonth:Number(e.target.value)})}/><input type="number" min={1} max={31} value={f.FiscalDay} onChange={e=>setF({...f,FiscalDay:Number(e.target.value)})}/></div></div>
+        <FiscalYearFields month={f.FiscalMonth} day={f.FiscalDay} onChange={(FiscalMonth,FiscalDay)=>setF({...f,FiscalMonth,FiscalDay})}/>
       </div>
-      <button disabled={busy||!f.Code||!f.Name} onClick={create}>Create entity</button>
+      <button disabled={busy||!f.Code||!f.Name||f.FiscalDay<1} onClick={create}>Create entity</button>
     </div>}
 
     {!mayEdit&&entity&&<div className="alert">Your {entity.Role} role can view this entity but cannot change entity settings.</div>}
     {!ownerAnywhere&&<div className="alert">Creating additional entities requires OWNER access somewhere in the platform.</div>}
 
-    <div className="table-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Currency</th><th>Timezone</th><th>Fiscal year</th><th>Your role</th></tr></thead><tbody>{entities.map(x=><tr key={x.PublicID}><td>{x.Code}</td><td>{x.Name}</td><td>{x.Type}</td><td>{x.FunctionalCurrency}</td><td>{x.Timezone}</td><td>{x.FiscalMonth}/{x.FiscalDay}</td><td><span className="badge">{x.Role}</span></td></tr>)}</tbody></table></div>
+    <div className="table-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Currency</th><th>Timezone</th><th>Fiscal year</th><th>Your role</th></tr></thead><tbody>{entities.map(x=><tr key={x.PublicID}><td>{x.Code}</td><td>{x.Name}</td><td>{x.Type}</td><td>{x.FunctionalCurrency}</td><td>{x.Timezone}</td><td>{fiscalYearLabel(x.FiscalMonth,x.FiscalDay)||"—"}</td><td><span className="badge">{x.Role}</span></td></tr>)}</tbody></table></div>
   </>;
 }

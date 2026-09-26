@@ -48,6 +48,9 @@ func (s *Store) CreateEntity(ctx context.Context, user User, in CreateEntityInpu
 	if in.FiscalDay == 0 {
 		in.FiscalDay = 1
 	}
+	if err := ValidateFiscalStart(in.FiscalMonth, in.FiscalDay); err != nil {
+		return Entity{}, err
+	}
 
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -302,15 +305,8 @@ func (s *Store) UpdateEntitySettings(ctx context.Context, actor User, e Entity, 
 	if _, err := time.LoadLocation(in.Timezone); err != nil {
 		return Entity{}, fmt.Errorf("invalid timezone")
 	}
-	if in.FiscalMonth < 1 || in.FiscalMonth > 12 {
-		return Entity{}, fmt.Errorf("fiscal month must be 1-12")
-	}
-	if in.FiscalDay < 1 || in.FiscalDay > 31 {
-		return Entity{}, fmt.Errorf("fiscal day must be 1-31")
-	}
-	testDate := time.Date(2000, time.Month(in.FiscalMonth), in.FiscalDay, 0, 0, 0, 0, time.UTC)
-	if int(testDate.Month()) != in.FiscalMonth || testDate.Day() != in.FiscalDay {
-		return Entity{}, fmt.Errorf("invalid fiscal year start date")
+	if err := ValidateFiscalStart(in.FiscalMonth, in.FiscalDay); err != nil {
+		return Entity{}, err
 	}
 
 	tx, err := s.Pool.Begin(ctx)

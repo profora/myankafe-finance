@@ -21,6 +21,11 @@ func TestRoleMatrix(t *testing.T) {
 			if got := canCorrectPostedAccounting(role); got != wantCorrect {
 				t.Fatalf("canCorrectPostedAccounting(%s)=%v want %v", role, got, wantCorrect)
 			}
+
+			wantSetup := role == "OWNER" || role == "ADMIN"
+			if got := canManageInterEntitySetup(role); got != wantSetup {
+				t.Fatalf("canManageInterEntitySetup(%s)=%v want %v", role, got, wantSetup)
+			}
 		})
 	}
 }

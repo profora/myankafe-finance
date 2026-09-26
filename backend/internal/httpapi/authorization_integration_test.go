@@ -174,3 +174,117 @@ func TestAuditVisibilityRequiresAccountingConfigurationRole(t *testing.T) {
 		t.Fatalf("ACCOUNTANT audit status=%d body=%s", allowed.Code, allowed.Body.String())
 	}
 }
+
+func TestInterEntitySetupRejectsOperationalRoles(t *testing.T) {
+	store := testHTTPStore(t)
+	router := testRouter(store)
+	for _, role := range []string{"ACCOUNTANT", "BOOKKEEPER", "VIEWER"} {
+		principal, entity := seedHTTPRole(t, store, role)
+		setup := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/entities/"+entity+"/inter-entity-setup", principal, nil)
+		if setup.Code != http.StatusForbidden {
+			t.Fatalf("%s setup status=%d body=%s", role, setup.Code, setup.Body.String())
+		}
+		save := performAuthorizedJSON(t, router, http.MethodPut, "/api/v1/entities/"+entity+"/inter-entity-pairs/"+entity, principal, map[string]any{})
+		if save.Code != http.StatusForbidden {
+			t.Fatalf("%s save status=%d body=%s", role, save.Code, save.Body.String())
+		}
+	}
+
+	owner, entity := seedHTTPRole(t, store, "OWNER")
+	allowed := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/entities/"+entity+"/inter-entity-setup", owner, nil)
+	if allowed.Code != http.StatusOK {
+		t.Fatalf("OWNER setup status=%d body=%s", allowed.Code, allowed.Body.String())
+	}
+	admin, adminEntity := seedHTTPRole(t, store, "ADMIN")
+	adminAllowed := performAuthorizedJSON(t, router, http.MethodGet, "/api/v1/entities/"+adminEntity+"/inter-entity-setup", admin, nil)
+	if adminAllowed.Code != http.StatusOK {
+		t.Fatalf("ADMIN setup status=%d body=%s", adminAllowed.Code, adminAllowed.Body.String())
+	}
+}
+
+func TestOwnerAndAdminCanSaveInterEntityPair(t *testing.T) {
+	store := testHTTPStore(t)
+	router := testRouter(store)
+	for _, role := range []string{"OWNER", "ADMIN"} {
+		principal, payer := seedHTTPRole(t, store, role)
+		_, counterparty := seedHTTPRole(t, store, "OWNER")
+		grantPublicRole(t, store, principal, counterparty, role)
+		payerFrom := createHTTPAccount(t, router, principal, payer, "DF", "Due from", "ASSET")
+		payerTo := createHTTPAccount(t, router, principal, payer, "DT", "Due to", "LIABILITY")
+		cpFrom := createHTTPAccount(t, router, principal, counterparty, "CDF", "Counterparty due from", "ASSET")
+		cpTo := createHTTPAccount(t, router, principal, counterparty, "CDT", "Counterparty due to", "LIABILITY")
+		body := map[string]any{
+			"PayerDueFromAccountID": payerFrom, "PayerDueToAccountID": payerTo,
+			"CounterpartyDueFromAccountID": cpFrom, "CounterpartyDueToAccountID": cpTo,
+		}
+		created := performAuthorizedJSON(t, router, http.MethodPut, "/api/v1/entities/"+payer+"/inter-entity-pairs/"+counterparty, principal, body)
+		if created.Code != http.StatusOK {
+			t.Fatalf("%s create status=%d body=%s", role, created.Code, created.Body.String())
+		}
+		updated := performAuthorizedJSON(t, router, http.MethodPut, "/api/v1/entities/"+payer+"/inter-entity-pairs/"+counterparty, principal, body)
+		if updated.Code != http.StatusOK {
+			t.Fatalf("%s update status=%d body=%s", role, updated.Code, updated.Body.String())
+		}
+	}
+}
+
+func createHTTPAccount(t *testing.T, router http.Handler, principal, entity, code, name, accountType string) string {
+	t.Helper()
+	rec := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/entities/"+entity+"/accounts", principal, map[string]any{
+		"Code": code + entity[:6], "Name": name, "Type": accountType, "Postable": true,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create account status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var account postgres.Account
+	if err := json.Unmarshal(rec.Body.Bytes(), &account); err != nil {
+		t.Fatal(err)
+	}
+	return account.PublicID
+}
+
+func TestDailyInterEntityPostingRequiresBothEntities(t *testing.T) {
+	store := testHTTPStore(t)
+	router := testRouter(store)
+	bookkeeper, payer := seedHTTPRole(t, store, "BOOKKEEPER")
+	_, counterparty := seedHTTPRole(t, store, "OWNER")
+	denied := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/inter-entity-transactions", bookkeeper, map[string]any{
+		"InitiatingEntityID": payer, "CounterpartyEntityID": counterparty, "Date": "2026-09-26",
+		"InitiatingAmount": "10", "CounterpartyAmount": "10",
+	})
+	if denied.Code != http.StatusForbidden {
+		t.Fatalf("payer-only post status=%d body=%s", denied.Code, denied.Body.String())
+	}
+
+	viewer, viewerEntity := seedHTTPRole(t, store, "VIEWER")
+	_, viewerCounterparty := seedHTTPRole(t, store, "VIEWER")
+	grantPublicRole(t, store, viewer, viewerCounterparty, "VIEWER")
+	viewerPost := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/inter-entity-transactions", viewer, map[string]any{
+		"InitiatingEntityID": viewerEntity, "CounterpartyEntityID": viewerCounterparty, "Date": "2026-09-26",
+		"InitiatingAmount": "10", "CounterpartyAmount": "10",
+	})
+	if viewerPost.Code != http.StatusForbidden {
+		t.Fatalf("VIEWER post status=%d body=%s", viewerPost.Code, viewerPost.Body.String())
+	}
+}
+
+func grantPublicRole(t *testing.T, store *postgres.Store, userPublic, entityPublic, role string) {
+	t.Helper()
+	ctx := context.Background()
+	var userID, entityID string
+	if err := store.Pool.QueryRow(ctx, `SELECT id::text FROM users WHERE public_id=$1`, userPublic).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Pool.QueryRow(ctx, `SELECT id::text FROM entities WHERE public_id=$1`, entityPublic).Scan(&entityID); err != nil {
+		t.Fatal(err)
+	}
+	linkID, err := ids.UUIDv7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Pool.Exec(ctx, `
+INSERT INTO user_entity_roles(id,user_id,entity_id,role_id,granted_by)
+VALUES($1,$2,$3,$4,$2)`, linkID, userID, entityID, roleIDs[role]); err != nil {
+		t.Fatal(err)
+	}
+}

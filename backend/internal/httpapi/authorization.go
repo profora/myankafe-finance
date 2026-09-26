@@ -16,6 +16,10 @@ func canConfigureAccounting(role string) bool {
 	}
 }
 
+func canManageInterEntitySetup(role string) bool {
+	return role == "OWNER" || role == "ADMIN"
+}
+
 func canOperateLedger(role string) bool {
 	switch role {
 	case "OWNER", "ADMIN", "ACCOUNTANT", "BOOKKEEPER":

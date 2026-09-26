@@ -5,18 +5,20 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { api } from "@/lib/api";
 import { EntityProvider, useEntity } from "./EntityContext";
-import { canConfigureAccounting, canCorrectPostedAccounting, canLockAccounting, canManageEntitySettings, canOperateLedger, canViewAudit } from "@/lib/permissions";
+import { fiscalYearLabel } from "@/lib/fiscal";
+import { canConfigureAccounting, canCorrectPostedAccounting, canLockAccounting, canManageEntitySettings, canManageInterEntitySetup, canOperateLedger, canViewAudit } from "@/lib/permissions";
 
 const nav=[
   {href:"/",label:"Dashboard",group:"Overview"},
   {href:"/transactions",label:"Transactions",group:"Transactions"},
   {href:"/transfers",label:"Transfers",group:"Transactions",show:canOperateLedger},
-  {href:"/inter-entity",label:"Inter-Entity",group:"Transactions",show:canOperateLedger},
+  {href:"/pay-for-another-entity",label:"Pay for Another Entity",group:"Transactions",show:canOperateLedger},
   {href:"/manual-journal",label:"Manual Journal",group:"Transactions",show:canCorrectPostedAccounting},
   {href:"/accounts",label:"Chart of Accounts",group:"Accounting Setup"},
   {href:"/financial-accounts",label:"Financial Accounts",group:"Accounting Setup"},
   {href:"/exchange-rates",label:"Exchange Rates",group:"Accounting Setup"},
   {href:"/contacts",label:"Contacts",group:"Accounting Setup"},
+  {href:"/inter-entity-setup",label:"Inter-Entity Setup",group:"Accounting Setup",show:canManageInterEntitySetup},
   {href:"/reports",label:"Reports",group:"Reports & Control"},
   {href:"/audit",label:"Audit Log",group:"Reports & Control",show:canViewAudit},
   {href:"/locking",label:"Transaction Locking",group:"Reports & Control",show:canLockAccounting},
@@ -73,9 +75,6 @@ function Shell({ children }: { children: React.ReactNode }) {
             </div>;
           })}
         </nav>
-        <div className="sidebar-note">
-          Double-entry ledger<br />UUIDv7 internal · ULID public
-        </div>
       </aside>
       {mobileNavOpen&&<button type="button" className="mobile-nav-overlay" aria-label="Close navigation" onClick={()=>setMobileNavOpen(false)}/>}
       <main className="main">
@@ -95,7 +94,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             <div className="top-meta">
               {me&&<strong>{me.display_name}</strong>}
               {me&&entity&&" · "}
-              {entity ? `${entity.Role} · ${entity.FunctionalCurrency} · FY ${entity.FiscalMonth}/${entity.FiscalDay}` : "No entity"}
+              {entity ? `${entity.Role} · ${entity.FunctionalCurrency} · FY ${fiscalYearLabel(entity.FiscalMonth, entity.FiscalDay) || "not set"}` : "No entity"}
             </div>
             <button type="button" className="secondary" onClick={signOut}>Sign out</button>
           </div>

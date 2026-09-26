@@ -11,6 +11,9 @@ import (
 
 func (s *Server) listInterEntityMappings(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
+	if !requireRole(w, canManageInterEntitySetup(a.Role), "inter-entity setup requires OWNER or ADMIN") {
+		return
+	}
 	v, err := s.Store.ListInterEntityMappings(r.Context(), a.Entity.ID)
 	if err != nil {
 		fail(w, 500, err)
@@ -21,12 +24,15 @@ func (s *Server) listInterEntityMappings(w http.ResponseWriter, r *http.Request)
 
 func (s *Server) upsertInterEntityMapping(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
-	if !requireRole(w, canConfigureAccounting(a.Role), "inter-entity mapping configuration requires OWNER, ADMIN, or ACCOUNTANT") {
+	if !requireRole(w, canManageInterEntitySetup(a.Role), "inter-entity setup requires OWNER or ADMIN") {
 		return
 	}
-	counterparty, _, err := s.Store.ResolveEntityAccess(r.Context(), a.User.ID, chi.URLParam(r, "counterparty"))
+	counterparty, counterpartyRole, err := s.Store.ResolveEntityAccess(r.Context(), a.User.ID, chi.URLParam(r, "counterparty"))
 	if err != nil {
 		fail(w, 403, err)
+		return
+	}
+	if !requireRole(w, canManageInterEntitySetup(counterpartyRole), "inter-entity setup requires OWNER or ADMIN on both entities") {
 		return
 	}
 	var in map[string]string
@@ -89,4 +95,58 @@ func (s *Server) createInterEntityExpense(w http.ResponseWriter, r *http.Request
 		return
 	}
 	write(w, 201, v)
+}
+
+func (s *Server) listInterEntitySetup(w http.ResponseWriter, r *http.Request) {
+	a := getAccess(r)
+	if !requireRole(w, canManageInterEntitySetup(a.Role), "inter-entity setup requires OWNER or ADMIN") {
+		return
+	}
+	v, err := s.Store.ListInterEntitySetup(r.Context(), a.Entity.ID)
+	if err != nil {
+		fail(w, 500, err)
+		return
+	}
+	write(w, 200, map[string]any{"items": v})
+}
+
+func (s *Server) saveInterEntityPair(w http.ResponseWriter, r *http.Request) {
+	a := getAccess(r)
+	if !requireRole(w, canManageInterEntitySetup(a.Role), "inter-entity setup requires OWNER or ADMIN") {
+		return
+	}
+	counterparty, counterpartyRole, err := s.Store.ResolveEntityAccess(r.Context(), a.User.ID, chi.URLParam(r, "counterparty"))
+	if err != nil {
+		fail(w, 403, err)
+		return
+	}
+	if !requireRole(w, canManageInterEntitySetup(counterpartyRole), "inter-entity setup requires OWNER or ADMIN on both entities") {
+		return
+	}
+	var in postgres.InterEntityPairInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		fail(w, 400, err)
+		return
+	}
+	v, err := s.Store.SaveInterEntityPair(r.Context(), a.User, a.Entity, counterparty, in)
+	if err != nil {
+		fail(w, 400, err)
+		return
+	}
+	write(w, 200, v)
+}
+
+func (s *Server) interEntityStatus(w http.ResponseWriter, r *http.Request) {
+	a := getAccess(r)
+	counterparty, _, err := s.Store.ResolveEntityAccess(r.Context(), a.User.ID, chi.URLParam(r, "counterparty"))
+	if err != nil {
+		fail(w, 403, err)
+		return
+	}
+	v, err := s.Store.InterEntityStatus(r.Context(), a.Entity, counterparty)
+	if err != nil {
+		fail(w, 400, err)
+		return
+	}
+	write(w, 200, v)
 }
