@@ -18,6 +18,7 @@ type CreateEntityInput struct {
 	Timezone           string
 	FiscalMonth        int
 	FiscalDay          int
+	Template           string
 }
 
 func (s *Store) CreateEntity(ctx context.Context, user User, in CreateEntityInput) (Entity, error) {
@@ -51,6 +52,14 @@ func (s *Store) CreateEntity(ctx context.Context, user User, in CreateEntityInpu
 	if err := ValidateFiscalStart(in.FiscalMonth, in.FiscalDay); err != nil {
 		return Entity{}, err
 	}
+	template := strings.ToUpper(strings.TrimSpace(in.Template))
+	if template == "" {
+		if strings.EqualFold(in.EntityType, "PERSONAL") {
+			template = TemplatePersonal
+		} else {
+			template = TemplateGeneralBusiness
+		}
+	}
 
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -77,6 +86,9 @@ VALUES($1,$2,$3,$4,$2)`, linkID, user.ID, id, ownerRoleID)
 	}
 	grantedPlatformOwners, err := grantActivePlatformOwners(ctx, tx, id)
 	if err != nil {
+		return Entity{}, err
+	}
+	if err := SeedChartOfAccounts(ctx, tx, id, user.ID, template); err != nil {
 		return Entity{}, err
 	}
 

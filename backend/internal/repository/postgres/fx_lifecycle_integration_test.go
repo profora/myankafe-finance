@@ -46,7 +46,7 @@ func TestUsedExchangeRateCannotBeMutatedOrDeleted(t *testing.T) {
 	if _, err := s.Pool.Exec(ctx, `
 INSERT INTO accounts(id,public_id,entity_id,code,name,account_type,is_postable,created_by)
 VALUES($1,$2,$3,$4,'USD Bank','ASSET',true,$5)`,
-		assetID, assetPublic, entity.ID, "USD_"+assetPublic, user.ID); err != nil {
+		assetID, assetPublic, entity.ID, nextAccountCode(t), user.ID); err != nil {
 		t.Fatal(err)
 	}
 	faID := mustUUID(t)

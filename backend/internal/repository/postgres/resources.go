@@ -18,6 +18,7 @@ type User struct {
 type Entity struct {
 	ID, PublicID, Code, Name, Type, FunctionalCurrency, Timezone, Role string
 	FiscalMonth, FiscalDay                                             int
+	AccountingStartDate                                                *string
 }
 type Account struct {
 	PublicID, Code, Name, Type string
@@ -39,7 +40,7 @@ func (s *Store) ResolveUser(ctx context.Context, pub string) (User, error) {
 func (s *Store) ListEntities(ctx context.Context, userID string) ([]Entity, error) {
 	rows, err := s.Pool.Query(ctx, `
 SELECT e.id::text,e.public_id::text,e.code,e.name,e.entity_type,e.functional_currency_code,e.timezone,
-       e.fiscal_year_start_month,e.fiscal_year_start_day,
+       e.fiscal_year_start_month,e.fiscal_year_start_day,e.accounting_start_date::text,
        (
          SELECT r.code
          FROM user_entity_roles uer
@@ -62,7 +63,7 @@ ORDER BY e.name`, userID)
 	out := []Entity{}
 	for rows.Next() {
 		var e Entity
-		if err := rows.Scan(&e.ID, &e.PublicID, &e.Code, &e.Name, &e.Type, &e.FunctionalCurrency, &e.Timezone, &e.FiscalMonth, &e.FiscalDay, &e.Role); err != nil {
+		if err := rows.Scan(&e.ID, &e.PublicID, &e.Code, &e.Name, &e.Type, &e.FunctionalCurrency, &e.Timezone, &e.FiscalMonth, &e.FiscalDay, &e.AccountingStartDate, &e.Role); err != nil {
 			return nil, err
 		}
 		out = append(out, e)
@@ -72,10 +73,10 @@ ORDER BY e.name`, userID)
 
 func (s *Store) ResolveEntityAccess(ctx context.Context, userID, pub string) (Entity, string, error) {
 	var e Entity
-	err := s.Pool.QueryRow(ctx, `SELECT e.id::text,e.public_id::text,e.code,e.name,e.entity_type,e.functional_currency_code,e.timezone,e.fiscal_year_start_month,e.fiscal_year_start_day,r.code
+	err := s.Pool.QueryRow(ctx, `SELECT e.id::text,e.public_id::text,e.code,e.name,e.entity_type,e.functional_currency_code,e.timezone,e.fiscal_year_start_month,e.fiscal_year_start_day,e.accounting_start_date::text,r.code
 FROM entities e JOIN user_entity_roles uer ON uer.entity_id=e.id JOIN roles r ON r.id=uer.role_id
 WHERE e.public_id=$1 AND uer.user_id=$2 AND uer.revoked_at IS NULL AND e.active=true
-ORDER BY CASE r.code WHEN 'OWNER' THEN 1 WHEN 'ADMIN' THEN 2 WHEN 'ACCOUNTANT' THEN 3 WHEN 'BOOKKEEPER' THEN 4 ELSE 5 END LIMIT 1`, pub, userID).Scan(&e.ID, &e.PublicID, &e.Code, &e.Name, &e.Type, &e.FunctionalCurrency, &e.Timezone, &e.FiscalMonth, &e.FiscalDay, &e.Role)
+ORDER BY CASE r.code WHEN 'OWNER' THEN 1 WHEN 'ADMIN' THEN 2 WHEN 'ACCOUNTANT' THEN 3 WHEN 'BOOKKEEPER' THEN 4 ELSE 5 END LIMIT 1`, pub, userID).Scan(&e.ID, &e.PublicID, &e.Code, &e.Name, &e.Type, &e.FunctionalCurrency, &e.Timezone, &e.FiscalMonth, &e.FiscalDay, &e.AccountingStartDate, &e.Role)
 	return e, e.Role, err
 }
 
@@ -108,6 +109,9 @@ func (s *Store) CreateAccount(ctx context.Context, user User, e Entity, in Creat
 	in.Subtype = strings.TrimSpace(in.Subtype)
 	if in.Code == "" || in.Name == "" {
 		return Account{}, fmt.Errorf("code and name are required")
+	}
+	if !accountCodePattern.MatchString(in.Code) {
+		return Account{}, fmt.Errorf("account code must be four digits")
 	}
 	switch in.Type {
 	case "ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE":
@@ -209,20 +213,30 @@ VALUES($1,$2,'USER',$3,$4,$5,$6,$7,$8,'API',$9,$10)`, id, apub, user.ID, eid, ac
 	return err
 }
 
+var accountCodePattern = regexp.MustCompile(`^[0-9]{4}$`)
+
 func (s *Store) EnsureOpenDateTx(ctx context.Context, tx pgx.Tx, entityID, date string) error {
+	parsed, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return fmt.Errorf("invalid date")
+	}
+	var start *time.Time
+	if err := tx.QueryRow(ctx, `SELECT accounting_start_date FROM entities WHERE id=$1`, entityID).Scan(&start); err != nil {
+		return err
+	}
+	if start == nil {
+		return fmt.Errorf("Set the accounting start date before entering accounting transactions.")
+	}
+	if parsed.Format("2006-01-02") < start.Format("2006-01-02") {
+		return fmt.Errorf("accounting date is before the accounting start date")
+	}
 	var locked *time.Time
-	err := tx.QueryRow(ctx, `INSERT INTO entity_accounting_controls(entity_id) VALUES($1) ON CONFLICT(entity_id) DO UPDATE SET entity_id=EXCLUDED.entity_id RETURNING transactions_locked_through_date`, entityID).Scan(&locked)
+	err = tx.QueryRow(ctx, `INSERT INTO entity_accounting_controls(entity_id) VALUES($1) ON CONFLICT(entity_id) DO UPDATE SET entity_id=EXCLUDED.entity_id RETURNING transactions_locked_through_date`, entityID).Scan(&locked)
 	if err != nil {
 		return err
 	}
-	if locked != nil {
-		d, err := time.Parse("2006-01-02", date)
-		if err != nil {
-			return err
-		}
-		if !d.After(*locked) {
-			return fmt.Errorf("accounting period is locked through %s", locked.Format("2006-01-02"))
-		}
+	if locked != nil && !parsed.After(*locked) {
+		return fmt.Errorf("accounting period is locked through %s", locked.Format("2006-01-02"))
 	}
 	return nil
 }

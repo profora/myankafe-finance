@@ -15,6 +15,7 @@ const nav=[
   {href:"/pay-for-another-entity",label:"Pay for Another Entity",group:"Transactions",show:canOperateLedger},
   {href:"/manual-journal",label:"Manual Journal",group:"Transactions",show:canCorrectPostedAccounting},
   {href:"/accounts",label:"Chart of Accounts",group:"Accounting Setup"},
+  {href:"/opening-balances",label:"Opening Balances",group:"Accounting Setup"},
   {href:"/financial-accounts",label:"Financial Accounts",group:"Accounting Setup"},
   {href:"/exchange-rates",label:"Exchange Rates",group:"Accounting Setup"},
   {href:"/contacts",label:"Contacts",group:"Accounting Setup"},

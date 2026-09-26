@@ -56,8 +56,8 @@ VALUES($1,$2,$3,$4)`, userID, userPublic, username, "Service Test User"); err !=
 	entityCode := "SVC_" + suffix + "_" + entityPublic
 	if _, err := tx.Exec(ctx, `
 INSERT INTO entities(
-  id,public_id,code,name,entity_type,functional_currency_code,timezone,created_by
-) VALUES($1,$2,$3,$4,'BUSINESS','MMK','Asia/Yangon',$5)`,
+  id,public_id,code,name,entity_type,functional_currency_code,timezone,accounting_start_date,created_by
+) VALUES($1,$2,$3,$4,'BUSINESS','MMK','Asia/Yangon','2000-01-01',$5)`,
 		entityID, entityPublic, entityCode, "Service Test "+suffix, userID); err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ INSERT INTO entities(
 	if _, err := tx.Exec(ctx, `
 INSERT INTO accounts(id,public_id,entity_id,code,name,account_type,is_postable,created_by)
 VALUES($1,$2,$3,$4,$5,'EXPENSE',true,$6)`,
-		expenseID, expensePublic, entityID, "EXP_"+expensePublic, "Test Expense", userID); err != nil {
+		expenseID, expensePublic, entityID, nextAccountCode(t), "Test Expense", userID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -76,7 +76,7 @@ VALUES($1,$2,$3,$4,$5,'EXPENSE',true,$6)`,
 	if _, err := tx.Exec(ctx, `
 INSERT INTO accounts(id,public_id,entity_id,code,name,account_type,is_postable,created_by)
 VALUES($1,$2,$3,$4,$5,'ASSET',true,$6)`,
-		cashID, cashPublic, entityID, "CASH_"+cashPublic, "Test Cash", userID); err != nil {
+		cashID, cashPublic, entityID, nextAccountCode(t), "Test Cash", userID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -95,11 +95,11 @@ INSERT INTO financial_accounts(
 	}
 
 	return User{
-			ID: userID, PublicID: userPublic, Username: username, DisplayName: "Service Test User",
-		}, Entity{
-			ID: entityID, PublicID: entityPublic, Code: entityCode, Name: "Service Test " + suffix,
-			Type: "BUSINESS", FunctionalCurrency: "MMK", Timezone: "Asia/Yangon", FiscalMonth: 1, FiscalDay: 1,
-		}, expensePublic, faPublic
+		ID: userID, PublicID: userPublic, Username: username, DisplayName: "Service Test User",
+	}, Entity{
+		ID: entityID, PublicID: entityPublic, Code: entityCode, Name: "Service Test " + suffix,
+		Type: "BUSINESS", FunctionalCurrency: "MMK", Timezone: "Asia/Yangon", FiscalMonth: 1, FiscalDay: 1,
+	}, expensePublic, faPublic
 }
 
 func TestIdempotencyClaimCompleteAndReplay(t *testing.T) {
@@ -324,7 +324,7 @@ func seedTypedAccountCommitted(t *testing.T, ctx context.Context, s *Store, enti
 	if _, err := s.Pool.Exec(ctx, `
 INSERT INTO accounts(id,public_id,entity_id,code,name,account_type,is_postable,created_by)
 VALUES($1,$2,$3,$4,$5,$6,true,$7)`,
-		id, publicID, entity.ID, label+"_"+publicID, label, accountType, user.ID); err != nil {
+		id, publicID, entity.ID, nextAccountCode(t), label, accountType, user.ID); err != nil {
 		t.Fatal(err)
 	}
 	return id, publicID

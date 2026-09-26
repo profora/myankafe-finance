@@ -87,3 +87,5 @@
 @media(max-width:760px){.detail-page-head{align-items:stretch;flex-direction:column}.detail-page-head>.danger{width:100%}}
 .pager select{width:auto}
 .pager button.current{background:#1c493e}
+.main,.content{min-width:0}
+.table-wrap input{min-width:0}

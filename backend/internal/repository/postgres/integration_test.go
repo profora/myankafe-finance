@@ -2,14 +2,24 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/profora/myankafe-finance/backend/internal/ids"
 )
+
+var testAccountCodes atomic.Uint32
+
+func nextAccountCode(t *testing.T) string {
+	t.Helper()
+	n := testAccountCodes.Add(1)
+	return fmt.Sprintf("%04d", 1000+int(n%8000))
+}
 
 func integrationTx(t *testing.T) (context.Context, pgx.Tx) {
 	t.Helper()
@@ -66,8 +76,8 @@ VALUES($1,$2,$3,$4)`,
 	entityPublic := mustULID(t)
 	if _, err := tx.Exec(ctx, `
 INSERT INTO entities(
-  id,public_id,code,name,entity_type,functional_currency_code,timezone,created_by
-) VALUES($1,$2,$3,$4,'BUSINESS','MMK','Asia/Yangon',$5)`,
+  id,public_id,code,name,entity_type,functional_currency_code,timezone,accounting_start_date,created_by
+) VALUES($1,$2,$3,$4,'BUSINESS','MMK','Asia/Yangon','2000-01-01',$5)`,
 		entityID, entityPublic, "TEST_"+suffix+"_"+entityPublic, "Test Entity "+suffix, userID); err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +91,7 @@ func seedAccount(t *testing.T, ctx context.Context, tx pgx.Tx, entityID, userID,
 	if _, err := tx.Exec(ctx, `
 INSERT INTO accounts(id,public_id,entity_id,code,name,account_type,is_postable,created_by)
 VALUES($1,$2,$3,$4,$5,$6,true,$7)`,
-		id, publicID, entityID, "A_"+suffix+"_"+publicID, "Account "+suffix, accountType, userID); err != nil {
+		id, publicID, entityID, nextAccountCode(t), "Account "+suffix, accountType, userID); err != nil {
 		t.Fatal(err)
 	}
 	return id

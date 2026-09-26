@@ -9,6 +9,9 @@ export function canConfigureAccounting(role?:EntityRole){
 export function canCorrectPostedAccounting(role?:EntityRole){
   return role==="OWNER"||role==="ACCOUNTANT";
 }
+export function canEditOpeningBalances(role?:EntityRole){
+  return role==="OWNER"||role==="ACCOUNTANT";
+}
 export function canViewAudit(role?:EntityRole){
   return role==="OWNER"||role==="ADMIN"||role==="ACCOUNTANT";
 }

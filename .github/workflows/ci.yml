@@ -113,6 +113,44 @@ jobs:
             END IF;
           END $$;
           SQL
+      - name: Upgrade from migration 15
+        run: |
+          BASE="postgres://myankafe:myankafe_test@localhost:5432"
+          psql "$BASE/postgres?sslmode=disable" -c "CREATE DATABASE myankafe_finance_upgrade15"
+          UPGRADE_URL="$BASE/myankafe_finance_upgrade15?sslmode=disable"
+          goose -dir backend/db/migrations postgres "$UPGRADE_URL" up-to 15
+          psql "$UPGRADE_URL" <<'SQL'
+          INSERT INTO users(id,public_id,username,display_name)
+          VALUES('00000000-0000-7000-8000-000000000081','01ARZ3NDEKTSV4RRFFQ69G5FC1','upgrade15-owner','Upgrade 15 Owner');
+          INSERT INTO entities(id,public_id,code,name,entity_type,functional_currency_code,timezone,created_by)
+          VALUES('00000000-0000-7000-8000-000000000082','01ARZ3NDEKTSV4RRFFQ69G5FC2','UPGRADE15','Upgrade 15 Entity','BUSINESS','MMK','Asia/Yangon','00000000-0000-7000-8000-000000000081');
+          SQL
+          goose -dir backend/db/migrations postgres "$UPGRADE_URL" up
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_name='entities' AND column_name='accounting_start_date'
+            ) THEN
+              RAISE EXCEPTION 'migration 16 did not add accounting_start_date';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='accounts_code_four_digits') THEN
+              RAISE EXCEPTION 'migration 16 did not add the four-digit account-code check';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='transactions_transaction_type_check' AND pg_get_constraintdef(oid) LIKE '%OPENING_BALANCE_ADJUSTMENT%') THEN
+              RAISE EXCEPTION 'migration 16 did not add opening-balance transaction types';
+            END IF;
+          END $$;
+          DO $$
+          BEGIN
+            INSERT INTO accounts(id,public_id,entity_id,code,name,account_type,is_postable,created_by)
+            VALUES('00000000-0000-7000-8000-000000000083','01ARZ3NDEKTSV4RRFFQ69G5FC3','00000000-0000-7000-8000-000000000082','BAD','Bad code','EXPENSE',true,'00000000-0000-7000-8000-000000000081');
+            RAISE EXCEPTION 'non-digit account code was accepted';
+          EXCEPTION WHEN check_violation THEN
+            NULL;
+          END $$;
+          SQL
       - name: Tests
         working-directory: backend
         run: go test ./...

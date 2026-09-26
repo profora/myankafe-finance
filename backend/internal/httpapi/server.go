@@ -163,6 +163,11 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 				r.Get("/accounting-lock", s.getLock)
 				r.Post("/accounting-lock", s.lock)
 				r.Post("/accounting-lock/unlock", s.unlock)
+
+				r.Put("/accounting-start-date", s.setAccountingStartDate)
+				r.Get("/opening-balances", s.getOpeningBalances)
+				r.Post("/opening-balances/preview", s.previewOpeningBalances)
+				r.Put("/opening-balances", s.saveOpeningBalances)
 			})
 		})
 	})
@@ -306,7 +311,7 @@ func (s *Server) listTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 	typ := q.Get("type")
 	switch typ {
-	case "", "INCOME", "EXPENSE", "ACCOUNT_TRANSFER", "INTER_ENTITY", "MANUAL_JOURNAL", "ADJUSTMENT", "REVERSAL":
+	case "", "INCOME", "EXPENSE", "ACCOUNT_TRANSFER", "INTER_ENTITY", "MANUAL_JOURNAL", "ADJUSTMENT", "REVERSAL", "OPENING_BALANCE", "OPENING_BALANCE_ADJUSTMENT":
 	default:
 		fail(w, 400, errors.New("invalid type filter"))
 		return

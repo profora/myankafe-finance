@@ -33,6 +33,10 @@ func canCorrectPostedAccounting(role string) bool {
 	return role == "OWNER" || role == "ACCOUNTANT"
 }
 
+func canEditOpeningBalances(role string) bool {
+	return role == "OWNER" || role == "ACCOUNTANT"
+}
+
 func (s *Server) ownerAnywhere(r *http.Request, user postgres.User) (bool, error) {
 	if user.PlatformOwner {
 		return true, nil

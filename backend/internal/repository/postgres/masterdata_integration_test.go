@@ -348,7 +348,7 @@ func insertAccount(t *testing.T, ctx context.Context, s *Store, entity Entity, u
 	if _, err := s.Pool.Exec(ctx, `
 INSERT INTO accounts(id,public_id,entity_id,code,name,account_type,is_postable,active,created_by)
 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-		id, publicID, entity.ID, "ACC_"+publicID, accountType, accountType, postable, active, user.ID); err != nil {
+		id, publicID, entity.ID, nextAccountCode(t), accountType, accountType, postable, active, user.ID); err != nil {
 		t.Fatal(err)
 	}
 	return publicID

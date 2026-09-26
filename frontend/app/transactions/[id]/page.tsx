@@ -99,7 +99,7 @@ export default function TransactionDetailPage(){
     void load();
   },[entity?.PublicID,id,requestedEntity]);
 
-  const canReverse=Boolean(mayReverse&&detail&&detail.status==="POSTED"&&!detail.reversal_transaction_id);
+  const canReverse=Boolean(mayReverse&&detail&&detail.status==="POSTED"&&!detail.reversal_transaction_id&&detail.type!=="OPENING_BALANCE"&&detail.type!=="OPENING_BALANCE_ADJUSTMENT");
 
   function openReverse(){
     setReverseReason("");

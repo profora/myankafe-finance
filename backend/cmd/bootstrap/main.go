@@ -111,9 +111,12 @@ SET password_hash=EXCLUDED.password_hash,
 					log.Fatal(err)
 				}
 				if _, err = tx.Exec(ctx,
-					"INSERT INTO entities(id,public_id,code,name,entity_type,functional_currency_code,timezone,created_by) VALUES($1,$2,$3,$4,$5,'MMK','Asia/Yangon',$6)",
-					entityID, entityPublic, e.Code, e.Name, e.Kind, userID,
+					"INSERT INTO entities(id,public_id,code,name,entity_type,functional_currency_code,timezone,fiscal_year_start_month,fiscal_year_start_day,created_by) VALUES($1,$2,$3,$4,$5,'MMK','Asia/Yangon',$6,$7,$8)",
+					entityID, entityPublic, e.Code, e.Name, e.Kind, bootstrapFiscalMonth(e.Code), bootstrapFiscalDay(e.Code), userID,
 				); err != nil {
+					log.Fatal(err)
+				}
+				if err = postgres.SeedChartOfAccounts(ctx, tx, entityID, userID, bootstrapTemplate(e.Code)); err != nil {
 					log.Fatal(err)
 				}
 			} else if err != nil {
@@ -172,3 +175,25 @@ func getenv(k, d string) string {
 	}
 	return d
 }
+
+func bootstrapTemplate(code string) string {
+	switch code {
+	case "MYANKAFE":
+		return postgres.TemplateMyanKafeBusiness
+	case "ROYAL_MASTERPIECE":
+		return postgres.TemplateRoyalMasterpiece
+	case "PERSONAL":
+		return postgres.TemplatePersonal
+	default:
+		return postgres.TemplateGeneralBusiness
+	}
+}
+
+func bootstrapFiscalMonth(code string) int {
+	if code == "PERSONAL" {
+		return 1
+	}
+	return 4
+}
+
+func bootstrapFiscalDay(code string) int { return 1 }

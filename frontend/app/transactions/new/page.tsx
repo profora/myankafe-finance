@@ -97,6 +97,7 @@ export default function NewTransaction(){
 
   return <>
     <div className="page-head"><div><h1>New Entry</h1><p>Simple income/expense entry backed by double-entry journals.</p></div></div>
+    {entity&&!entity.AccountingStartDate&&<div className="alert">Set the accounting start date before entering accounting transactions.</div>}
     {error&&<div className="alert error" role="alert">{error}</div>}
     {message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
     {!mayOperate&&<div className="alert">Recording income and expenses requires Bookkeeper access or higher for the active entity.</div>}

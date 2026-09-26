@@ -50,13 +50,13 @@ func TestCannotDeactivateAccountWithActiveDescendant(t *testing.T) {
 	user, entity, _, _ := seedServiceEntity(t, ctx, s, "COA_CHILD")
 
 	parent, err := s.CreateAccount(ctx, user, entity, CreateAccountInput{
-		Code: "HDR_" + mustULID(t), Name: "Header", Type: "EXPENSE", Postable: false,
+		Code: nextAccountCode(t), Name: "Header", Type: "EXPENSE", Postable: false,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.CreateAccount(ctx, user, entity, CreateAccountInput{
-		Code: "CHD_" + mustULID(t), Name: "Child", Type: "EXPENSE", ParentPublicID: parent.PublicID, Postable: true,
+		Code: nextAccountCode(t), Name: "Child", Type: "EXPENSE", ParentPublicID: parent.PublicID, Postable: true,
 	}); err != nil {
 		t.Fatal(err)
 	}

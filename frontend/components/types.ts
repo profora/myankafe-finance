@@ -11,6 +11,7 @@ export type Entity = {
   Role: EntityRole;
   FiscalMonth: number;
   FiscalDay: number;
+  AccountingStartDate?: string | null;
 };
 
 export type Account = {

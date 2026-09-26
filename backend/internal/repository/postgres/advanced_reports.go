@@ -97,8 +97,19 @@ WITH account_lines AS (
   SELECT je.journal_date,je.created_at,je.public_id journal_public_id,t.public_id transaction_public_id,
          je.description journal_description,COALESCE(jl.description,'') line_description,
          jl.line_no,jl.debit_amount,jl.credit_amount,je.functional_currency_code,
+         CASE COALESCE(t.transaction_type,'')
+           WHEN 'OPENING_BALANCE' THEN 0
+           WHEN 'OPENING_BALANCE_ADJUSTMENT' THEN 1
+           ELSE 2
+         END opening_rank,
          SUM(jl.debit_amount-jl.credit_amount) OVER (
-           ORDER BY je.journal_date,je.created_at,jl.line_no
+           ORDER BY je.journal_date,
+             CASE COALESCE(t.transaction_type,'')
+               WHEN 'OPENING_BALANCE' THEN 0
+               WHEN 'OPENING_BALANCE_ADJUSTMENT' THEN 1
+               ELSE 2
+             END,
+             je.created_at,jl.line_no,je.public_id
            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
          ) running_balance
   FROM journal_lines jl
@@ -113,7 +124,7 @@ SELECT journal_date::text,journal_public_id::text,transaction_public_id::text,
        debit_amount::text,credit_amount::text,running_balance::text,functional_currency_code
 FROM account_lines
 WHERE journal_date >= $3
-ORDER BY journal_date,created_at,line_no
+ORDER BY journal_date,opening_rank,created_at,line_no
 LIMIT $5`, entityID, accountPublicID, from, to, limit)
 	if err != nil {
 		return nil, err
@@ -138,7 +149,9 @@ SELECT je.journal_date::text,fa.public_id::text,fa.name,fa.currency_code,
 FROM journal_lines jl
 JOIN journal_entries je ON je.id=jl.journal_entry_id
 JOIN financial_accounts fa ON fa.id=jl.financial_account_id
+JOIN transactions t ON t.id=je.transaction_id
 WHERE je.entity_id=$1 AND je.status IN ('POSTED','REVERSED') AND je.journal_date BETWEEN $2 AND $3
+  AND t.transaction_type NOT IN ('OPENING_BALANCE','OPENING_BALANCE_ADJUSTMENT')
 GROUP BY je.journal_date,fa.id,fa.public_id,fa.name,fa.currency_code
 ORDER BY je.journal_date,fa.name`, entityID, from, to)
 	if err != nil {

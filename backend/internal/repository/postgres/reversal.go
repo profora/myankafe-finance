@@ -34,6 +34,9 @@ FOR UPDATE`, e.ID, originalPublicID).Scan(&originalID, &originalType, &originalS
 	if originalStatus != "POSTED" {
 		return nil, fmt.Errorf("only POSTED transactions can be reversed")
 	}
+	if originalType == "OPENING_BALANCE" || originalType == "OPENING_BALANCE_ADJUSTMENT" {
+		return nil, fmt.Errorf("opening balance transactions can only be corrected from Opening Balances")
+	}
 	if err := s.EnsureOpenDateTx(ctx, tx, e.ID, reversalDate); err != nil {
 		return nil, err
 	}

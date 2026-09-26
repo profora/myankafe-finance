@@ -90,7 +90,9 @@ balanced AS (
   SELECT *,
          SUM(movement) OVER (
            PARTITION BY fa_id
-           ORDER BY transaction_date, journal_created_at, last_line_no, transaction_public_id
+           ORDER BY transaction_date,
+             CASE transaction_type WHEN 'OPENING_BALANCE' THEN 0 WHEN 'OPENING_BALANCE_ADJUSTMENT' THEN 1 ELSE 2 END,
+             journal_created_at, last_line_no, transaction_public_id
            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
          ) running_balance
   FROM posted_fa
@@ -121,6 +123,8 @@ movements AS (
            WHEN transaction_type='MANUAL_JOURNAL' THEN 'Manual journal'
            WHEN transaction_type='ADJUSTMENT' THEN 'Adjustment'
            WHEN transaction_type='REVERSAL' THEN 'Reversal'
+           WHEN transaction_type='OPENING_BALANCE' THEN 'Opening balance'
+           WHEN transaction_type='OPENING_BALANCE_ADJUSTMENT' THEN 'Opening balance adjustment'
            ELSE transaction_type
          END movement_label
   FROM balanced
@@ -149,6 +153,8 @@ headers AS (
            WHEN 'MANUAL_JOURNAL' THEN 'Manual journal'
            WHEN 'ADJUSTMENT' THEN 'Adjustment'
            WHEN 'REVERSAL' THEN 'Reversal'
+           WHEN 'OPENING_BALANCE' THEN 'Opening balance'
+           WHEN 'OPENING_BALANCE_ADJUSTMENT' THEN 'Opening balance adjustment'
            ELSE t.transaction_type
          END movement_label
   FROM transactions t

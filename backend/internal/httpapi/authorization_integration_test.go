@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/profora/myankafe-finance/backend/internal/config"
@@ -51,8 +53,8 @@ VALUES($1,$2,$3,$4)`,
 	}
 	if _, err := store.Pool.Exec(ctx, `
 INSERT INTO entities(
-  id,public_id,code,name,entity_type,functional_currency_code,timezone,created_by
-) VALUES($1,$2,$3,$4,'BUSINESS','MMK','Asia/Yangon',$5)`,
+  id,public_id,code,name,entity_type,functional_currency_code,timezone,accounting_start_date,created_by
+) VALUES($1,$2,$3,$4,'BUSINESS','MMK','Asia/Yangon','2000-01-01',$5)`,
 		entityID, entityPublic, "AUTH_"+role+"_"+entityPublic, role+" Test Entity", userID); err != nil {
 		t.Fatal(err)
 	}
@@ -228,10 +230,14 @@ func TestOwnerAndAdminCanSaveInterEntityPair(t *testing.T) {
 	}
 }
 
+var httpAccountCodes atomic.Uint32
+
 func createHTTPAccount(t *testing.T, router http.Handler, principal, entity, code, name, accountType string) string {
 	t.Helper()
+	_ = code
+	accountCode := fmt.Sprintf("%04d", 3000+int(httpAccountCodes.Add(1)%6000))
 	rec := performAuthorizedJSON(t, router, http.MethodPost, "/api/v1/entities/"+entity+"/accounts", principal, map[string]any{
-		"Code": code + entity[:6], "Name": name, "Type": accountType, "Postable": true,
+		"Code": accountCode, "Name": name, "Type": accountType, "Postable": true,
 	})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create account status=%d body=%s", rec.Code, rec.Body.String())
