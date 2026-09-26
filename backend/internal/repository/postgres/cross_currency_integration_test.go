@@ -26,6 +26,15 @@ func TestCrossCurrencyTransferUsesStoredHistoricalRate(t *testing.T) {
 
 	if _, err := s.PostTransfer(ctx, user, entity, TransferInput{
 		Date: "2026-09-26", FromFinancialAccountPublicID: usdCash, ToFinancialAccountPublicID: mmkCash,
+		FromAmount: "100", ToAmount: "450000", FeeAmount: "1", FeeExpenseAccountPublicID: expensePublic,
+		Description: "Cross-currency fee",
+	}); err == nil || !strings.Contains(err.Error(), "same currency") {
+		t.Fatalf("cross-currency fee err=%v", err)
+	}
+	assertNoTransaction(t, ctx, s, entity.ID, "Cross-currency fee")
+
+	if _, err := s.PostTransfer(ctx, user, entity, TransferInput{
+		Date: "2026-09-26", FromFinancialAccountPublicID: usdCash, ToFinancialAccountPublicID: mmkCash,
 		FromAmount: "100", ToAmount: "100", Description: "Unbalanced functional transfer",
 	}); err == nil || !strings.Contains(err.Error(), "do not balance") {
 		t.Fatalf("unbalanced transfer err=%v", err)
