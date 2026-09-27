@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
@@ -10,6 +10,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import TransactionAttachments from "@/components/TransactionAttachments";
 import DraftTransactionActions from "@/components/DraftTransactionActions";
 import { canCorrectPostedAccounting, canOperateLedger } from "@/lib/permissions";
+import { inaccessibleEntityMessage, withEntity } from "@/lib/entitySelection";
 
 type JournalLine={
   line_no:number;
@@ -54,7 +55,7 @@ type Detail={
 };
 
 export default function TransactionDetailPage(){
-  const {entity,entities,setEntityID,loading:entitiesLoading}=useEntity();
+  const {entity,entityQuery,loading:entitiesLoading}=useEntity();
   const mayOperate=canOperateLedger(entity?.Role);
   const mayReverse=canCorrectPostedAccounting(entity?.Role);
   const params=useParams<{id:string}>();
@@ -62,13 +63,13 @@ export default function TransactionDetailPage(){
   const [detail,setDetail]=useState<Detail|null>(null);
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
-  const [requestedEntity,setRequestedEntity]=useState<string|undefined>();
   const [reverseOpen,setReverseOpen]=useState(false);
   const [reverseBusy,setReverseBusy]=useState(false);
   const [reverseReason,setReverseReason]=useState("");
   const [reverseDate,setReverseDate]=useState("");
   const reversalDateID=useId();
   const reversalReasonID=useId();
+  const seenEntity=useRef({id:"",query:""});
 
   async function load(){
     if(!entity||!id)return;
@@ -80,24 +81,25 @@ export default function TransactionDetailPage(){
   }
 
   useEffect(()=>{
-    setRequestedEntity(new URLSearchParams(window.location.search).get("entity")??"");
-  },[]);
-
-  useEffect(()=>{
-    if(requestedEntity===undefined||entitiesLoading)return;
-    if(requestedEntity && !entities.some(item=>item.PublicID===requestedEntity)){
-      setError("That entity is not available to this account.");
+    if(entitiesLoading)return;
+    const previous=seenEntity.current;
+    const nextID=entity?.PublicID??"";
+    const entityChanged=previous.id!==""&&previous.id!==nextID;
+    seenEntity.current={id:nextID,query:entityQuery};
+    if(entityQuery && nextID!==entityQuery){
+      setDetail(null);
+      setError(inaccessibleEntityMessage);
       return;
     }
-    if(requestedEntity && entity?.PublicID!==requestedEntity) setEntityID(requestedEntity);
-  },[requestedEntity,entities,entitiesLoading,entity?.PublicID,setEntityID]);
-
-  useEffect(()=>{
-    if(requestedEntity===undefined)return;
-    if(requestedEntity && entity?.PublicID!==requestedEntity)return;
+    if(entityChanged&&!entityQuery){
+      setDetail(null);
+      return;
+    }
+    if(!entity||!id)return;
+    setError("");
     setDetail(null);
     void load();
-  },[entity?.PublicID,id,requestedEntity]);
+  },[entitiesLoading,entity?.PublicID,entityQuery,id]);
 
   const canReverse=Boolean(mayReverse&&detail&&detail.status==="POSTED"&&!detail.reversal_transaction_id&&detail.type!=="OPENING_BALANCE"&&detail.type!=="OPENING_BALANCE_ADJUSTMENT");
 
@@ -123,7 +125,7 @@ export default function TransactionDetailPage(){
   return <>
     <div className="page-head detail-page-head">
       <div>
-        <div className="muted"><Link href="/transactions">Transactions</Link> / Detail</div>
+        <div className="muted"><Link href={withEntity("/transactions", entity?.PublicID??"")}>Transactions</Link> / Detail</div>
         <h1>{detail?.description??"Transaction"}</h1>
         {detail&&<p>{detail.date} · {detail.type} · <span className={`badge ${detail.status}`}>{detail.status}</span></p>}
       </div>
@@ -150,14 +152,14 @@ export default function TransactionDetailPage(){
 
       {(detail.original_transaction_id||detail.reversal_transaction_id||detail.void_reason)&&<div className="card" style={{marginTop:16}}>
         <h3>Correction history</h3>
-        {detail.original_transaction_id&&<p>Reverses: <Link className="table-link" href={`/transactions/${detail.original_transaction_id}`}>{detail.original_transaction_id}</Link></p>}
-        {detail.reversal_transaction_id&&<p>Reversal: <Link className="table-link" href={`/transactions/${detail.reversal_transaction_id}`}>{detail.reversal_transaction_id}</Link></p>}
+        {detail.original_transaction_id&&<p>Reverses: <Link className="table-link" href={withEntity(`/transactions/${detail.original_transaction_id}`, entity?.PublicID??"")}>{detail.original_transaction_id}</Link></p>}
+        {detail.reversal_transaction_id&&<p>Reversal: <Link className="table-link" href={withEntity(`/transactions/${detail.reversal_transaction_id}`, entity?.PublicID??"")}>{detail.reversal_transaction_id}</Link></p>}
         {detail.void_reason&&<p><strong>Reason:</strong> {detail.void_reason}</p>}
       </div>}
 
       {detail.splits.length>0&&<>
         <div className="page-head" style={{marginTop:28}}><div><h1 style={{fontSize:20}}>Entry splits</h1></div></div>
-        <div className="table-wrap"><table><thead><tr><th>#</th><th>Account</th><th>Description</th><th>Amount</th></tr></thead><tbody>{detail.splits.map(x=><tr key={x.line_no}><td>{x.line_no}</td><td><Link className="table-link" href={`/accounts/${x.account_id}/ledger`}>{x.account_code} · {x.account_name}</Link></td><td>{x.description||"—"}</td><td>{Number(x.amount).toLocaleString()} {detail.currency}</td></tr>)}</tbody></table></div>
+        <div className="table-wrap"><table><thead><tr><th>#</th><th>Account</th><th>Description</th><th>Amount</th></tr></thead><tbody>{detail.splits.map(x=><tr key={x.line_no}><td>{x.line_no}</td><td><Link className="table-link" href={withEntity(`/accounts/${x.account_id}/ledger`, entity?.PublicID??"")}>{x.account_code} · {x.account_name}</Link></td><td>{x.description||"—"}</td><td>{Number(x.amount).toLocaleString()} {detail.currency}</td></tr>)}</tbody></table></div>
       </>}
 
       <ConfirmDialog
@@ -182,7 +184,7 @@ export default function TransactionDetailPage(){
         <div className="page-head" style={{marginTop:28}}><div><h1 style={{fontSize:20}}>Journal · {j.status}</h1><p>{j.date} · {j.id}</p></div></div>
         <div className="table-wrap"><table><thead><tr><th>#</th><th>Account</th><th>Description</th><th>Transaction debit</th><th>Transaction credit</th><th>FX</th><th>Debit</th><th>Credit</th></tr></thead><tbody>{j.lines.map(x=><tr key={x.line_no}>
           <td>{x.line_no}</td>
-          <td><Link className="table-link" href={`/accounts/${x.account.id}/ledger`}>{x.account.code} · {x.account.name}</Link>{x.financial_account?.name&&<div className="muted">{x.financial_account.name}</div>}</td>
+          <td><Link className="table-link" href={withEntity(`/accounts/${x.account.id}/ledger`, entity?.PublicID??"")}>{x.account.code} · {x.account.name}</Link>{x.financial_account?.name&&<div className="muted">{x.financial_account.name}</div>}</td>
           <td>{x.description||"—"}</td>
           <td>{Number(x.transaction_debit).toLocaleString()} {x.transaction_currency}</td>
           <td>{Number(x.transaction_credit).toLocaleString()} {x.transaction_currency}</td>

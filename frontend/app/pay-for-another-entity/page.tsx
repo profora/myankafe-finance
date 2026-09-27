@@ -8,6 +8,7 @@ import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
 import type { Account, FinancialAccount } from "@/components/types";
 import { canManageInterEntitySetup } from "@/lib/permissions";
+import { withEntity } from "@/lib/entitySelection";
 
 type Status={
   configured:boolean;
@@ -121,9 +122,9 @@ export default function PayForAnotherEntity(){
     <div className="page-head"><div><h1>Pay for Another Entity</h1><p>Record a payment from {entity?.Name??"the selected entity"} for work or costs that belong to another entity.</p></div></div>
     {error&&<div className="alert error" role="alert">{error}</div>}
     {posted&&<div className="alert success" role="status">
-      Posted. <Link href={`/transactions/${posted.initiating_transaction_id}`}>Paying entity transaction</Link>
+      Posted. <Link href={withEntity(`/transactions/${posted.initiating_transaction_id}`, entity?.PublicID??"")}>Paying entity transaction</Link>
       {" · "}
-      <Link href={`/transactions/${posted.counterparty_transaction_id}?entity=${counterparty}`}>Counterparty transaction</Link>
+      <Link href={withEntity(`/transactions/${posted.counterparty_transaction_id}`, counterparty)}>Counterparty transaction</Link>
     </div>}
     <div className="card form">
       <div className="form-grid">

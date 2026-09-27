@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import type { Account } from "@/components/types";
 import { canConfigureAccounting } from "@/lib/permissions";
+import { withEntity } from "@/lib/entitySelection";
 import TableStateRows from "@/components/TableStateRows";
 
 export default function Accounts() {
@@ -103,8 +104,8 @@ export default function Accounts() {
     {!mayConfigure&&<div className="alert">Your {entity?.Role??"VIEWER"} role can view the Chart of Accounts and ledgers but cannot change account configuration.</div>}
 
     <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Subtype</th><th>Posting</th><th>Status</th><th></th></tr></thead><tbody>{items.map(a=><tr key={a.PublicID}>
-      <td><Link className="table-link" href={`/accounts/${a.PublicID}/ledger`}>{a.Code}</Link></td>
-      <td><Link className="table-link" href={`/accounts/${a.PublicID}/ledger`}>{a.Name}</Link></td>
+      <td><Link className="table-link" href={withEntity(`/accounts/${a.PublicID}/ledger`, entity?.PublicID??"")}>{a.Code}</Link></td>
+      <td><Link className="table-link" href={withEntity(`/accounts/${a.PublicID}/ledger`, entity?.PublicID??"")}>{a.Name}</Link></td>
       <td>{a.Type}</td><td>{a.Subtype??"—"}</td><td>{a.Postable?"Yes":"Header"}</td>
       <td><span className={`badge ${a.Active?"POSTED":"VOIDED"}`}>{a.Active?"ACTIVE":"INACTIVE"}</span></td>
       <td>{mayConfigure?<button type="button" className="secondary compact" onClick={()=>startEdit(a)}>Edit</button>:<span className="muted">Read-only</span>}</td>

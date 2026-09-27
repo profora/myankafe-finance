@@ -7,6 +7,7 @@ import { useEntity } from "@/components/EntityContext";
 import type { FinancialAccount } from "@/components/types";
 import TransactionEntryModal, { type QuickEntryKind } from "@/components/TransactionEntryModal";
 import { canCorrectPostedAccounting, canOperateLedger } from "@/lib/permissions";
+import { withEntity } from "@/lib/entitySelection";
 
 type TransactionRow={
   row_id:string;
@@ -209,8 +210,8 @@ export default function Transactions(){
         <tbody>{items.map(t=><tr key={t.row_id}>
           <td>{t.date}</td>
           <td><span className="type-pill">{t.movement_label}</span></td>
-          <td><Link className="table-link transaction-description" href={`/transactions/${t.id}`}>{t.description}</Link>{t.contact_name&&<div className="muted">{t.contact_name}</div>}{t.attachment_count>0&&<div className="muted">📎 {t.attachment_count} attachment{t.attachment_count===1?"":"s"}</div>}</td>
-          <td>{t.financial_account_name&&t.ledger_account_id&&entity?<Link className="table-link" href={`/accounts/${t.ledger_account_id}/ledger?entity=${entity.PublicID}`}>{t.financial_account_name}</Link>:<span>{t.financial_account_name||"—"}</span>}</td>
+          <td><Link className="table-link transaction-description" href={withEntity(`/transactions/${t.id}`, entity?.PublicID??"")}>{t.description}</Link>{t.contact_name&&<div className="muted">{t.contact_name}</div>}{t.attachment_count>0&&<div className="muted">📎 {t.attachment_count} attachment{t.attachment_count===1?"":"s"}</div>}</td>
+          <td>{t.financial_account_name&&t.ledger_account_id&&entity?<Link className="table-link" href={withEntity(`/accounts/${t.ledger_account_id}/ledger`, entity.PublicID)}>{t.financial_account_name}</Link>:<span>{t.financial_account_name||"—"}</span>}</td>
           <td><span className={`badge ${t.status}`}>{t.status}</span></td>
           <td className={signedClass(t.signed_movement||"0")}>{signedAmount(t.signed_movement, t.account_currency)}</td>
           <td>{t.balance==null?"—":`${Number(t.balance).toLocaleString(undefined,{maximumFractionDigits:2})}${t.account_currency?` ${t.account_currency}`:""}`}</td>

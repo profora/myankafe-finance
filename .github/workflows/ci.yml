@@ -170,6 +170,9 @@ jobs:
       - name: Typecheck
         working-directory: frontend
         run: npm run typecheck
+      - name: Entity selection tests
+        working-directory: frontend
+        run: npm test
       - name: Build
         working-directory: frontend
         env:

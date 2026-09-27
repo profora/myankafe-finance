@@ -6,6 +6,7 @@ import { dateInTimeZone } from "@/lib/date";
 import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
 import { canOperateLedger } from "@/lib/permissions";
+import { withEntity } from "@/lib/entitySelection";
 import type { Account, FinancialAccount, Transaction } from "@/components/types";
 type Contact={id:string;display_name:string;contact_type:string;active:boolean};
 
@@ -90,7 +91,7 @@ export default function NewTransaction(){
         }
       }
       if(postNow)await api(`/entities/${entity.PublicID}/transactions/${tx.PublicID}/post`,{method:"POST",body:"{}"});
-      window.location.assign(`/transactions/${tx.PublicID}`);
+      window.location.assign(withEntity(`/transactions/${tx.PublicID}`, entity.PublicID));
     }catch(e){setError(e instanceof Error?e.message:String(e))}
     finally{setBusy(false)}
   }

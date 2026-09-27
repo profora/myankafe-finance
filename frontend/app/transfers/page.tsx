@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
 import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
+import { withEntity } from "@/lib/entitySelection";
 import type { Account, FinancialAccount } from "@/components/types";
 
 export default function Transfers(){
@@ -51,7 +52,7 @@ export default function Transfers(){
           return;
         }
       }
-      window.location.assign(`/transactions/${v.id}`);
+      window.location.assign(withEntity(`/transactions/${v.id}`, entity.PublicID));
     }catch(e){setError(e instanceof Error?e.message:String(e))}
     finally{setBusy(false)}
   }

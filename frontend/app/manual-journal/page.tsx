@@ -7,6 +7,7 @@ import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
 import type { Account } from "@/components/types";
 import { canCorrectPostedAccounting } from "@/lib/permissions";
+import { withEntity } from "@/lib/entitySelection";
 
 type Line={AccountPublicID:string;Debit:string;Credit:string;Description:string};
 
@@ -54,7 +55,7 @@ export default function ManualJournal(){
           return;
         }
       }
-      window.location.assign(`/transactions/${v.transaction_id}`);
+      window.location.assign(withEntity(`/transactions/${v.transaction_id}`, entity.PublicID));
     }catch(e){setError(e instanceof Error?e.message:String(e))}
     finally{setBusy(false)}
   }

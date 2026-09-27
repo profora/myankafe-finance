@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import type { Account } from "@/components/types";
 import { dateInTimeZone, fiscalYearStartInTimeZone } from "@/lib/date";
 import { downloadCsv, safeCsvFilename } from "@/lib/csv";
+import { inaccessibleEntityMessage, withEntity } from "@/lib/entitySelection";
 import TableStateRows from "@/components/TableStateRows";
 
 type LedgerLine = {
@@ -23,7 +24,7 @@ type LedgerLine = {
 };
 
 export default function AccountLedgerPage(){
-  const {entity,entities,setEntityID,loading:entitiesLoading}=useEntity();
+  const {entity,entityQuery,loading:entitiesLoading}=useEntity();
   const params=useParams<{id:string}>();
   const accountID=Array.isArray(params.id)?params.id[0]:params.id;
   const [accounts,setAccounts]=useState<Account[]>([]);
@@ -31,9 +32,8 @@ export default function AccountLedgerPage(){
   const [from,setFrom]=useState(()=>fiscalYearStartInTimeZone());
   const [to,setTo]=useState(()=>dateInTimeZone());
   const [error,setError]=useState("");
+  const seenEntity=useRef({id:"",query:""});
   const [loading,setLoading]=useState(false);
-  const [requestedEntity,setRequestedEntity]=useState<string|undefined>();
-
   const account=useMemo(()=>accounts.find(x=>x.PublicID===accountID),[accounts,accountID]);
 
   async function loadRange(rangeFrom:string,rangeTo:string){
@@ -54,29 +54,32 @@ export default function AccountLedgerPage(){
   }
 
   useEffect(()=>{
-    setRequestedEntity(new URLSearchParams(window.location.search).get("entity")??"");
-  },[]);
-
-  useEffect(()=>{
-    if(requestedEntity===undefined||entitiesLoading)return;
-    if(requestedEntity && !entities.some(item=>item.PublicID===requestedEntity)){
-      setError("That entity is not available to this account.");
+    if(entitiesLoading)return;
+    const previous=seenEntity.current;
+    const nextID=entity?.PublicID??"";
+    const entityChanged=previous.id!==""&&previous.id!==nextID;
+    seenEntity.current={id:nextID,query:entityQuery};
+    if(entityQuery && nextID!==entityQuery){
+      setAccounts([]);
+      setItems([]);
+      setError(inaccessibleEntityMessage);
       return;
     }
-    if(requestedEntity && entity?.PublicID!==requestedEntity) setEntityID(requestedEntity);
-  },[requestedEntity,entities,entitiesLoading,entity?.PublicID,setEntityID]);
-
-  useEffect(()=>{
-    if(!entity||requestedEntity===undefined)return;
-    if(requestedEntity && entity.PublicID!==requestedEntity)return;
+    if(entityChanged&&!entityQuery){
+      setAccounts([]);
+      setItems([]);
+      return;
+    }
+    if(!entity)return;
     const nextFrom=fiscalYearStartInTimeZone(entity.Timezone,entity.FiscalMonth,entity.FiscalDay);
     const nextTo=dateInTimeZone(entity.Timezone);
     setFrom(nextFrom);
     setTo(nextTo);
+    setError("");
     setAccounts([]);
     setItems([]);
     void loadRange(nextFrom,nextTo);
-  },[entity?.PublicID,accountID,requestedEntity]);
+  },[entitiesLoading,entity?.PublicID,entityQuery,accountID]);
 
   function exportLedger(){
     const label=account?`${account.Code}-${account.Name}`:accountID;
@@ -93,7 +96,7 @@ export default function AccountLedgerPage(){
   return <>
     <div className="page-head">
       <div>
-        <div className="muted"><Link href="/accounts">Chart of Accounts</Link> / Ledger</div>
+        <div className="muted"><Link href={withEntity("/accounts", entity?.PublicID??"")}>Chart of Accounts</Link> / Ledger</div>
         <h1>{account ? `${account.Code} · ${account.Name}` : "Account Ledger"}</h1>
         <p>Running balance includes activity before the selected start date.</p>
       </div>

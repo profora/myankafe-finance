@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import { fiscalYearLabel } from "@/lib/fiscal";
 import { canOperateLedger } from "@/lib/permissions";
+import { withEntity } from "@/lib/entitySelection";
 
 type DashboardData={
   cash_balances:{id:string;name:string;currency:string;balance:string}[];
@@ -15,12 +16,13 @@ type DashboardData={
 };
 
 export default function Dashboard() {
-  const { entity, platformOwner } = useEntity();
+  const { entity, platformOwner, loading: entitiesLoading } = useEntity();
   const [data,setData]=useState<DashboardData>({cash_balances:[],income:"0",expenses:"0",net_profit:"0"});
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(true);
   const [combined,setCombined]=useState<{reporting_currency:string;income:string;expenses:string;net_profit:string;entities:{entity_id:string;entity_name:string;functional_currency:string;income:string;expenses:string;net_profit:string;reporting_rate:string}[]}|null>(null);
   useEffect(()=>{
+    if(entitiesLoading)return;
     if(!entity){setLoading(false);return;}
     let cancelled=false;
     setLoading(true);
@@ -30,17 +32,17 @@ export default function Dashboard() {
       .catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
       .finally(()=>{if(!cancelled)setLoading(false)});
     return ()=>{cancelled=true};
-  },[entity?.PublicID]);
+  },[entitiesLoading,entity?.PublicID]);
   useEffect(()=>{api<any>("/dashboard/combined?currency=MMK").then(setCombined).catch(()=>{})},[entity]);
 
   return (
     <>
       <div className="page-head">
         <div><h1>Dashboard</h1><p>{entity?`Current-month overview for ${entity.Name}.`:"No entity is selected yet."}</p></div>
-        {entity&&canOperateLedger(entity.Role)&&<Link className="button" href="/transactions/new">New entry</Link>}
+        {entity&&canOperateLedger(entity.Role)&&<Link className="button" href={withEntity("/transactions/new", entity.PublicID)}>New entry</Link>}
       </div>
       {error&&<div className="alert error" role="alert">{error}</div>}
-      {!loading&&!entity&&<div className="alert" role="status">{platformOwner?"Create the first entity before recording any accounting.":"This account does not have an entity yet."}</div>}
+      {!entitiesLoading&&!loading&&!entity&&<div className="alert" role="status">{platformOwner?"Create the first entity before recording any accounting.":"This account does not have an entity yet."}</div>}
       <div className="grid cards" aria-busy={loading}>
         <div className="card"><div className="muted">Income</div><div className="metric">{loading?<span className="skeleton skeleton-metric" aria-hidden="true"/>:<>{Number(data.income).toLocaleString()} {entity?.FunctionalCurrency}</>}</div></div>
         <div className="card"><div className="muted">Expenses</div><div className="metric">{loading?<span className="skeleton skeleton-metric" aria-hidden="true"/>:<>{Number(data.expenses).toLocaleString()} {entity?.FunctionalCurrency}</>}</div></div>
@@ -85,7 +87,7 @@ function FinancialAccounts(){
       <table>
         <thead><tr><th>Entity</th><th>Account</th><th>Type</th><th>Currency</th><th>Balance</th><th>Status</th></tr></thead>
         <tbody>
-          {loading?Array.from({length:3}).map((_,i)=><tr key={`loading-${i}`} aria-hidden="true"><td><span className="skeleton skeleton-line"/></td><td><span className="skeleton skeleton-line"/></td><td><span className="skeleton skeleton-short"/></td><td><span className="skeleton skeleton-short"/></td><td><span className="skeleton skeleton-line"/></td><td><span className="skeleton skeleton-short"/></td></tr>):Object.entries(groups).flatMap(([,group])=>group.rows.map(row=><tr key={row.id}><td>{row.entity_name}</td><td><Link className="table-link" href={`/accounts/${row.ledger_account_id}/ledger?entity=${row.entity_id}`}>{row.name}</Link></td><td>{kindLabels[row.kind]??row.kind}</td><td>{row.currency}</td><td>{Number(row.balance).toLocaleString(undefined,{maximumFractionDigits:2})} {row.currency}</td><td>{row.active?"Active":"Inactive"}</td></tr>))}
+          {loading?Array.from({length:3}).map((_,i)=><tr key={`loading-${i}`} aria-hidden="true"><td><span className="skeleton skeleton-line"/></td><td><span className="skeleton skeleton-line"/></td><td><span className="skeleton skeleton-short"/></td><td><span className="skeleton skeleton-short"/></td><td><span className="skeleton skeleton-line"/></td><td><span className="skeleton skeleton-short"/></td></tr>):Object.entries(groups).flatMap(([,group])=>group.rows.map(row=><tr key={row.id}><td>{row.entity_name}</td><td><Link className="table-link" href={withEntity(`/accounts/${row.ledger_account_id}/ledger`, row.entity_id)}>{row.name}</Link></td><td>{kindLabels[row.kind]??row.kind}</td><td>{row.currency}</td><td>{Number(row.balance).toLocaleString(undefined,{maximumFractionDigits:2})} {row.currency}</td><td>{row.active?"Active":"Inactive"}</td></tr>))}
         </tbody>
       </table>
       {!loading&&items.length===0&&<div className="empty">No financial accounts are available.</div>}

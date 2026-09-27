@@ -5,6 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
 import type { Account, Entity, FinancialAccount, Transaction } from "@/components/types";
+import { withEntity } from "@/lib/entitySelection";
 
 type Contact={id:string;display_name:string;contact_type:string;active:boolean};
 export type QuickEntryKind="INCOME"|"EXPENSE"|"TRANSFER";
@@ -191,7 +192,7 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
         {transfer&&fromFinancial&&toFinancial&&fromFinancial.Currency!==toFinancial.Currency&&<div className="alert">Cross-currency transfer amounts must translate to the same functional value using stored exchange rates.</div>}
 
         <div className="actions modal-actions">
-          {!transfer&&<Link className="button secondary" href="/transactions/new" onClick={onClose}>Advanced / split entry</Link>}
+          {!transfer&&entity&&<Link className="button secondary" href={withEntity("/transactions/new", entity.PublicID)} onClick={onClose}>Advanced / split entry</Link>}
           <span style={{flex:1}}/>
           {!transfer&&<button type="button" className="secondary" disabled={busy||!ready} onClick={()=>saveIncomeExpense(false)}>Save draft</button>}
           <button type="button" disabled={busy||!ready} onClick={()=>transfer?saveTransfer():saveIncomeExpense(true)}>{busy?"Saving…":transfer?"Post transfer":"Save & post"}</button>
