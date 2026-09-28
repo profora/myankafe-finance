@@ -43,8 +43,9 @@ type Detail={
   description:string;
   currency:string;
   total:string;
-  contact?:{id?:string|null;name?:string|null};
+  contact?:{id?:string|null;name?:string|null;customer_segment?:string|null};
   financial_account?:{id?:string|null;name?:string|null};
+  sales_channel?:{id?:string|null;code?:string|null;name?:string|null};
   original_transaction_id?:string|null;
   reversal_transaction_id?:string|null;
   posted_at?:string|null;
@@ -144,7 +145,8 @@ export default function TransactionDetailPage(){
       <div className="grid cards">
         <div className="card"><div className="muted">Amount</div><div className="metric">{Number(detail.total).toLocaleString()} {detail.currency}</div></div>
         <div className="card"><div className="muted">Financial account</div><div style={{fontWeight:750,marginTop:8}}>{detail.financial_account?.name??"—"}</div></div>
-        <div className="card"><div className="muted">Contact</div><div style={{fontWeight:750,marginTop:8}}>{detail.contact?.name??"—"}</div></div>
+        <div className="card"><div className="muted">Contact</div><div style={{fontWeight:750,marginTop:8}}>{detail.contact?.name??"—"}</div>{detail.contact?.customer_segment&&<div className="muted">{detail.contact.customer_segment.replaceAll("_"," ")}</div>}</div>
+        <div className="card"><div className="muted">Sales channel</div><div style={{fontWeight:750,marginTop:8}}>{detail.sales_channel?.name??"—"}</div></div>
         <div className="card"><div className="muted">Public ID</div><div style={{fontFamily:"monospace",fontSize:12,marginTop:8}}>{detail.id}</div></div>
       </div>
 
