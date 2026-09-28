@@ -6,7 +6,7 @@ func TestInactiveContactPreservesHistoryButCannotBeReused(t *testing.T) {
 	ctx, s := integrationStore(t)
 	user, entity, expenseAccount, financialAccount := seedServiceEntity(t, ctx, s, "CONTACT_LIFECYCLE")
 
-	created, err := s.CreateContact(ctx, user, entity, "SUPPLIER", "Supplier A", "09-000", "", "")
+	created, err := s.CreateContact(ctx, user, entity, "SUPPLIER", "Supplier A", "09-000", "", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
