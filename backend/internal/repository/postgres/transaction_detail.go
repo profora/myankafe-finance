@@ -15,7 +15,7 @@ func (s *Store) TransactionDetail(ctx context.Context, entityID, publicID string
 	err := s.Pool.QueryRow(ctx, `
 SELECT t.id::text,t.public_id::text,t.transaction_type,t.status,t.transaction_date::text,
        t.description,t.currency_code,t.total_amount::text,
-       c.public_id::text,c.display_name,c.customer_segment,
+       c.public_id::text,c.display_name,COALESCE(t.customer_segment_snapshot,c.customer_segment),
        fa.public_id::text,fa.name,
        sc.public_id::text,sc.code,sc.name,
        ot.public_id::text,rt.public_id::text,
