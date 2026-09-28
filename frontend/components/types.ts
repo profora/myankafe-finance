@@ -47,3 +47,11 @@ export type Transaction = {
   Currency: string;
   Total: string;
 };
+
+
+export type SalesChannel = {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+};
