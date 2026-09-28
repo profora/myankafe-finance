@@ -162,35 +162,40 @@ WHERE entity_id=$1 AND public_id=$2`, entityID, publicID).Scan(&id, &active); er
 
 func (s *Store) SalesAnalysis(ctx context.Context, entityID string, from, to time.Time) ([]map[string]any, error) {
 	rows, err := s.Pool.Query(ctx, `
-SELECT a.public_id::text,a.code,a.name,
-       COALESCE(sc.code,'UNCLASSIFIED') channel_code,
-       COALESCE(sc.name,'Unclassified') channel_name,
-       COALESCE(c.customer_segment,'') customer_segment,
+WITH attributed AS (
+  SELECT a.id account_id,a.public_id,a.code,a.name,
+         COALESCE(sc.code,'UNCLASSIFIED') channel_code,
+         COALESCE(sc.name,'Unclassified') channel_name,
+         COALESCE(t.customer_segment_snapshot,ot.customer_segment_snapshot,c.customer_segment,'') customer_segment,
+         jl.credit_amount-jl.debit_amount amount
+  FROM journal_lines jl
+  JOIN journal_entries je ON je.id=jl.journal_entry_id
+  JOIN accounts a ON a.id=jl.account_id
+  JOIN transactions t ON t.id=je.transaction_id
+  LEFT JOIN transactions ot ON ot.id=t.original_transaction_id
+  LEFT JOIN contacts c ON c.id=COALESCE(t.contact_id,ot.contact_id)
+  LEFT JOIN sales_channels sc ON sc.id=COALESCE(t.sales_channel_id,ot.sales_channel_id)
+  WHERE je.entity_id=$1
+    AND je.status IN ('POSTED','REVERSED')
+    AND je.journal_date BETWEEN $2 AND $3
+    AND a.account_type='INCOME'
+)
+SELECT public_id::text,code,name,channel_code,channel_name,customer_segment,
        CASE
-         WHEN c.customer_segment='RETAILER' THEN 'RETAILER'
-         WHEN c.customer_segment='DISTRIBUTOR' THEN 'DISTRIBUTOR'
-         ELSE COALESCE(sc.code,'UNCLASSIFIED')
+         WHEN customer_segment='RETAILER' THEN 'RETAILER'
+         WHEN customer_segment='DISTRIBUTOR' THEN 'DISTRIBUTOR'
+         ELSE channel_code
        END route_code,
        CASE
-         WHEN c.customer_segment='RETAILER' THEN 'Retailer'
-         WHEN c.customer_segment='DISTRIBUTOR' THEN 'Distributor'
-         ELSE COALESCE(sc.name,'Unclassified')
+         WHEN customer_segment='RETAILER' THEN 'Retailer'
+         WHEN customer_segment='DISTRIBUTOR' THEN 'Distributor'
+         ELSE channel_name
        END route_name,
-       COALESCE(SUM(jl.credit_amount-jl.debit_amount),0)::text amount
-FROM journal_lines jl
-JOIN journal_entries je ON je.id=jl.journal_entry_id
-JOIN accounts a ON a.id=jl.account_id
-JOIN transactions t ON t.id=je.transaction_id
-LEFT JOIN transactions ot ON ot.id=t.original_transaction_id
-LEFT JOIN contacts c ON c.id=COALESCE(t.contact_id,ot.contact_id)
-LEFT JOIN sales_channels sc ON sc.id=COALESCE(t.sales_channel_id,ot.sales_channel_id)
-WHERE je.entity_id=$1
-  AND je.status IN ('POSTED','REVERSED')
-  AND je.journal_date BETWEEN $2 AND $3
-  AND a.account_type='INCOME'
-GROUP BY a.id,a.public_id,a.code,a.name,sc.code,sc.name,c.customer_segment
-HAVING COALESCE(SUM(jl.credit_amount-jl.debit_amount),0)<>0
-ORDER BY a.code,route_name,channel_name,customer_segment`, entityID, from, to)
+       COALESCE(SUM(amount),0)::text amount
+FROM attributed
+GROUP BY account_id,public_id,code,name,channel_code,channel_name,customer_segment
+HAVING COALESCE(SUM(amount),0)<>0
+ORDER BY code,route_name,channel_name,customer_segment`, entityID, from, to)
 	if err != nil {
 		return nil, err
 	}
