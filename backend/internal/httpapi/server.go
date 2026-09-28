@@ -107,6 +107,7 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 				r.Get("/reports/account-ledger", s.accountLedger)
 				r.Get("/reports/cash-movement", s.cashMovement)
 				r.Get("/reports/inter-entity-balances", s.interEntityBalances)
+				r.Get("/reports/sales-analysis", s.salesAnalysis)
 
 				r.Get("/accounts", s.listAccounts)
 				r.Post("/accounts", s.createAccount)
@@ -124,6 +125,10 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 				r.Post("/contact-types", s.createContactType)
 				r.Put("/contact-types/{code}", s.updateContactType)
 				r.Delete("/contact-types/{code}", s.deleteContactType)
+
+				r.Get("/sales-channels", s.listSalesChannels)
+				r.Post("/sales-channels", s.createSalesChannel)
+				r.Put("/sales-channels/{code}", s.updateSalesChannel)
 
 				r.Get("/exchange-rates", s.listExchangeRates)
 				r.Post("/exchange-rates", s.createExchangeRate)
