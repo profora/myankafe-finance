@@ -14,6 +14,7 @@ type Contact={
   phone?:string|null;
   email?:string|null;
   notes?:string|null;
+  customer_segment?:string|null;
   active:boolean;
 };
 
@@ -25,9 +26,10 @@ type ContactForm={
   phone:string;
   email:string;
   notes:string;
+  customer_segment:string;
 };
 
-const blank:ContactForm={contact_type:"OTHER",display_name:"",phone:"",email:"",notes:""};
+const blank:ContactForm={contact_type:"OTHER",display_name:"",phone:"",email:"",notes:"",customer_segment:""};
 
 export default function Contacts(){
   const {entity}=useEntity();
@@ -82,6 +84,7 @@ export default function Contacts(){
       phone:contact.phone??"",
       email:contact.email??"",
       notes:contact.notes??"",
+      customer_segment:contact.customer_segment??"",
       active:contact.active,
     });
     setError("");setMessage("");
@@ -97,6 +100,7 @@ export default function Contacts(){
         Phone:edit.phone,
         Email:edit.email,
         Notes:edit.notes,
+        CustomerSegment:edit.customer_segment,
         Active:edit.active,
       })});
       setEditing(null);setMessage("Contact updated.");load();
@@ -119,6 +123,7 @@ export default function Contacts(){
         <div className="field"><label>Type</label><select value={edit.contact_type} onChange={e=>setEdit({...edit,contact_type:e.target.value})}>{types.filter(item=>item.active||item.code===edit.contact_type).map(item=><option key={item.code} value={item.code}>{item.name}{item.active?"":" (inactive)"}</option>)}</select></div>
         <div className="field"><label>Phone</label><input value={edit.phone} onChange={e=>setEdit({...edit,phone:e.target.value})}/></div>
         <div className="field"><label>Email</label><input type="email" value={edit.email} onChange={e=>setEdit({...edit,email:e.target.value})}/></div>
+        <div className="field"><label>Customer segment</label><select value={edit.customer_segment} onChange={e=>setEdit({...edit,customer_segment:e.target.value})}><option value="">Not classified</option><option value="CONSUMER">Consumer</option><option value="RETAILER">Retailer</option><option value="DISTRIBUTOR">Distributor</option><option value="OTHER">Other</option></select></div>
         <div className="field span-2"><label>Notes</label><textarea rows={3} value={edit.notes} onChange={e=>setEdit({...edit,notes:e.target.value})}/></div>
         <div className="field"><label>Status</label><select value={edit.active?"ACTIVE":"INACTIVE"} onChange={e=>setEdit({...edit,active:e.target.value==="ACTIVE"})}><option>ACTIVE</option><option>INACTIVE</option></select></div>
       </div>
@@ -132,6 +137,7 @@ export default function Contacts(){
         <div className="field"><label>Type</label><select value={form.contact_type} onChange={e=>setForm({...form,contact_type:e.target.value})}>{types.filter(item=>item.active).map(item=><option key={item.code} value={item.code}>{item.name}</option>)}</select></div>
         <div className="field"><label>Phone</label><input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></div>
         <div className="field"><label>Email</label><input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
+        <div className="field"><label>Customer segment</label><select value={form.customer_segment} onChange={e=>setForm({...form,customer_segment:e.target.value})}><option value="">Not classified</option><option value="CONSUMER">Consumer</option><option value="RETAILER">Retailer</option><option value="DISTRIBUTOR">Distributor</option><option value="OTHER">Other</option></select></div>
         <div className="field span-2"><label>Notes</label><input value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div>
       </div>
       <button type="button" disabled={busy||!form.display_name.trim()} onClick={create}>Create contact</button>
@@ -139,10 +145,10 @@ export default function Contacts(){
 
     {!mayOperate&&<div className="alert">Your VIEWER role can read contacts but cannot create or edit them.</div>}
 
-    <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id}>
-      <td>{x.display_name}</td><td>{x.contact_type_name||x.contact_type}</td><td>{x.phone||"—"}</td><td>{x.email||"—"}</td>
+    <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Name</th><th>Type</th><th>Segment</th><th>Phone</th><th>Email</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id}>
+      <td>{x.display_name}</td><td>{x.contact_type_name||x.contact_type}</td><td>{x.customer_segment?x.customer_segment.replaceAll("_"," "):"—"}</td><td>{x.phone||"—"}</td><td>{x.email||"—"}</td>
       <td><span className={`badge ${x.active?"POSTED":"VOIDED"}`}>{x.active?"ACTIVE":"INACTIVE"}</span></td>
       <td>{mayOperate?<button type="button" className="secondary compact" onClick={()=>startEdit(x)}>Edit</button>:<span className="muted">Read-only</span>}</td>
-    </tr>)}<TableStateRows loading={loading&&items.length===0} empty={!loading&&items.length===0} columns={6} emptyText="No contacts for this entity yet."/></tbody></table></div>
+    </tr>)}<TableStateRows loading={loading&&items.length===0} empty={!loading&&items.length===0} columns={7} emptyText="No contacts for this entity yet."/></tbody></table></div>
   </>;
 }
