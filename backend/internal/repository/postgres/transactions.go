@@ -13,8 +13,14 @@ import (
 
 type SplitInput struct{ AccountPublicID, Amount, Description string }
 type CreateTransactionInput struct {
-	Type, Date, Description, FinancialAccountPublicID, Currency, ContactPublicID, SalesChannelPublicID string
-	Splits                                                                                              []SplitInput
+	Type                     string
+	Date                     string
+	Description              string
+	FinancialAccountPublicID string
+	Currency                 string
+	ContactPublicID          string
+	SalesChannelPublicID     string
+	Splits                   []SplitInput
 }
 type Transaction struct{ PublicID, Type, Status, Date, Description, Currency, Total string }
 
