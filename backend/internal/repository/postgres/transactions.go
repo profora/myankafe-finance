@@ -13,8 +13,8 @@ import (
 
 type SplitInput struct{ AccountPublicID, Amount, Description string }
 type CreateTransactionInput struct {
-	Type, Date, Description, FinancialAccountPublicID, Currency, ContactPublicID string
-	Splits                                                                       []SplitInput
+	Type, Date, Description, FinancialAccountPublicID, Currency, ContactPublicID, SalesChannelPublicID string
+	Splits                                                                                              []SplitInput
 }
 type Transaction struct{ PublicID, Type, Status, Date, Description, Currency, Total string }
 
@@ -46,6 +46,16 @@ func (s *Store) CreateTransaction(ctx context.Context, user User, e Entity, in C
 	if in.Currency != faCurrency {
 		return Transaction{}, fmt.Errorf("transaction currency must match selected financial account")
 	}
+	var salesChannelID any
+	if in.Type == "INCOME" {
+		salesChannelID, err = resolveSalesChannelTx(ctx, tx, e.ID, in.SalesChannelPublicID)
+		if err != nil {
+			return Transaction{}, err
+		}
+	} else if in.SalesChannelPublicID != "" {
+		return Transaction{}, fmt.Errorf("sales channel is only valid for income transactions")
+	}
+
 	var contactID any
 	if in.ContactPublicID != "" {
 		var cid string
@@ -82,8 +92,8 @@ func (s *Store) CreateTransaction(ctx context.Context, user User, e Entity, in C
 	}
 	id, _ := ids.UUIDv7()
 	pub, _ := ids.ULID()
-	if _, err := tx.Exec(ctx, `INSERT INTO transactions(id,public_id,entity_id,transaction_type,status,transaction_date,description,contact_id,primary_financial_account_id,currency_code,total_amount,created_by)
-VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7,$8,$9,$10,$11)`, id, pub, e.ID, in.Type, in.Date, in.Description, contactID, faID, in.Currency, total.FloatString(6), user.ID); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO transactions(id,public_id,entity_id,transaction_type,status,transaction_date,description,contact_id,primary_financial_account_id,currency_code,total_amount,sales_channel_id,created_by)
+VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7,$8,$9,$10,$11,$12)`, id, pub, e.ID, in.Type, in.Date, in.Description, contactID, faID, in.Currency, total.FloatString(6), salesChannelID, user.ID); err != nil {
 		return Transaction{}, err
 	}
 	for i, sp := range rr {
@@ -272,6 +282,16 @@ WHERE entity_id=$1 AND public_id=$2 AND active=true`, e.ID, in.FinancialAccountP
 		return Transaction{}, fmt.Errorf("transaction currency must match selected financial account")
 	}
 
+	var salesChannelID any
+	if in.Type == "INCOME" {
+		salesChannelID, err = resolveSalesChannelTx(ctx, tx, e.ID, in.SalesChannelPublicID)
+		if err != nil {
+			return Transaction{}, err
+		}
+	} else if in.SalesChannelPublicID != "" {
+		return Transaction{}, fmt.Errorf("sales channel is only valid for income transactions")
+	}
+
 	var contactID any
 	if in.ContactPublicID != "" {
 		var cid string
@@ -324,9 +344,10 @@ SET transaction_type=$3,
     primary_financial_account_id=$7,
     currency_code=$8,
     total_amount=$9,
+    sales_channel_id=$10,
     updated_at=now()
 WHERE id=$1 AND entity_id=$2`,
-		id, e.ID, in.Type, in.Date, in.Description, contactID, faID, in.Currency, total.FloatString(6)); err != nil {
+		id, e.ID, in.Type, in.Date, in.Description, contactID, faID, in.Currency, total.FloatString(6), salesChannelID); err != nil {
 		return Transaction{}, err
 	}
 
@@ -347,7 +368,7 @@ VALUES($1,$2,$3,$4,$5,NULLIF($6,''))`, splitID, id, i+1, sp.id, sp.amount, sp.de
 
 	if err := insertAuditTx(ctx, tx, user, e, "TRANSACTION_DRAFT_UPDATE", "TRANSACTION", pub, map[string]any{
 		"before": map[string]any{"date": oldDate, "description": oldDescription, "total": oldTotal},
-		"after":  map[string]any{"type": in.Type, "date": in.Date, "description": in.Description, "total": total.FloatString(6), "currency": in.Currency},
+		"after":  map[string]any{"type": in.Type, "date": in.Date, "description": in.Description, "total": total.FloatString(6), "currency": in.Currency, "sales_channel_id": in.SalesChannelPublicID},
 	}); err != nil {
 		return Transaction{}, err
 	}
