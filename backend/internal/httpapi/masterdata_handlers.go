@@ -184,3 +184,50 @@ func (s *Server) listAuditActions(w http.ResponseWriter, r *http.Request) {
 	}
 	write(w, http.StatusOK, map[string]any{"items": items})
 }
+
+
+func (s *Server) listSalesChannels(w http.ResponseWriter, r *http.Request) {
+	a := getAccess(r)
+	items, err := s.Store.ListSalesChannels(r.Context(), a.Entity.ID)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err)
+		return
+	}
+	write(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (s *Server) createSalesChannel(w http.ResponseWriter, r *http.Request) {
+	a := getAccess(r)
+	if !requireRole(w, canConfigureAccounting(a.Role), "sales channel configuration requires OWNER, ADMIN, or ACCOUNTANT") {
+		return
+	}
+	var in postgres.SalesChannelInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		fail(w, http.StatusBadRequest, err)
+		return
+	}
+	item, err := s.Store.CreateSalesChannel(r.Context(), a.User, a.Entity, in)
+	if err != nil {
+		fail(w, http.StatusBadRequest, err)
+		return
+	}
+	write(w, http.StatusCreated, item)
+}
+
+func (s *Server) updateSalesChannel(w http.ResponseWriter, r *http.Request) {
+	a := getAccess(r)
+	if !requireRole(w, canConfigureAccounting(a.Role), "sales channel configuration requires OWNER, ADMIN, or ACCOUNTANT") {
+		return
+	}
+	var in postgres.SalesChannelInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		fail(w, http.StatusBadRequest, err)
+		return
+	}
+	item, err := s.Store.UpdateSalesChannel(r.Context(), a.User, a.Entity, chi.URLParam(r, "code"), in.Name, in.Active)
+	if err != nil {
+		fail(w, http.StatusBadRequest, err)
+		return
+	}
+	write(w, http.StatusOK, item)
+}
