@@ -78,6 +78,18 @@ func TestIncomeSalesDimensionsAndReversalStayInSameRoute(t *testing.T) {
 		t.Fatalf("unexpected sales analysis: %+v", rows[0])
 	}
 
+	if _, err := s.Pool.Exec(ctx, `
+UPDATE contacts SET customer_segment='CONSUMER' WHERE entity_id=$1 AND public_id=$2`, entity.ID, contact); err != nil {
+		t.Fatal(err)
+	}
+	rows, err = s.SalesAnalysis(ctx, entity.ID, from, to)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0]["route_code"] != "RETAILER" || rows[0]["customer_segment"] != "RETAILER" {
+		t.Fatalf("posted sale attribution changed after contact reclassification: %+v", rows)
+	}
+
 	if _, err := s.ReverseTransaction(ctx, user, entity, draft.PublicID, "2026-10-06", "customer cancelled"); err != nil {
 		t.Fatal(err)
 	}
