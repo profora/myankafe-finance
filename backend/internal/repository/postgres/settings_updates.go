@@ -145,9 +145,10 @@ WHERE fa.id=$1`, id).
 }
 
 type UpdateAccountInput struct {
-	Name    string
-	Subtype string
-	Active  bool
+	Name           string
+	Subtype        string
+	Active         bool
+	ParentPublicID string
 }
 
 func (s *Store) UpdateAccount(ctx context.Context, user User, e Entity, publicID string, in UpdateAccountInput) (Account, error) {
@@ -162,14 +163,20 @@ func (s *Store) UpdateAccount(ctx context.Context, user User, e Entity, publicID
 	}
 	defer tx.Rollback(ctx)
 
-	var id string
-	var currentActive bool
+	var id, accountType, code, systemRole, currentParentPublic, currentParentCode string
+	var currentActive, postable bool
 	if err := tx.QueryRow(ctx, `
-SELECT id::text,active
-FROM accounts
-WHERE entity_id=$1 AND public_id=$2
-FOR UPDATE`, e.ID, publicID).Scan(&id, &currentActive); err != nil {
+SELECT a.id::text,a.active,a.account_type,a.code,a.is_postable,COALESCE(a.system_role,''),
+       COALESCE(p.public_id::text,''),COALESCE(p.code,'')
+FROM accounts a
+LEFT JOIN accounts p ON p.id=a.parent_id
+WHERE a.entity_id=$1 AND a.public_id=$2
+FOR UPDATE OF a`, e.ID, publicID).Scan(&id, &currentActive, &accountType, &code, &postable, &systemRole, &currentParentPublic, &currentParentCode); err != nil {
 		return Account{}, err
+	}
+	requestedParent := strings.TrimSpace(in.ParentPublicID)
+	if systemRole != "" && requestedParent != currentParentPublic {
+		return Account{}, fmt.Errorf("system account hierarchy is fixed")
 	}
 
 	if currentActive && !in.Active {
@@ -204,29 +211,43 @@ WHERE entity_id=$1 AND account_id=$2 AND active=true`, e.ID, id).Scan(&activeFin
 		}
 	}
 
+	parentID, newParentPublic, newParentCode, err := resolveAccountParent(ctx, tx, e.ID, publicID, accountType, requestedParent)
+	if err != nil {
+		return Account{}, err
+	}
 	if _, err := tx.Exec(ctx, `
 UPDATE accounts
 SET name=$3,
     account_subtype=NULLIF($4,''),
     active=$5,
+    parent_id=$6,
     updated_at=now()
 WHERE id=$1 AND entity_id=$2`,
-		id, e.ID, in.Name, strings.TrimSpace(in.Subtype), in.Active); err != nil {
+		id, e.ID, in.Name, strings.TrimSpace(in.Subtype), in.Active, parentID); err != nil {
 		return Account{}, err
 	}
 
 	var out Account
 	if err := tx.QueryRow(ctx, `
-SELECT public_id::text,code,name,account_type,account_subtype,is_postable,active
-FROM accounts WHERE id=$1`, id).
-		Scan(&out.PublicID, &out.Code, &out.Name, &out.Type, &out.Subtype, &out.Postable, &out.Active); err != nil {
+SELECT a.public_id::text,a.code,a.name,a.account_type,a.account_subtype,p.public_id::text,a.is_postable,a.active,COALESCE(a.system_role,'')<>''
+FROM accounts a
+LEFT JOIN accounts p ON p.id=a.parent_id
+WHERE a.id=$1`, id).
+		Scan(&out.PublicID, &out.Code, &out.Name, &out.Type, &out.Subtype, &out.ParentPublicID, &out.Postable, &out.Active, &out.HierarchyLocked); err != nil {
 		return Account{}, err
+	}
+	if out.Code != code || out.Type != accountType || out.Postable != postable {
+		return Account{}, fmt.Errorf("account code, type, and posting identity cannot change")
 	}
 
 	if err := insertAuditTx(ctx, tx, user, e, "COA_UPDATE", "ACCOUNT", publicID, map[string]any{
-		"name":    out.Name,
-		"subtype": out.Subtype,
-		"active":  out.Active,
+		"name":                 out.Name,
+		"subtype":              out.Subtype,
+		"active":               out.Active,
+		"old_parent_public_id": currentParentPublic,
+		"old_parent_code":      currentParentCode,
+		"new_parent_public_id": newParentPublic,
+		"new_parent_code":      newParentCode,
 	}); err != nil {
 		return Account{}, err
 	}

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -23,7 +24,9 @@ type Entity struct {
 type Account struct {
 	PublicID, Code, Name, Type string
 	Subtype                    *string
+	ParentPublicID             *string
 	Postable, Active           bool
+	HierarchyLocked            bool
 }
 type FinancialAccount struct {
 	PublicID, Code, Name, Kind, Currency, AccountPublicID string
@@ -81,7 +84,12 @@ ORDER BY CASE r.code WHEN 'OWNER' THEN 1 WHEN 'ADMIN' THEN 2 WHEN 'ACCOUNTANT' T
 }
 
 func (s *Store) ListAccounts(ctx context.Context, entityID string) ([]Account, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT public_id::text,code,name,account_type,account_subtype,is_postable,active FROM accounts WHERE entity_id=$1 ORDER BY code`, entityID)
+	rows, err := s.Pool.Query(ctx, `
+SELECT a.public_id::text,a.code,a.name,a.account_type,a.account_subtype,p.public_id::text,a.is_postable,a.active,COALESCE(a.system_role,'')<>''
+FROM accounts a
+LEFT JOIN accounts p ON p.id=a.parent_id
+WHERE a.entity_id=$1
+ORDER BY a.code`, entityID)
 	if err != nil {
 		return nil, err
 	}
@@ -89,12 +97,68 @@ func (s *Store) ListAccounts(ctx context.Context, entityID string) ([]Account, e
 	out := []Account{}
 	for rows.Next() {
 		var a Account
-		if err := rows.Scan(&a.PublicID, &a.Code, &a.Name, &a.Type, &a.Subtype, &a.Postable, &a.Active); err != nil {
+		if err := rows.Scan(&a.PublicID, &a.Code, &a.Name, &a.Type, &a.Subtype, &a.ParentPublicID, &a.Postable, &a.Active, &a.HierarchyLocked); err != nil {
 			return nil, err
 		}
 		out = append(out, a)
 	}
 	return out, rows.Err()
+}
+
+type parentQuerier interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func resolveAccountParent(ctx context.Context, q parentQuerier, entityID, accountPublicID, accountType, parentPublicID string) (any, string, string, error) {
+	parentPublicID = strings.TrimSpace(parentPublicID)
+	if parentPublicID == "" {
+		return nil, "", "", nil
+	}
+	if accountPublicID != "" && parentPublicID == accountPublicID {
+		return nil, "", "", fmt.Errorf("account cannot be its own parent")
+	}
+	var id, code, parentType string
+	var active, postable bool
+	err := q.QueryRow(ctx, `
+SELECT id::text,code,account_type,active,is_postable
+FROM accounts
+WHERE entity_id=$1 AND public_id=$2`, entityID, parentPublicID).Scan(&id, &code, &parentType, &active, &postable)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, "", "", fmt.Errorf("parent account was not found")
+		}
+		return nil, "", "", err
+	}
+	if !active {
+		return nil, "", "", fmt.Errorf("parent account is inactive")
+	}
+	if parentType != accountType {
+		return nil, "", "", fmt.Errorf("parent account must have the same fundamental account type")
+	}
+	if postable {
+		return nil, "", "", fmt.Errorf("parent account must be a header account")
+	}
+	if accountPublicID != "" {
+		var cycle bool
+		if err := q.QueryRow(ctx, `
+WITH RECURSIVE descendants AS (
+  SELECT id
+  FROM accounts
+  WHERE entity_id=$1 AND parent_id=(SELECT id FROM accounts WHERE entity_id=$1 AND public_id=$2)
+  UNION ALL
+  SELECT a.id
+  FROM accounts a
+  JOIN descendants d ON a.parent_id=d.id
+  WHERE a.entity_id=$1
+)
+SELECT EXISTS(SELECT 1 FROM descendants WHERE id::text=$3)`, entityID, accountPublicID, id).Scan(&cycle); err != nil {
+			return nil, "", "", err
+		}
+		if cycle {
+			return nil, "", "", fmt.Errorf("account cannot be moved under its descendant")
+		}
+	}
+	return id, parentPublicID, code, nil
 }
 
 type CreateAccountInput struct {
@@ -121,25 +185,17 @@ func (s *Store) CreateAccount(ctx context.Context, user User, e Entity, in Creat
 
 	id, _ := ids.UUIDv7()
 	pub, _ := ids.ULID()
-	var parent any
-	if in.ParentPublicID != "" {
-		var pid, parentType string
-		var active bool
-		if err := s.Pool.QueryRow(ctx, `SELECT id::text,account_type,active FROM accounts WHERE entity_id=$1 AND public_id=$2`, e.ID, in.ParentPublicID).Scan(&pid, &parentType, &active); err != nil {
-			return Account{}, err
-		}
-		if !active {
-			return Account{}, fmt.Errorf("parent account is inactive")
-		}
-		if parentType != in.Type {
-			return Account{}, fmt.Errorf("parent account must have the same fundamental account type")
-		}
-		parent = pid
+	parent, parentPublic, _, err := resolveAccountParent(ctx, s.Pool, e.ID, "", in.Type, in.ParentPublicID)
+	if err != nil {
+		return Account{}, err
 	}
 	var a Account
-	err := s.Pool.QueryRow(ctx, `INSERT INTO accounts(id,public_id,entity_id,code,name,parent_id,account_type,account_subtype,is_postable,created_by)
+	err = s.Pool.QueryRow(ctx, `INSERT INTO accounts(id,public_id,entity_id,code,name,parent_id,account_type,account_subtype,is_postable,created_by)
 VALUES($1,$2,$3,$4,$5,$6,$7,NULLIF($8,''),$9,$10)
 RETURNING public_id::text,code,name,account_type,account_subtype,is_postable,active`, id, pub, e.ID, in.Code, in.Name, parent, in.Type, in.Subtype, in.Postable, user.ID).Scan(&a.PublicID, &a.Code, &a.Name, &a.Type, &a.Subtype, &a.Postable, &a.Active)
+	if parentPublic != "" {
+		a.ParentPublicID = &parentPublic
+	}
 	if err == nil {
 		_ = s.Audit(ctx, user, &e, "COA_CREATE", "ACCOUNT", &pub, "SUCCESS", map[string]any{"code": in.Code, "name": in.Name})
 	}

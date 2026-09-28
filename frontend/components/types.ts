@@ -20,8 +20,10 @@ export type Account = {
   Name: string;
   Type: "ASSET" | "LIABILITY" | "EQUITY" | "INCOME" | "EXPENSE";
   Subtype?: string | null;
+  ParentPublicID?: string | null;
   Postable: boolean;
   Active: boolean;
+  HierarchyLocked?: boolean;
 };
 
 export type FinancialAccount = {

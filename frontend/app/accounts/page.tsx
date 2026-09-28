@@ -1,114 +1,130 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useEntity } from "@/components/EntityContext";
 import type { Account } from "@/components/types";
 import { canConfigureAccounting } from "@/lib/permissions";
 import { withEntity } from "@/lib/entitySelection";
+import { accountMutationControls, addChildDraft, afterAccountSave, blankDraft, buildAccountTree, draftChanged, editDraft, type AccountDraft } from "@/lib/accountTree";
+import AccountModal from "@/components/AccountModal";
 import TableStateRows from "@/components/TableStateRows";
 
 export default function Accounts() {
   const { entity } = useEntity();
-  const mayConfigure=canConfigureAccounting(entity?.Role);
-  const [items,setItems] = useState<Account[]>([]);
-  const [error,setError] = useState("");
-  const [message,setMessage] = useState("");
-  const [busy,setBusy] = useState(false);
-  const [loading,setLoading] = useState(true);
-  const [form,setForm] = useState({Code:"",Name:"",Type:"EXPENSE",Subtype:"",ParentPublicID:"",Postable:true});
-  const [editing,setEditing]=useState<Account|null>(null);
-  const [edit,setEdit]=useState({Name:"",Subtype:"",Active:true});
+  const mayConfigure = canConfigureAccounting(entity?.Role);
+  const controls = accountMutationControls(entity?.Role);
+  const [items, setItems] = useState<Account[]>([]);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [draft, setDraft] = useState<AccountDraft | null>(null);
+  const [initial, setInitial] = useState<AccountDraft | null>(null);
+  const opener = useRef<HTMLButtonElement | null>(null);
 
-  const load=async()=>{
-    if(!entity)return;
-    setLoading(true);setError("");
-    try{
-      const result=await api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`);
-      setItems(result.items);
-    }catch(e){setError(e instanceof Error?e.message:String(e))}
-    finally{setLoading(false)}
+  const load = async () => {
+    if (!entity) return;
+    setLoading(true); setError("");
+    try {
+      const result = await api<{ items: Account[] }>(`/entities/${entity.PublicID}/accounts`);
+      setItems(result.items ?? []);
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setLoading(false); }
   };
-  useEffect(()=>{
-    if(!entity)return;
+  useEffect(() => {
+    if (!entity) return;
     setItems([]);
-    setEditing(null);
+    setDraft(null);
     void load();
-  },[entity?.PublicID]);
+  }, [entity?.PublicID]);
 
-  async function create(){
-    if(!entity)return;
-    setBusy(true);setError("");setMessage("");
-    try{
-      await api(`/entities/${entity.PublicID}/accounts`,{method:"POST",body:JSON.stringify(form)});
-      setForm({Code:"",Name:"",Type:"EXPENSE",Subtype:"",ParentPublicID:"",Postable:true});
-      setMessage("Account created.");load();
-    }catch(e){setError(e instanceof Error?e.message:String(e))}
-    finally{setBusy(false)}
+  function openDraft(next: AccountDraft, button: HTMLButtonElement) {
+    opener.current = button;
+    setDraft(next);
+    setInitial(next);
+    setError("");
+    setMessage("");
   }
 
-  function startEdit(account:Account){
-    setEditing(account);
-    setEdit({Name:account.Name,Subtype:account.Subtype??"",Active:account.Active});
-    setError("");setMessage("");
+  function closeDraft() {
+    setDraft(null);
+    setInitial(null);
+    opener.current?.focus();
   }
 
-  async function saveEdit(){
-    if(!entity||!editing)return;
-    setBusy(true);setError("");setMessage("");
-    try{
-      await api(`/entities/${entity.PublicID}/accounts/${editing.PublicID}`,{
-        method:"PUT",
-        body:JSON.stringify(edit),
-      });
-      setEditing(null);setMessage("Account updated.");load();
-    }catch(e){setError(e instanceof Error?e.message:String(e))}
-    finally{setBusy(false)}
+  async function save() {
+    if (!entity || !draft) return;
+    setBusy(true);
+    setDraft({ ...draft, error: "" });
+    try {
+      if (draft.mode === "create") {
+        await api(`/entities/${entity.PublicID}/accounts`, {
+          method: "POST",
+          body: JSON.stringify({
+            Code: draft.code,
+            Name: draft.name.trim(),
+            Type: draft.type,
+            Subtype: draft.subtype.trim(),
+            ParentPublicID: draft.parentPublicID,
+            Postable: draft.postable,
+          }),
+        });
+        setMessage("Account created.");
+      } else {
+        await api(`/entities/${entity.PublicID}/accounts/${draft.publicID}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            Name: draft.name.trim(),
+            Subtype: draft.subtype.trim(),
+            ParentPublicID: draft.parentPublicID,
+            Active: draft.active,
+          }),
+        });
+        setMessage("Account updated.");
+      }
+      const next = afterAccountSave(draft, "");
+      setDraft(next);
+      setInitial(next);
+      opener.current?.focus();
+      await load();
+    } catch (e) {
+      const messageText = e instanceof Error ? e.message : String(e);
+      setDraft(afterAccountSave(draft, messageText));
+    } finally { setBusy(false); }
   }
+
+  const tree = buildAccountTree(items);
 
   return <>
-    <div className="page-head"><div><h1>Chart of Accounts</h1><p>Hierarchical accounts for {entity?.Name}.</p></div></div>
-    {error&&<div className="alert error" role="alert">{error}</div>}
-    {message&&<div className="alert success" role="status" aria-live="polite">{message}</div>}
+    <div className="page-head">
+      <div><h1>Chart of Accounts</h1><p>Hierarchical accounts for {entity?.Name}.</p></div>
+      {controls.create && <button type="button" onClick={event => openDraft(blankDraft(), event.currentTarget)}>+ New account</button>}
+    </div>
+    {error && <div className="alert error" role="alert">{error}</div>}
+    {message && <div className="alert success" role="status" aria-live="polite">{message}</div>}
+    {!mayConfigure && <div className="alert">Your {entity?.Role ?? "VIEWER"} role can view the Chart of Accounts and ledgers but cannot change account configuration.</div>}
 
-    {mayConfigure&&editing&&<div className="card form" style={{marginBottom:16}}>
-      <div className="page-head" style={{marginBottom:0}}>
-        <div><h1 style={{fontSize:20}}>Edit account</h1><p>{editing.Code} · {editing.Type} · {editing.Postable?"Posting account":"Header account"}</p></div>
-        <button type="button" className="secondary" onClick={()=>setEditing(null)}>Cancel</button>
-      </div>
-      <div className="alert">Code, fundamental account type, hierarchy and posting/header identity are protected accounting fields in this editor.</div>
-      <div className="form-grid">
-        <div className="field"><label>Name</label><input value={edit.Name} onChange={e=>setEdit({...edit,Name:e.target.value})}/></div>
-        <div className="field"><label>Subtype</label><input value={edit.Subtype} onChange={e=>setEdit({...edit,Subtype:e.target.value})}/></div>
-        <div className="field"><label>Status</label><select value={edit.Active?"ACTIVE":"INACTIVE"} onChange={e=>setEdit({...edit,Active:e.target.value==="ACTIVE"})}><option>ACTIVE</option><option>INACTIVE</option></select></div>
-      </div>
-      <div className="actions">
-        <button type="button" disabled={busy||!edit.Name.trim()} onClick={saveEdit}>{busy?"Saving…":"Save changes"}</button>
-        <span className="muted">To deactivate a parent, deactivate active descendants and linked financial accounts first.</span>
-      </div>
-    </div>}
+    <AccountModal
+      draft={draft}
+      accounts={items}
+      busy={busy}
+      dirty={Boolean(draft && initial && draftChanged(draft, initial))}
+      onChange={setDraft}
+      onClose={closeDraft}
+      onSubmit={() => { void save(); }}
+    />
 
-    {mayConfigure&&<div className="card form" style={{marginBottom:16}}>
-      <h3>New account</h3>
-      <div className="form-grid">
-        <div className="field"><label>Code</label><input value={form.Code} onChange={e=>setForm({...form,Code:e.target.value})}/></div>
-        <div className="field"><label>Name</label><input value={form.Name} onChange={e=>setForm({...form,Name:e.target.value})}/></div>
-        <div className="field"><label>Type</label><select value={form.Type} onChange={e=>setForm({...form,Type:e.target.value})}>{["ASSET","LIABILITY","EQUITY","INCOME","EXPENSE"].map(x=><option key={x}>{x}</option>)}</select></div>
-        <div className="field"><label>Parent</label><select value={form.ParentPublicID} onChange={e=>setForm({...form,ParentPublicID:e.target.value})}><option value="">None</option>{items.filter(a=>a.Active).map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>
-        <div className="field"><label>Subtype</label><input value={form.Subtype} onChange={e=>setForm({...form,Subtype:e.target.value})}/></div>
-      </div>
-      <button type="button" disabled={busy||!form.Code||!form.Name} onClick={create}>Create account</button>
-    </div>}
-
-    {!mayConfigure&&<div className="alert">Your {entity?.Role??"VIEWER"} role can view the Chart of Accounts and ledgers but cannot change account configuration.</div>}
-
-    <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Subtype</th><th>Posting</th><th>Status</th><th></th></tr></thead><tbody>{items.map(a=><tr key={a.PublicID}>
-      <td><Link className="table-link" href={withEntity(`/accounts/${a.PublicID}/ledger`, entity?.PublicID??"")}>{a.Code}</Link></td>
-      <td><Link className="table-link" href={withEntity(`/accounts/${a.PublicID}/ledger`, entity?.PublicID??"")}>{a.Name}</Link></td>
-      <td>{a.Type}</td><td>{a.Subtype??"—"}</td><td>{a.Postable?"Yes":"Header"}</td>
-      <td><span className={`badge ${a.Active?"POSTED":"VOIDED"}`}>{a.Active?"ACTIVE":"INACTIVE"}</span></td>
-      <td>{mayConfigure?<button type="button" className="secondary compact" onClick={()=>startEdit(a)}>Edit</button>:<span className="muted">Read-only</span>}</td>
-    </tr>)}<TableStateRows loading={loading&&items.length===0} empty={!loading&&items.length===0} columns={7} emptyText="No accounts configured for this entity."/></tbody></table></div>
+    <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Subtype</th><th>Posting</th><th>Status</th><th></th></tr></thead><tbody>{tree.map(({ account, depth }) => <tr key={account.PublicID}>
+      <td><Link className="table-link" href={withEntity(`/accounts/${account.PublicID}/ledger`, entity?.PublicID ?? "")}>{account.Code}</Link></td>
+      <td><span className="account-name" style={{ paddingLeft: depth * 16 }}><Link className="table-link" href={withEntity(`/accounts/${account.PublicID}/ledger`, entity?.PublicID ?? "")}>{account.Name}</Link></span></td>
+      <td>{account.Type}</td><td>{account.Subtype || "—"}</td><td>{account.Postable ? "Posting" : "Header"}</td>
+      <td><span className={`badge ${account.Active ? "POSTED" : "VOIDED"}`}>{account.Active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td>{controls.edit ? <div className="account-actions">
+        <button type="button" className="secondary compact" onClick={event => openDraft(editDraft(account), event.currentTarget)}>Edit</button>
+        {controls.addChild && !account.Postable && account.Active && <button type="button" className="secondary compact" onClick={event => openDraft(addChildDraft(account), event.currentTarget)}>Add child</button>}
+      </div> : <span className="muted">Read-only</span>}</td>
+    </tr>)}<TableStateRows loading={loading && items.length === 0} empty={!loading && items.length === 0} columns={7} emptyText="No accounts configured for this entity." /></tbody></table></div>
   </>;
 }

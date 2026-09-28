@@ -89,3 +89,6 @@
 .pager button.current{background:#1c493e}
 .main,.content{min-width:0}
 .table-wrap input{min-width:0}
+.account-name{display:block}
+.account-actions{display:flex;gap:6px;flex-wrap:wrap}
+.account-dialog .form-grid{margin-top:12px}
