@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import type { Account, Entity, FinancialAccount } from "@/components/types";
+import type { Account, Entity, FinancialAccount, SalesChannel } from "@/components/types";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
 type Contact={id:string;display_name:string;active:boolean};
@@ -22,6 +22,7 @@ type Draft={
   currency:string;
   contact?:{id?:string|null;name?:string|null};
   financial_account?:{id?:string|null;name?:string|null};
+  sales_channel?:{id?:string|null;code?:string|null;name?:string|null};
   splits:Split[];
 };
 
@@ -47,6 +48,8 @@ export default function DraftTransactionActions({entity,draft,onChanged}:Props){
   const [accounts,setAccounts]=useState<Account[]>([]);
   const [financial,setFinancial]=useState<FinancialAccount[]>([]);
   const [contacts,setContacts]=useState<Contact[]>([]);
+  const [salesChannels,setSalesChannels]=useState<SalesChannel[]>([]);
+  const [salesChannelID,setSalesChannelID]=useState(draft.sales_channel?.id??"");
   const [date,setDate]=useState(draft.date);
   const [description,setDescription]=useState(draft.description);
   const [financialID,setFinancialID]=useState(draft.financial_account?.id??"");
@@ -71,17 +74,20 @@ export default function DraftTransactionActions({entity,draft,onChanged}:Props){
     setDescription(draft.description);
     setFinancialID(draft.financial_account?.id??"");
     setContactID(draft.contact?.id??"");
+    setSalesChannelID(draft.sales_channel?.id??"");
     setSplits(draft.splits.map(x=>({AccountPublicID:x.account_id,Amount:x.amount,Description:x.description})));
-    setAccounts([]);setFinancial([]);setContacts([]);setError("");
+    setAccounts([]);setFinancial([]);setContacts([]);setSalesChannels([]);setError("");
     Promise.all([
       api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
       api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
-      api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`)
-    ]).then(([a,f,c])=>{
+      api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`),
+      api<{items:SalesChannel[]}>(`/entities/${entity.PublicID}/sales-channels`)
+    ]).then(([a,f,c,sc])=>{
       if(cancelled)return;
       setAccounts(a.items);
       setFinancial(f.items.filter(x=>x.Active));
       setContacts(c.items.filter(x=>x.active));
+      setSalesChannels(sc.items.filter(x=>x.active||x.id===draft.sales_channel?.id));
     }).catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
       .finally(()=>{if(!cancelled)setLoadingRefs(false)});
     return()=>{cancelled=true};
@@ -95,7 +101,8 @@ export default function DraftTransactionActions({entity,draft,onChanged}:Props){
   const total=splits.reduce((sum,x)=>sum+(Number(x.Amount)||0),0);
   const ready=!loadingRefs&&Boolean(
     date&&description.trim()&&financialID&&splits.length&&
-    splits.every(x=>x.AccountPublicID&&Number(x.Amount)>0)
+    splits.every(x=>x.AccountPublicID&&Number(x.Amount)>0)&&
+    (draft.type!=="INCOME"||salesChannels.filter(x=>x.active).length===0||Boolean(salesChannelID))
   );
 
   function closeEdit(){
@@ -116,6 +123,7 @@ export default function DraftTransactionActions({entity,draft,onChanged}:Props){
           FinancialAccountPublicID:financialID,
           Currency:selectedFinancial?.Currency??draft.currency,
           ContactPublicID:contactID,
+          SalesChannelPublicID:draft.type==="INCOME"?salesChannelID:"",
           Splits:splits
         })
       });
@@ -174,6 +182,7 @@ export default function DraftTransactionActions({entity,draft,onChanged}:Props){
             <div className="field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
             <div className="field"><label>{draft.type==="EXPENSE"?"Paid from":"Received into"}</label><select value={financialID} disabled={loadingRefs} onChange={e=>setFinancialID(e.target.value)}><option value="">{loadingRefs?"Loading accounts…":"Choose…"}</option>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
             <div className="field"><label>{draft.type==="EXPENSE"?"Payee":"Payer"} <span className="muted">(optional)</span></label><select value={contactID} disabled={loadingRefs} onChange={e=>setContactID(e.target.value)}><option value="">{loadingRefs?"Loading contacts…":"None"}</option>{contacts.map(x=><option key={x.id} value={x.id}>{x.display_name}</option>)}</select></div>
+            {draft.type==="INCOME"&&<div className="field"><label>Sales channel{salesChannels.some(x=>x.active)?"":" (optional)"}</label><select value={salesChannelID} disabled={loadingRefs||salesChannels.length===0} onChange={e=>setSalesChannelID(e.target.value)}><option value="">{salesChannels.length?"Choose…":"No channels"}</option>{salesChannels.map(x=><option key={x.id} value={x.id}>{x.name}{x.active?"":" (inactive)"}</option>)}</select></div>}
             <div className="field span-2"><label>Description</label><input value={description} onChange={e=>setDescription(e.target.value)}/></div>
           </div>
 
