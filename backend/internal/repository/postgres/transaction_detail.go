@@ -6,13 +6,11 @@ import (
 )
 
 func (s *Store) TransactionDetail(ctx context.Context, entityID, publicID string) (map[string]any, error) {
-	var (
-		internalID, id, typ, status, date, description, currency, total string
-		contactID, contactName, contactSegment, financialID, financialName *string
-		salesChannelID, salesChannelCode, salesChannelName                 *string
-		originalID, reversalID, voidReason                                 *string
-		postedAt, voidedAt                                              *time.Time
-	)
+	var internalID, id, typ, status, date, description, currency, total string
+	var contactID, contactName, contactSegment, financialID, financialName *string
+	var salesChannelID, salesChannelCode, salesChannelName *string
+	var originalID, reversalID, voidReason *string
+	var postedAt, voidedAt *time.Time
 
 	err := s.Pool.QueryRow(ctx, `
 SELECT t.id::text,t.public_id::text,t.transaction_type,t.status,t.transaction_date::text,
