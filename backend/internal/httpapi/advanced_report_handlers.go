@@ -108,7 +108,6 @@ type stringError string
 func (e stringError) Error() string { return string(e) }
 func errString(v string) error      { return stringError(v) }
 
-
 func (s *Server) salesAnalysis(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
 	from, to, err := reportRange(r, a.Entity)
