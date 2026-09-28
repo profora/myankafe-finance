@@ -29,6 +29,14 @@ ALTER TABLE transactions
   REFERENCES sales_channels(id,entity_id)
   ON DELETE RESTRICT;
 
+UPDATE transactions t
+SET customer_segment_snapshot=c.customer_segment
+FROM contacts c
+WHERE c.id=t.contact_id
+  AND c.entity_id=t.entity_id
+  AND c.customer_segment IS NOT NULL
+  AND t.customer_segment_snapshot IS NULL;
+
 CREATE INDEX idx_sales_channels_entity_active ON sales_channels(entity_id,active,name);
 CREATE INDEX idx_transactions_sales_channel ON transactions(entity_id,sales_channel_id)
   WHERE sales_channel_id IS NOT NULL;
