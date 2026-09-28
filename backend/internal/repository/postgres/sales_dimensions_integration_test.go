@@ -124,6 +124,17 @@ func TestSalesChannelValidation(t *testing.T) {
 		t.Fatal("expected sales channel on expense to be rejected")
 	}
 
+	if _, err := s.CreateTransaction(ctx, user, entity, CreateTransactionInput{
+		Type:                     "INCOME",
+		Date:                     "2026-10-05",
+		Description:              "missing required channel",
+		FinancialAccountPublicID: financialAccount,
+		Currency:                 "MMK",
+		Splits:                   []SplitInput{{AccountPublicID: incomeAccount, Amount: "1000"}},
+	}); err == nil {
+		t.Fatal("expected income without a channel to be rejected while active channels exist")
+	}
+
 	if _, err := s.UpdateSalesChannel(ctx, user, entity, channel.Code, channel.Name, false); err != nil {
 		t.Fatal(err)
 	}
