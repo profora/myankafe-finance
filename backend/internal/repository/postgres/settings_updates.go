@@ -7,12 +7,13 @@ import (
 )
 
 type UpdateContactInput struct {
-	Type        string
-	DisplayName string
-	Phone       string
-	Email       string
-	Notes       string
-	Active      bool
+	Type            string
+	DisplayName     string
+	Phone           string
+	Email           string
+	Notes           string
+	CustomerSegment string
+	Active          bool
 }
 
 func (s *Store) UpdateContact(ctx context.Context, user User, e Entity, publicID string, in UpdateContactInput) (map[string]any, error) {
@@ -24,6 +25,10 @@ func (s *Store) UpdateContact(ctx context.Context, user User, e Entity, publicID
 	in.DisplayName = strings.TrimSpace(in.DisplayName)
 	if in.DisplayName == "" {
 		return nil, fmt.Errorf("display name is required")
+	}
+	in.CustomerSegment, err = NormalizeCustomerSegment(in.CustomerSegment)
+	if err != nil {
+		return nil, err
 	}
 
 	tx, err := s.Pool.Begin(ctx)
@@ -51,17 +56,19 @@ SET contact_type=$3,
     phone=NULLIF($5,''),
     email=NULLIF($6,''),
     notes=NULLIF($7,''),
-    active=$8,
+    customer_segment=NULLIF($8,''),
+    active=$9,
     updated_at=now()
 WHERE id=$1 AND entity_id=$2`,
-		id, e.ID, in.Type, in.DisplayName, strings.TrimSpace(in.Phone), strings.TrimSpace(in.Email), strings.TrimSpace(in.Notes), in.Active); err != nil {
+		id, e.ID, in.Type, in.DisplayName, strings.TrimSpace(in.Phone), strings.TrimSpace(in.Email), strings.TrimSpace(in.Notes), in.CustomerSegment, in.Active); err != nil {
 		return nil, err
 	}
 
 	if err := insertAuditTx(ctx, tx, user, e, "CONTACT_UPDATE", "CONTACT", publicID, map[string]any{
-		"contact_type": in.Type,
-		"display_name": in.DisplayName,
-		"active":       in.Active,
+		"contact_type":     in.Type,
+		"display_name":     in.DisplayName,
+		"customer_segment": in.CustomerSegment,
+		"active":           in.Active,
 	}); err != nil {
 		return nil, err
 	}
@@ -75,8 +82,9 @@ WHERE id=$1 AND entity_id=$2`,
 		"display_name": in.DisplayName,
 		"phone":        in.Phone,
 		"email":        in.Email,
-		"notes":        in.Notes,
-		"active":       in.Active,
+		"notes":             in.Notes,
+		"customer_segment": in.CustomerSegment,
+		"active":            in.Active,
 	}, nil
 }
 
