@@ -26,6 +26,7 @@ const nav=[
   {href:"/settings/entities",label:"Entities",group:"Settings",show:canManageEntitySettings},
   {href:"/settings/currencies",label:"Currencies",group:"Settings",ownerOnly:true},
   {href:"/settings/contact-types",label:"Contact Types",group:"Settings",show:canConfigureAccounting},
+  {href:"/settings/sales-channels",label:"Sales Channels",group:"Settings",show:canConfigureAccounting},
   {href:"/settings/users",label:"Users & Access",group:"Settings",ownerOnly:true},
   {href:"/settings/system",label:"System",group:"Settings",ownerOnly:true},
   {href:"/settings/security",label:"Security",group:"Settings"},
