@@ -29,7 +29,7 @@ func (s *Server) createContact(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err)
 		return
 	}
-	v, err := s.Store.CreateContact(r.Context(), a.User, a.Entity, in["contact_type"], in["display_name"], in["phone"], in["email"], in["notes"])
+	v, err := s.Store.CreateContact(r.Context(), a.User, a.Entity, in["contact_type"], in["display_name"], in["phone"], in["email"], in["notes"], in["customer_segment"])
 	if err != nil {
 		fail(w, 400, err)
 		return
