@@ -185,7 +185,6 @@ func (s *Server) listAuditActions(w http.ResponseWriter, r *http.Request) {
 	write(w, http.StatusOK, map[string]any{"items": items})
 }
 
-
 func (s *Server) listSalesChannels(w http.ResponseWriter, r *http.Request) {
 	a := getAccess(r)
 	items, err := s.Store.ListSalesChannels(r.Context(), a.Entity.ID)
