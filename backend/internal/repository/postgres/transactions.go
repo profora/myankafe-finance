@@ -63,12 +63,17 @@ func (s *Store) CreateTransaction(ctx context.Context, user User, e Entity, in C
 	}
 
 	var contactID any
+	var customerSegmentSnapshot any
 	if in.ContactPublicID != "" {
 		var cid string
-		if err := tx.QueryRow(ctx, `SELECT id::text FROM contacts WHERE entity_id=$1 AND public_id=$2 AND active=true`, e.ID, in.ContactPublicID).Scan(&cid); err != nil {
+		var segment *string
+		if err := tx.QueryRow(ctx, `SELECT id::text,customer_segment FROM contacts WHERE entity_id=$1 AND public_id=$2 AND active=true`, e.ID, in.ContactPublicID).Scan(&cid, &segment); err != nil {
 			return Transaction{}, err
 		}
 		contactID = cid
+		if segment != nil {
+			customerSegmentSnapshot = *segment
+		}
 	}
 	total := new(big.Rat)
 	type resolved struct{ id, amount, desc string }
@@ -98,8 +103,8 @@ func (s *Store) CreateTransaction(ctx context.Context, user User, e Entity, in C
 	}
 	id, _ := ids.UUIDv7()
 	pub, _ := ids.ULID()
-	if _, err := tx.Exec(ctx, `INSERT INTO transactions(id,public_id,entity_id,transaction_type,status,transaction_date,description,contact_id,primary_financial_account_id,currency_code,total_amount,sales_channel_id,created_by)
-VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7,$8,$9,$10,$11,$12)`, id, pub, e.ID, in.Type, in.Date, in.Description, contactID, faID, in.Currency, total.FloatString(6), salesChannelID, user.ID); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO transactions(id,public_id,entity_id,transaction_type,status,transaction_date,description,contact_id,primary_financial_account_id,currency_code,total_amount,sales_channel_id,customer_segment_snapshot,created_by)
+VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7,$8,$9,$10,$11,$12,$13)`, id, pub, e.ID, in.Type, in.Date, in.Description, contactID, faID, in.Currency, total.FloatString(6), salesChannelID, customerSegmentSnapshot, user.ID); err != nil {
 		return Transaction{}, err
 	}
 	for i, sp := range rr {
@@ -299,14 +304,19 @@ WHERE entity_id=$1 AND public_id=$2 AND active=true`, e.ID, in.FinancialAccountP
 	}
 
 	var contactID any
+	var customerSegmentSnapshot any
 	if in.ContactPublicID != "" {
 		var cid string
+		var segment *string
 		if err := tx.QueryRow(ctx, `
-SELECT id::text FROM contacts
-WHERE entity_id=$1 AND public_id=$2 AND active=true`, e.ID, in.ContactPublicID).Scan(&cid); err != nil {
+SELECT id::text,customer_segment FROM contacts
+WHERE entity_id=$1 AND public_id=$2 AND active=true`, e.ID, in.ContactPublicID).Scan(&cid, &segment); err != nil {
 			return Transaction{}, err
 		}
 		contactID = cid
+		if segment != nil {
+			customerSegmentSnapshot = *segment
+		}
 	}
 
 	total := new(big.Rat)
@@ -351,9 +361,10 @@ SET transaction_type=$3,
     currency_code=$8,
     total_amount=$9,
     sales_channel_id=$10,
+    customer_segment_snapshot=$11,
     updated_at=now()
 WHERE id=$1 AND entity_id=$2`,
-		id, e.ID, in.Type, in.Date, in.Description, contactID, faID, in.Currency, total.FloatString(6), salesChannelID); err != nil {
+		id, e.ID, in.Type, in.Date, in.Description, contactID, faID, in.Currency, total.FloatString(6), salesChannelID, customerSegmentSnapshot); err != nil {
 		return Transaction{}, err
 	}
 
