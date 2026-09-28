@@ -78,16 +78,26 @@ func (s *Store) CreateSalesChannel(ctx context.Context, user User, e Entity, in 
 	if name == "" {
 		return SalesChannel{}, fmt.Errorf("sales channel name is required")
 	}
+
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return SalesChannel{}, err
+	}
+	defer tx.Rollback(ctx)
+
 	id, _ := ids.UUIDv7()
 	pub, _ := ids.ULID()
-	if _, err := s.Pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 INSERT INTO sales_channels(id,public_id,entity_id,code,name,active,created_by)
 VALUES($1,$2,$3,$4,$5,$6,$7)`, id, pub, e.ID, code, name, in.Active, user.ID); err != nil {
 		return SalesChannel{}, err
 	}
-	if err := s.Audit(ctx, user, &e, "SALES_CHANNEL_CREATE", "SALES_CHANNEL", &pub, "SUCCESS", map[string]any{
+	if err := insertAuditTx(ctx, tx, user, e, "SALES_CHANNEL_CREATE", "SALES_CHANNEL", pub, map[string]any{
 		"code": code, "name": name, "active": in.Active,
 	}); err != nil {
+		return SalesChannel{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return SalesChannel{}, err
 	}
 	return SalesChannel{PublicID: pub, Code: code, Name: name, Active: in.Active}, nil
@@ -141,6 +151,16 @@ WHERE id=$1 AND entity_id=$2`, id, e.ID, name, active); err != nil {
 func resolveSalesChannelTx(ctx context.Context, tx pgx.Tx, entityID, publicID string) (any, error) {
 	publicID = strings.TrimSpace(publicID)
 	if publicID == "" {
+		var activeCount int
+		if err := tx.QueryRow(ctx, `
+SELECT count(*)
+FROM sales_channels
+WHERE entity_id=$1 AND active=true`, entityID).Scan(&activeCount); err != nil {
+			return nil, err
+		}
+		if activeCount > 0 {
+			return nil, fmt.Errorf("sales channel is required for income transactions")
+		}
 		return nil, nil
 	}
 	var id string
