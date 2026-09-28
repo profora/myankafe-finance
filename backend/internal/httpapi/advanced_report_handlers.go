@@ -107,3 +107,23 @@ type stringError string
 
 func (e stringError) Error() string { return string(e) }
 func errString(v string) error      { return stringError(v) }
+
+
+func (s *Server) salesAnalysis(w http.ResponseWriter, r *http.Request) {
+	a := getAccess(r)
+	from, to, err := reportRange(r, a.Entity)
+	if err != nil {
+		fail(w, http.StatusBadRequest, err)
+		return
+	}
+	items, err := s.Store.SalesAnalysis(r.Context(), a.Entity.ID, from, to)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err)
+		return
+	}
+	write(w, http.StatusOK, map[string]any{
+		"items": items,
+		"from":  from.Format("2006-01-02"),
+		"to":    to.Format("2006-01-02"),
+	})
+}
