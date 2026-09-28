@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { dateInTimeZone } from "@/lib/date";
-import type { Account, Entity, FinancialAccount, Transaction } from "@/components/types";
+import type { Account, Entity, FinancialAccount, SalesChannel, Transaction } from "@/components/types";
 import { withEntity } from "@/lib/entitySelection";
 
 type Contact={id:string;display_name:string;contact_type:string;active:boolean};
@@ -30,6 +30,8 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
   const [accounts,setAccounts]=useState<Account[]>([]);
   const [financial,setFinancial]=useState<FinancialAccount[]>([]);
   const [contacts,setContacts]=useState<Contact[]>([]);
+  const [salesChannels,setSalesChannels]=useState<SalesChannel[]>([]);
+  const [salesChannelID,setSalesChannelID]=useState("");
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [attachments,setAttachments]=useState<File[]>([]);
@@ -58,19 +60,20 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
     if(!open||!entity)return;
     let cancelled=false;
     setLoadingRefs(true);setError("");
-    setAccounts([]);setFinancial([]);setContacts([]);
-    setFinancialID("");setToFinancialID("");setAccountID("");setContactID("");
+    setAccounts([]);setFinancial([]);setContacts([]);setSalesChannels([]);
+    setFinancialID("");setToFinancialID("");setAccountID("");setContactID("");setSalesChannelID("");
     setDescription("");setAmount("");setToAmount("");setFeeAmount("");setFeeAccountID("");setAttachments([]);
     emptyFiles(fileRef.current);
     setDate(dateInTimeZone(entity.Timezone));
     Promise.all([
       api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
       api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
-      api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`)
-    ]).then(([a,f,c])=>{
+      api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`),
+      api<{items:SalesChannel[]}>(`/entities/${entity.PublicID}/sales-channels`)
+    ]).then(([a,f,c,sc])=>{
       if(cancelled)return;
       const activeFinancial=f.items.filter(x=>x.Active);
-      setAccounts(a.items);setFinancial(activeFinancial);setContacts(c.items.filter(x=>x.active));
+      setAccounts(a.items);setFinancial(activeFinancial);setContacts(c.items.filter(x=>x.active));setSalesChannels(sc.items.filter(x=>x.active));
       setFinancialID(activeFinancial[0]?.PublicID??"");
       setToFinancialID(activeFinancial[1]?.PublicID??activeFinancial[0]?.PublicID??"");
       const want=kind==="INCOME"?"INCOME":"EXPENSE";
@@ -86,7 +89,7 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
 
   function resetAndClose(){
     if(busy)return;
-    setDescription("");setAmount("");setToAmount("");setFeeAmount("");setFeeAccountID("");setContactID("");setAttachments([]);setError("");
+    setDescription("");setAmount("");setToAmount("");setFeeAmount("");setFeeAccountID("");setContactID("");setSalesChannelID("");setAttachments([]);setError("");
     emptyFiles(fileRef.current);
     onClose();
   }
@@ -111,6 +114,7 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
           FinancialAccountPublicID:fromFinancial.PublicID,
           Currency:fromFinancial.Currency,
           ContactPublicID:contactID,
+          SalesChannelPublicID:kind==="INCOME"?salesChannelID:"",
           Splits:[{AccountPublicID:accountID,Amount:amount,Description:""}]
         })
       });
@@ -164,7 +168,7 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
   const sameCurrency=Boolean(transfer&&fromFinancial&&toFinancial&&fromFinancial.Currency===toFinancial.Currency);
   const ready=!loadingRefs&&(transfer
     ? Boolean(description.trim()&&financialID&&toFinancialID&&financialID!==toFinancialID&&Number(amount)>0&&Number(toAmount)>0&&(!sameCurrency||!(Number(feeAmount)>0)||feeAccountID))
-    : Boolean(description.trim()&&financialID&&accountID&&Number(amount)>0));
+    : Boolean(description.trim()&&financialID&&accountID&&Number(amount)>0&&(kind!=="INCOME"||salesChannels.length===0||salesChannelID)));
 
   return <dialog ref={dialogRef} className="dialog entry-dialog" aria-labelledby={titleID} aria-describedby={descriptionID} aria-busy={loadingRefs||busy} onCancel={e=>{e.preventDefault();resetAndClose()}}>
     <div className="dialog-card">
@@ -184,6 +188,7 @@ export default function TransactionEntryModal({open,kind,entity,onClose,onSaved}
           {sameCurrency&&<div className="field"><label>Transfer fee</label><input inputMode="decimal" value={feeAmount} onChange={e=>setFeeAmount(e.target.value)} placeholder="0"/></div>}
           {sameCurrency&&<div className="field"><label>Fee expense account</label><select value={feeAccountID} onChange={e=>setFeeAccountID(e.target.value)}><option value="">None</option>{accounts.filter(a=>a.Active&&a.Postable&&a.Type==="EXPENSE").map(a=><option key={a.PublicID} value={a.PublicID}>{a.Code} · {a.Name}</option>)}</select></div>}
           {!transfer&&<div className="field"><label>{kind==="EXPENSE"?"Payee":"Payer"} <span className="muted">(optional)</span></label><select value={contactID} disabled={loadingRefs} onChange={e=>setContactID(e.target.value)}><option value="">{loadingRefs?"Loading contacts…":"None"}</option>{contacts.map(c=><option key={c.id} value={c.id}>{c.display_name}</option>)}</select></div>}
+          {kind==="INCOME"&&<div className="field"><label>Sales channel{salesChannels.length>0?"":" (optional)"}</label><select value={salesChannelID} disabled={loadingRefs||salesChannels.length===0} onChange={e=>setSalesChannelID(e.target.value)}><option value="">{salesChannels.length?"Choose…":"No active channels"}</option>{salesChannels.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select>{!loadingRefs&&salesChannels.length===0&&<span className="muted">Define channels in Settings → Sales Channels.</span>}</div>}
           <div className="field span-2"><label>Description</label><input autoFocus value={description} onChange={e=>setDescription(e.target.value)} placeholder={kind==="EXPENSE"?"e.g. Packaging and ribbons":kind==="INCOME"?"e.g. Flower arrangement sale":"e.g. Move cash to KBZPay"}/></div>
           <div className="field span-2"><label>Attachments <span className="muted">(optional, multiple)</span></label><input ref={fileRef} type="file" multiple accept="image/*,application/pdf,.csv,.txt,.docx,.xlsx" onChange={e=>setAttachments(Array.from(e.target.files??[]))}/>{attachments.length>0&&<div className="attachment-selection">{attachments.map(f=><span key={f.name+f.size} className="file-chip">{f.name}</span>)}</div>}</div>
         </div>
