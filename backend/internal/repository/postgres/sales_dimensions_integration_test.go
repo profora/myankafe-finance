@@ -124,6 +124,7 @@ func TestSalesChannelValidation(t *testing.T) {
 		t.Fatal("expected sales channel on expense to be rejected")
 	}
 
+	incomeAccount := seedIncomeAccount(t, ctx, s, entity, user, "Test Income")
 	if _, err := s.CreateTransaction(ctx, user, entity, CreateTransactionInput{
 		Type:                     "INCOME",
 		Date:                     "2026-10-05",
@@ -138,7 +139,6 @@ func TestSalesChannelValidation(t *testing.T) {
 	if _, err := s.UpdateSalesChannel(ctx, user, entity, channel.Code, channel.Name, false); err != nil {
 		t.Fatal(err)
 	}
-	incomeAccount := seedIncomeAccount(t, ctx, s, entity, user, "Test Income")
 	if _, err := s.CreateTransaction(ctx, user, entity, CreateTransactionInput{
 		Type:                     "INCOME",
 		Date:                     "2026-10-05",
