@@ -8,27 +8,31 @@ import (
 func (s *Store) TransactionDetail(ctx context.Context, entityID, publicID string) (map[string]any, error) {
 	var (
 		internalID, id, typ, status, date, description, currency, total string
-		contactID, contactName, financialID, financialName              *string
-		originalID, reversalID, voidReason                              *string
+		contactID, contactName, contactSegment, financialID, financialName *string
+		salesChannelID, salesChannelCode, salesChannelName                 *string
+		originalID, reversalID, voidReason                                 *string
 		postedAt, voidedAt                                              *time.Time
 	)
 
 	err := s.Pool.QueryRow(ctx, `
 SELECT t.id::text,t.public_id::text,t.transaction_type,t.status,t.transaction_date::text,
        t.description,t.currency_code,t.total_amount::text,
-       c.public_id::text,c.display_name,
+       c.public_id::text,c.display_name,c.customer_segment,
        fa.public_id::text,fa.name,
+       sc.public_id::text,sc.code,sc.name,
        ot.public_id::text,rt.public_id::text,
        t.posted_at,t.voided_at,t.void_reason
 FROM transactions t
 LEFT JOIN contacts c ON c.id=t.contact_id
 LEFT JOIN financial_accounts fa ON fa.id=t.primary_financial_account_id
+LEFT JOIN sales_channels sc ON sc.id=t.sales_channel_id
 LEFT JOIN transactions ot ON ot.id=t.original_transaction_id
 LEFT JOIN transactions rt ON rt.id=t.reversal_transaction_id
 WHERE t.entity_id=$1 AND t.public_id=$2`, entityID, publicID).
 		Scan(
 			&internalID, &id, &typ, &status, &date, &description, &currency, &total,
-			&contactID, &contactName, &financialID, &financialName,
+			&contactID, &contactName, &contactSegment, &financialID, &financialName,
+			&salesChannelID, &salesChannelCode, &salesChannelName,
 			&originalID, &reversalID, &postedAt, &voidedAt, &voidReason,
 		)
 	if err != nil {
@@ -154,8 +158,9 @@ ORDER BY jl.line_no`, journalInternal)
 		"description":             description,
 		"currency":                currency,
 		"total":                   total,
-		"contact":                 map[string]any{"id": contactID, "name": contactName},
+		"contact":                 map[string]any{"id": contactID, "name": contactName, "customer_segment": contactSegment},
 		"financial_account":       map[string]any{"id": financialID, "name": financialName},
+		"sales_channel":           map[string]any{"id": salesChannelID, "code": salesChannelCode, "name": salesChannelName},
 		"original_transaction_id": originalID,
 		"reversal_transaction_id": reversalID,
 		"posted_at":               postedAt,
