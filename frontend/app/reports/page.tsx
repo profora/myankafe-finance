@@ -140,7 +140,7 @@ export default function Reports(){
     </div>
 
     <div className="page-head" style={{marginTop:28}}>
-      <div><h1 style={{fontSize:20}}>Sales by Product & Route to Market</h1><p>Retailer and Distributor come from the contact segment; otherwise the configured transaction sales channel is used.</p></div>
+      <div><h1 style={{fontSize:20}}>Sales by Product & Route to Market</h1><p>Amounts are in {entity?.FunctionalCurrency}. Retailer and Distributor come from the transaction-time contact segment; otherwise the configured sales channel is used.</p></div>
       <button type="button" className="secondary compact" disabled={loading||sales.length===0} onClick={exportSales}>Export CSV</button>
     </div>
     <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Product / income account</th>{salesRoutes.map(route=><th key={route.code}>{route.name}</th>)}<th>Total</th></tr></thead><tbody>
