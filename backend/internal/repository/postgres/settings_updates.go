@@ -77,14 +77,14 @@ WHERE id=$1 AND entity_id=$2`,
 		return nil, err
 	}
 	return map[string]any{
-		"id":           publicID,
-		"contact_type": in.Type,
-		"display_name": in.DisplayName,
-		"phone":        in.Phone,
-		"email":        in.Email,
-		"notes":             in.Notes,
+		"id":               publicID,
+		"contact_type":     in.Type,
+		"display_name":     in.DisplayName,
+		"phone":            in.Phone,
+		"email":            in.Email,
+		"notes":            in.Notes,
 		"customer_segment": in.CustomerSegment,
-		"active":            in.Active,
+		"active":           in.Active,
 	}, nil
 }
 
