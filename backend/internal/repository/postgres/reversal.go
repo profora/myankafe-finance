@@ -23,12 +23,14 @@ func (s *Store) ReverseTransaction(ctx context.Context, user User, e Entity, ori
 	defer tx.Rollback(ctx)
 
 	var originalID, originalType, originalStatus, originalDate, description, currency, total, journalID string
+	var originalContactID, originalSalesChannelID *string
 	if err := tx.QueryRow(ctx, `
-SELECT t.id::text,t.transaction_type,t.status,t.transaction_date::text,t.description,t.currency_code,t.total_amount::text,je.id::text
+SELECT t.id::text,t.transaction_type,t.status,t.transaction_date::text,t.description,t.currency_code,t.total_amount::text,je.id::text,
+       t.contact_id::text,t.sales_channel_id::text
 FROM transactions t
 JOIN journal_entries je ON je.transaction_id=t.id
 WHERE t.entity_id=$1 AND t.public_id=$2
-FOR UPDATE`, e.ID, originalPublicID).Scan(&originalID, &originalType, &originalStatus, &originalDate, &description, &currency, &total, &journalID); err != nil {
+FOR UPDATE`, e.ID, originalPublicID).Scan(&originalID, &originalType, &originalStatus, &originalDate, &description, &currency, &total, &journalID, &originalContactID, &originalSalesChannelID); err != nil {
 		return nil, err
 	}
 	if originalStatus != "POSTED" {
@@ -48,9 +50,9 @@ FOR UPDATE`, e.ID, originalPublicID).Scan(&originalID, &originalType, &originalS
 	reversalDescription := "Reversal: " + description + " — " + reason
 
 	if _, err := tx.Exec(ctx, `
-INSERT INTO transactions(id,public_id,entity_id,transaction_type,status,transaction_date,description,currency_code,total_amount,source_type,original_transaction_id,created_by)
-VALUES($1,$2,$3,'REVERSAL','DRAFT',$4,$5,$6,$7,'USER',$8,$9)`,
-		reversalID, reversalPub, e.ID, reversalDate, reversalDescription, currency, total, originalID, user.ID); err != nil {
+INSERT INTO transactions(id,public_id,entity_id,transaction_type,status,transaction_date,description,currency_code,total_amount,source_type,original_transaction_id,contact_id,sales_channel_id,created_by)
+VALUES($1,$2,$3,'REVERSAL','DRAFT',$4,$5,$6,$7,'USER',$8,$9,$10,$11)`,
+		reversalID, reversalPub, e.ID, reversalDate, reversalDescription, currency, total, originalID, originalContactID, originalSalesChannelID, user.ID); err != nil {
 		return nil, err
 	}
 
