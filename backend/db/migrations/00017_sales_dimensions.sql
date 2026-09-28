@@ -19,7 +19,9 @@ ALTER TABLE contacts
   CHECK(customer_segment IS NULL OR customer_segment IN ('CONSUMER','RETAILER','DISTRIBUTOR','OTHER'));
 
 ALTER TABLE transactions
-  ADD COLUMN sales_channel_id uuid;
+  ADD COLUMN sales_channel_id uuid,
+  ADD COLUMN customer_segment_snapshot varchar(30)
+  CHECK(customer_segment_snapshot IS NULL OR customer_segment_snapshot IN ('CONSUMER','RETAILER','DISTRIBUTOR','OTHER'));
 
 ALTER TABLE transactions
   ADD CONSTRAINT fk_transactions_sales_channel_entity
@@ -40,6 +42,7 @@ DROP INDEX IF EXISTS idx_contacts_customer_segment;
 DROP INDEX IF EXISTS idx_transactions_sales_channel;
 DROP INDEX IF EXISTS idx_sales_channels_entity_active;
 ALTER TABLE transactions DROP CONSTRAINT IF EXISTS fk_transactions_sales_channel_entity;
+ALTER TABLE transactions DROP COLUMN IF EXISTS customer_segment_snapshot;
 ALTER TABLE transactions DROP COLUMN IF EXISTS sales_channel_id;
 ALTER TABLE contacts DROP COLUMN IF EXISTS customer_segment;
 DROP TABLE IF EXISTS sales_channels;
