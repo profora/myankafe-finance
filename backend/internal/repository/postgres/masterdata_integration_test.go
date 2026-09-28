@@ -118,7 +118,7 @@ func TestContactTypesAreSeededAndScoped(t *testing.T) {
 		t.Fatalf("updated %+v", updated)
 	}
 
-	contact, err := s.CreateContact(ctx, user, entity, "WHOLESALE_CUSTOMER", "Historical Buyer", "", "", "")
+	contact, err := s.CreateContact(ctx, user, entity, "WHOLESALE_CUSTOMER", "Historical Buyer", "", "", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestContactTypesAreSeededAndScoped(t *testing.T) {
 	if err := s.DeleteContactType(ctx, user, entity, "WHOLESALE_CUSTOMER"); err == nil || !strings.Contains(err.Error(), "in use") {
 		t.Fatalf("in-use delete err=%v", err)
 	}
-	if _, err := s.CreateContact(ctx, user, entity, "WHOLESALE_CUSTOMER", "New Buyer", "", "", ""); err == nil {
+	if _, err := s.CreateContact(ctx, user, entity, "WHOLESALE_CUSTOMER", "New Buyer", "", "", "", ""); err == nil {
 		t.Fatal("inactive type accepted for a new contact")
 	}
 	if _, err := s.UpdateContact(ctx, user, entity, contact["id"].(string), UpdateContactInput{
@@ -136,7 +136,7 @@ func TestContactTypesAreSeededAndScoped(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CreateContact(ctx, user, other, "WHOLESALE_CUSTOMER", "Cross Entity", "", "", ""); err == nil {
+	if _, err := s.CreateContact(ctx, user, other, "WHOLESALE_CUSTOMER", "Cross Entity", "", "", "", ""); err == nil {
 		t.Fatal("cross-entity contact type was accepted")
 	}
 
