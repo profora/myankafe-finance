@@ -13,6 +13,7 @@ type Row={id?:string;code?:string;name?:string;type?:string;amount?:string;debit
 type GL={journal_id:string;date:string;account_id:string;account_code:string;account_name:string;description:string;debit:string;credit:string;currency:string};
 type Cash={date:string;financial_account_id:string;name:string;currency:string;movement:string};
 type Inter={counterparty_entity_id:string;counterparty_name:string;due_from:string;due_to:string};
+type Sales={account_id:string;account_code:string;account_name:string;sales_channel_code:string;sales_channel_name:string;customer_segment:string;route_code:string;route_name:string;amount:string};
 
 export default function Reports(){
   const {entity}=useEntity();
@@ -23,6 +24,7 @@ export default function Reports(){
   const [gl,setGL]=useState<GL[]>([]);
   const [cash,setCash]=useState<Cash[]>([]);
   const [inter,setInter]=useState<Inter[]>([]);
+  const [sales,setSales]=useState<Sales[]>([]);
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
   const [from,setFrom]=useState(()=>fiscalYearStartInTimeZone());
@@ -33,16 +35,17 @@ export default function Reports(){
     setLoading(true);setError("");
     const range=`from=${rangeFrom}&to=${rangeTo}`;
     try{
-      const [p,t,b,g,c,i]=await Promise.all([
+      const [p,t,b,g,c,i,s]=await Promise.all([
         api<{items:Row[]}>(`/entities/${entity.PublicID}/reports/profit-loss?${range}`),
         api<{items:Row[]}>(`/entities/${entity.PublicID}/reports/trial-balance?through=${rangeTo}`),
         api<{items:Row[];current_earnings:string}>(`/entities/${entity.PublicID}/reports/balance-sheet?through=${rangeTo}`),
         api<{items:GL[]}>(`/entities/${entity.PublicID}/reports/general-ledger?${range}&limit=200`),
         api<{items:Cash[]}>(`/entities/${entity.PublicID}/reports/cash-movement?${range}`),
-        api<{items:Inter[]}>(`/entities/${entity.PublicID}/reports/inter-entity-balances?through=${rangeTo}`)
+        api<{items:Inter[]}>(`/entities/${entity.PublicID}/reports/inter-entity-balances?through=${rangeTo}`),
+        api<{items:Sales[]}>(`/entities/${entity.PublicID}/reports/sales-analysis?${range}`)
       ]);
       setPL(p.items);setTB(t.items);setBS(b.items);setEarnings(b.current_earnings);
-      setGL(g.items);setCash(c.items);setInter(i.items);
+      setGL(g.items);setCash(c.items);setInter(i.items);setSales(s.items);
     }catch(e){setError(e instanceof Error?e.message:String(e))}
     finally{setLoading(false)}
   }
@@ -57,7 +60,7 @@ export default function Reports(){
     const nextTo=dateInTimeZone(entity.Timezone);
     setFrom(nextFrom);
     setTo(nextTo);
-    setPL([]);setTB([]);setBS([]);setEarnings("0");setGL([]);setCash([]);setInter([]);
+    setPL([]);setTB([]);setBS([]);setEarnings("0");setGL([]);setCash([]);setInter([]);setSales([]);
     void loadRange(nextFrom,nextTo);
   },[entity?.PublicID]);
 
@@ -90,6 +93,22 @@ export default function Reports(){
       cash.map(x=>[x.date,x.name,x.currency,x.movement]));
   }
 
+  function exportSales(){
+    downloadCsv(exportName("sales-by-product-route"),
+      ["Account code","Account name","Sales channel","Customer segment","Route to market","Amount"],
+      sales.map(x=>[x.account_code,x.account_name,x.sales_channel_name,x.customer_segment||"",x.route_name,x.amount]));
+  }
+
+  const salesRoutes=Array.from(new Map(sales.map(x=>[x.route_code,x.route_name])).entries())
+    .map(([code,name])=>({code,name}))
+    .sort((a,b)=>a.name.localeCompare(b.name));
+  const salesProducts=Array.from(new Map(sales.map(x=>[x.account_id,{id:x.account_id,code:x.account_code,name:x.account_name}])).values())
+    .sort((a,b)=>a.code.localeCompare(b.code));
+  function salesAmount(accountID:string,routeCode?:string){
+    return sales.filter(x=>x.account_id===accountID&&(!routeCode||x.route_code===routeCode))
+      .reduce((sum,x)=>sum+(Number(x.amount)||0),0);
+  }
+
   async function exportGL(){
     if(!entity)return;
     setError("");
@@ -119,6 +138,15 @@ export default function Reports(){
       <div><div className="report-title"><h3>Trial Balance</h3><button type="button" className="secondary compact" disabled={loading||tb.length===0} onClick={exportTB}>Export CSV</button></div><div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Account</th><th>Debit</th><th>Credit</th></tr></thead><tbody>{tb.map((x,n)=><tr key={x.id??n}><td>{x.id?<Link className="table-link" href={withEntity(`/accounts/${x.id}/ledger`, entity?.PublicID??"")}>{x.code} · {x.name}</Link>:<>{x.code} · {x.name}</>}</td><td>{Number(x.debits||0).toLocaleString()}</td><td>{Number(x.credits||0).toLocaleString()}</td></tr>)}<TableStateRows loading={loading&&tb.length===0} empty={!loading&&tb.length===0} columns={3} emptyText="No trial-balance activity through this date."/></tbody></table></div></div>
       <div><div className="report-title"><h3>Inter-Entity Balances</h3><button type="button" className="secondary compact" disabled={loading||inter.length===0} onClick={exportInter}>Export CSV</button></div><div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Counterparty</th><th>Due from</th><th>Due to</th></tr></thead><tbody>{inter.map(x=><tr key={x.counterparty_entity_id}><td>{x.counterparty_name}</td><td>{Number(x.due_from).toLocaleString()}</td><td>{Number(x.due_to).toLocaleString()}</td></tr>)}<TableStateRows loading={loading&&inter.length===0} empty={!loading&&inter.length===0} columns={3} emptyText="No inter-entity balances through this date."/></tbody></table></div></div>
     </div>
+
+    <div className="page-head" style={{marginTop:28}}>
+      <div><h1 style={{fontSize:20}}>Sales by Product & Route to Market</h1><p>Retailer and Distributor come from the contact segment; otherwise the configured transaction sales channel is used.</p></div>
+      <button type="button" className="secondary compact" disabled={loading||sales.length===0} onClick={exportSales}>Export CSV</button>
+    </div>
+    <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Product / income account</th>{salesRoutes.map(route=><th key={route.code}>{route.name}</th>)}<th>Total</th></tr></thead><tbody>
+      {salesProducts.map(product=><tr key={product.id}><td><Link className="table-link" href={withEntity(`/accounts/${product.id}/ledger`, entity?.PublicID??"")}>{product.code} · {product.name}</Link></td>{salesRoutes.map(route=><td key={route.code}>{salesAmount(product.id,route.code).toLocaleString()}</td>)}<td><strong>{salesAmount(product.id).toLocaleString()}</strong></td></tr>)}
+      <TableStateRows loading={loading&&sales.length===0} empty={!loading&&sales.length===0} columns={Math.max(2,salesRoutes.length+2)} emptyText="No posted income activity with sales dimensions in this range."/>
+    </tbody></table></div>
 
     <div className="page-head" style={{marginTop:28}}><div><h1 style={{fontSize:20}}>Cash Movement</h1></div><button type="button" className="secondary compact" disabled={loading||cash.length===0} onClick={exportCash}>Export CSV</button></div>
     <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>Date</th><th>Account</th><th>Currency</th><th>Movement</th></tr></thead><tbody>{cash.map((x,n)=><tr key={x.financial_account_id+x.date+n}><td>{x.date}</td><td>{x.name}</td><td>{x.currency}</td><td>{Number(x.movement).toLocaleString()}</td></tr>)}<TableStateRows loading={loading&&cash.length===0} empty={!loading&&cash.length===0} columns={4} emptyText="No cash movement in this range."/></tbody></table></div>
