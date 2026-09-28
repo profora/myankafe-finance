@@ -7,7 +7,7 @@ import { uploadTransactionAttachments } from "@/lib/attachments";
 import { useEntity } from "@/components/EntityContext";
 import { canOperateLedger } from "@/lib/permissions";
 import { withEntity } from "@/lib/entitySelection";
-import type { Account, FinancialAccount, Transaction } from "@/components/types";
+import type { Account, FinancialAccount, SalesChannel, Transaction } from "@/components/types";
 type Contact={id:string;display_name:string;contact_type:string;active:boolean};
 
 type Split={AccountPublicID:string;Amount:string;Description:string};
@@ -18,6 +18,8 @@ export default function NewTransaction(){
   const [accounts,setAccounts]=useState<Account[]>([]);
   const [financial,setFinancial]=useState<FinancialAccount[]>([]);
   const [contacts,setContacts]=useState<Contact[]>([]);
+  const [salesChannels,setSalesChannels]=useState<SalesChannel[]>([]);
+  const [salesChannel,setSalesChannel]=useState("");
   const [contact,setContact]=useState("");
   const [type,setType]=useState("EXPENSE");
   const [date,setDate]=useState(dateInTimeZone(entity?.Timezone??"Asia/Yangon"));
@@ -41,8 +43,8 @@ export default function NewTransaction(){
     if(!entity||!mayOperate){setLoadingRefs(false);return;}
     let cancelled=false;
     setLoadingRefs(true);setError("");setMessage("");
-    setAccounts([]);setFinancial([]);setContacts([]);
-    setFa("");setContact("");
+    setAccounts([]);setFinancial([]);setContacts([]);setSalesChannels([]);
+    setFa("");setContact("");setSalesChannel("");
     setDate(dateInTimeZone(entity.Timezone));
     setDescription("");
     setSplits([{AccountPublicID:"",Amount:"",Description:""}]);
@@ -50,11 +52,12 @@ export default function NewTransaction(){
     Promise.all([
       api<{items:Account[]}>(`/entities/${entity.PublicID}/accounts`),
       api<{items:FinancialAccount[]}>(`/entities/${entity.PublicID}/financial-accounts`),
-      api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`)
-    ]).then(([a,f,ct])=>{
+      api<{items:Contact[]}>(`/entities/${entity.PublicID}/contacts`),
+      api<{items:SalesChannel[]}>(`/entities/${entity.PublicID}/sales-channels`)
+    ]).then(([a,f,ct,sc])=>{
       if(cancelled)return;
       const activeFinancial=f.items.filter(x=>x.Active);
-      setAccounts(a.items);setFinancial(activeFinancial);setContacts(ct.items.filter(x=>x.active));
+      setAccounts(a.items);setFinancial(activeFinancial);setContacts(ct.items.filter(x=>x.active));setSalesChannels(sc.items.filter(x=>x.active));
       setFa(activeFinancial[0]?.PublicID||"");
     }).catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))})
       .finally(()=>{if(!cancelled)setLoadingRefs(false)});
@@ -79,6 +82,7 @@ export default function NewTransaction(){
           FinancialAccountPublicID:selectedFA.PublicID,
           Currency:selectedFA.Currency,
           ContactPublicID:contact,
+          SalesChannelPublicID:type==="INCOME"?salesChannel:"",
           Splits:splits
         })
       });
@@ -104,11 +108,12 @@ export default function NewTransaction(){
     {!mayOperate&&<div className="alert">Recording income and expenses requires Bookkeeper access or higher for the active entity.</div>}
     {mayOperate&&<div className="card form" aria-busy={loadingRefs}>
       <div className="form-grid">
-        <div className="field"><label>Type</label><select value={type} onChange={e=>setType(e.target.value)}><option>EXPENSE</option><option>INCOME</option></select></div>
+        <div className="field"><label>Type</label><select value={type} onChange={e=>{const next=e.target.value;setType(next);if(next!=="INCOME")setSalesChannel("");}}><option>EXPENSE</option><option>INCOME</option></select></div>
         <div className="field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
         <div className="field span-2"><label>Description</label><input value={description} onChange={e=>setDescription(e.target.value)}/></div>
         <div className="field span-2"><label>{type==="EXPENSE"?"Paid from":"Received into"}</label><select value={fa} disabled={loadingRefs} onChange={e=>setFa(e.target.value)}><option value="">{loadingRefs?"Loading financial accounts…":"Choose…"}</option>{financial.map(x=><option key={x.PublicID} value={x.PublicID}>{x.Name} · {x.Currency}</option>)}</select></div>
         <div className="field span-2"><label>{type==="EXPENSE"?"Payee":"Payer"}</label><select value={contact} disabled={loadingRefs} onChange={e=>setContact(e.target.value)}><option value="">{loadingRefs?"Loading contacts…":"None"}</option>{contacts.map(x=><option key={x.id} value={x.id}>{x.display_name} · {x.contact_type}</option>)}</select></div>
+        {type==="INCOME"&&<div className="field span-2"><label>Sales channel{salesChannels.length>0?"":" (optional)"}</label><select value={salesChannel} disabled={loadingRefs||salesChannels.length===0} onChange={e=>setSalesChannel(e.target.value)}><option value="">{salesChannels.length?"Choose…":"No active channels"}</option>{salesChannels.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select>{!loadingRefs&&salesChannels.length===0&&<span className="muted">Define channels in Settings → Sales Channels.</span>}</div>}
       </div>
       <div><strong>Split</strong><p className="muted">One line for a normal entry; add more lines to split by category.</p></div>
       {splits.map((sp,i)=><div className="split-row" key={i}>
@@ -123,7 +128,7 @@ export default function NewTransaction(){
         <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,text/csv,.docx,.xlsx" onChange={e=>setAttachments(Array.from(e.target.files??[]))}/>
         <span className="muted">{attachments.length?attachments.map(x=>x.name).join(", "):"Optional. Select multiple receipts/invoices; files upload before posting."}</span>
       </div>
-      <div className="actions"><button type="button" disabled={loadingRefs||busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(false)}>{busy?"Saving…":"Save draft"}</button><button type="button" disabled={loadingRefs||busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)} onClick={()=>save(true)}>{busy?"Saving…":"Save & post"}</button></div>
+      <div className="actions"><button type="button" disabled={loadingRefs||busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)||(type==="INCOME"&&salesChannels.length>0&&!salesChannel)} onClick={()=>save(false)}>{busy?"Saving…":"Save draft"}</button><button type="button" disabled={loadingRefs||busy||!description||!fa||total<=0||splits.some(x=>!x.AccountPublicID)||(type==="INCOME"&&salesChannels.length>0&&!salesChannel)} onClick={()=>save(true)}>{busy?"Saving…":"Save & post"}</button></div>
     </div>}
   </>;
 }
