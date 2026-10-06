@@ -316,3 +316,13 @@ This section is the current production state. The zero-entity sections above are
 
 Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPORT.md).
 
+
+
+## 2026-10-06 Chieftain theme and final UX polish
+
+- Finance branding is Chieftain / Chin Coffee, using the existing `frontend/public/brand/logo-head.svg` and `logo-text.svg` assets already wired into the shell/login/app icon.
+- The global UI theme now follows colors extracted from the logo itself: `#AD2424` / `#C72129` red, `#240C03` / `#1A1A1A` deep brown-black, `#B68656` tan, and warm cream accents. Do not revert to the older green/MK treatment.
+- Semantic accounting colors remain distinct: posted/success stays green, draft/warning stays amber, and destructive/correction actions remain red.
+- Reports have print-friendly output and a Print Reports action. Transaction detail has a printable voucher action. Print CSS hides navigation/actions and preserves accounting tables.
+- Transaction-detail attachments now support drag-and-drop multi-file upload in addition to the file picker; the existing R2 limits, authentication, audit trail, reorder/removal, and preview behavior are unchanged.
+- PR #1 description was refreshed to match the current V1 scope. The latest head still requires a fully green CI run before merge/deploy.
