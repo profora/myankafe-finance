@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -22,9 +23,13 @@ func (s *Server) combinedDashboard(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err)
 		return
 	}
-	currency := r.URL.Query().Get("currency")
+	currency := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("currency")))
 	if currency == "" {
 		currency = "MMK"
+	}
+	if err := s.Store.RequireActiveCurrency(r.Context(), currency); err != nil {
+		fail(w, http.StatusBadRequest, err)
+		return
 	}
 	v, err := s.Store.CombinedDashboard(r.Context(), u.ID, currency, from, to)
 	if err != nil {
