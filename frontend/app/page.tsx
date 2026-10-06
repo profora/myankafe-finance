@@ -112,7 +112,7 @@ export default function Dashboard() {
         <span className="sr-only">Loading combined dashboard…</span>
         {Array.from({length:3}).map((_,i)=><div className="card" key={i} aria-hidden="true"><div className="skeleton skeleton-line"/><div className="metric"><span className="skeleton skeleton-metric"/></div></div>)}
       </div>:combined&&<>
-        <div className="grid cards">
+        <div className="grid cards dashboard-combined-kpis">
           <div className="card"><div className="muted">Combined income</div><div className="metric">{Number(combined.income).toLocaleString()} {combined.reporting_currency}</div></div>
           <div className="card"><div className="muted">Combined expenses</div><div className="metric">{Number(combined.expenses).toLocaleString()} {combined.reporting_currency}</div></div>
           <div className="card"><div className="muted">Combined net profit</div><div className="metric">{Number(combined.net_profit).toLocaleString()} {combined.reporting_currency}</div></div>
