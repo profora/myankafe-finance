@@ -122,9 +122,9 @@ export default function Reports(){
   }
 
   return <>
-    <div className="page-head"><div><h1>Reports</h1><p>Reports are generated from posted/reversed journal history only.</p></div></div>
+    <div className="page-head"><div><h1>Reports</h1><p>Reports are generated from posted/reversed journal history only.</p></div><button type="button" className="secondary print-hide" onClick={()=>window.print()}>Print reports</button></div>
     {error&&<div className="alert error" role="alert">{error}</div>}
-    <div className="card form" style={{marginBottom:16}}>
+    <div className="card form print-hide" style={{marginBottom:16}}>
       <div className="form-grid">
         <div className="field"><label>From</label><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></div>
         <div className="field"><label>To / Through</label><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></div>
