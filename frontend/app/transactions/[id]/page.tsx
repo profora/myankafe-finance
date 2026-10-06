@@ -130,7 +130,10 @@ export default function TransactionDetailPage(){
         <h1>{detail?.description??"Transaction"}</h1>
         {detail&&<p>{detail.date} · {detail.type} · <span className={`badge ${detail.status}`}>{detail.status}</span></p>}
       </div>
-      {canReverse&&<button type="button" className="danger" onClick={openReverse}>Reverse transaction</button>}
+      <div className="actions print-hide">
+        <button type="button" className="secondary" onClick={()=>window.print()}>Print voucher</button>
+        {canReverse&&<button type="button" className="danger" onClick={openReverse}>Reverse transaction</button>}
+      </div>
     </div>
     {error&&<div className="alert error" role="alert">{error}</div>}
     {detail&&<>
