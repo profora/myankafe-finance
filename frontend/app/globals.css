@@ -301,3 +301,34 @@ td{border-bottom-color:#F0E7DF}
   /* The finance product intentionally keeps a light accounting canvas for
      legibility and printable parity; browser dark mode does not invert it. */
 }
+
+
+/* Print-friendly accounting output */
+@media print{
+  @page{margin:12mm;size:auto}
+  html,body{background:#fff!important;color:#111!important}
+  .sidebar,.mobile-nav-button,.mobile-nav-overlay,.print-hide,.skip-link{display:none!important}
+  .app{display:block!important;min-height:0!important}
+  .main,.content{display:block!important;max-width:none!important;margin:0!important;padding:0!important}
+  .page-head{break-inside:avoid;margin:0 0 10px!important}
+  .page-head h1{color:#111!important}
+  .page-head p,.muted{color:#555!important}
+  .card,.table-wrap,.dialog-card{
+    box-shadow:none!important;
+    border-color:#bbb!important;
+    background:#fff!important;
+  }
+  .grid{gap:10px!important}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .table-wrap{overflow:visible!important;break-inside:auto}
+  table{font-size:10pt}
+  thead{display:table-header-group}
+  tr{break-inside:avoid}
+  th{background:#f3f3f3!important;color:#222!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  th,td{padding:7px 8px!important;white-space:normal!important;border-bottom-color:#ccc!important}
+  .badge,.type-pill{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .attachment-viewer,.dialog{display:none!important}
+  a{color:#111!important;text-decoration:none!important}
+  .report-title{break-after:avoid}
+  section{break-inside:auto}
+}
