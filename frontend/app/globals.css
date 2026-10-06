@@ -92,3 +92,212 @@
 .account-name{display:block}
 .account-actions{display:flex;gap:6px;flex-wrap:wrap}
 .account-dialog .form-grid{margin-top:12px}
+
+
+/* -------------------------------------------------------------------------- */
+/* Chieftain brand theme                                                      */
+/* Palette is sourced from the canonical logo assets in /public/brand.        */
+/* -------------------------------------------------------------------------- */
+:root{
+  --brand-red:#AD2424;
+  --brand-red-bright:#C72129;
+  --brand-red-dark:#86181B;
+  --brand-ink:#1A1A1A;
+  --brand-brown:#240C03;
+  --brand-brown-soft:#472B17;
+  --brand-tan:#B68656;
+  --brand-cream:#FBE3B1;
+  --brand-cream-soft:#FAF8CC;
+  --surface:#FFFFFF;
+  --surface-warm:#FFFCF8;
+  --surface-muted:#F7F2EC;
+  --border-warm:#E7DDD2;
+  --text:#241C19;
+  --text-muted:#736761;
+  --success:#22623C;
+  --success-bg:#E4F5EB;
+  --warning:#735C00;
+  --warning-bg:#FFF2CC;
+}
+
+html,body{background:var(--surface-warm);color:var(--text)}
+body{accent-color:var(--brand-red)}
+
+button,.button{
+  background:var(--brand-red);
+  color:#fff;
+  box-shadow:0 1px 0 rgba(36,12,3,.12);
+}
+button:hover:not(:disabled),.button:hover{background:var(--brand-red-dark)}
+button:active:not(:disabled),.button:active{transform:translateY(1px)}
+.secondary{
+  background:#F3EAE2;
+  color:var(--brand-brown-soft);
+  border:1px solid #E5D4C5;
+  box-shadow:none;
+}
+.secondary:hover:not(:disabled){background:#EADDD2;color:var(--brand-brown)}
+.danger{background:#8F1C20}
+.danger:hover:not(:disabled){background:#6F1417}
+
+input,select,textarea{
+  border-color:#DCCFC4;
+  background:#fff;
+  color:var(--text);
+}
+input:hover,select:hover,textarea:hover{border-color:#C9B6A7}
+input:focus,select:focus,textarea:focus{border-color:var(--brand-red);box-shadow:0 0 0 3px rgba(173,36,36,.10)}
+
+.sidebar{
+  background:linear-gradient(180deg,#24100B 0%,#1A1A1A 58%,#120B08 100%);
+  color:#FFF9F4;
+  border-right:1px solid rgba(251,227,177,.10);
+}
+.sidebar nav a{color:#E7D9D0}
+.sidebar nav a:hover{background:rgba(251,227,177,.08);color:#fff}
+.sidebar nav a.active,
+.sidebar nav a[aria-current="page"]{
+  background:linear-gradient(90deg,rgba(199,33,41,.98),rgba(173,36,36,.92));
+  color:#fff;
+  box-shadow:inset 3px 0 0 var(--brand-cream);
+}
+.nav-caption{color:rgba(251,227,177,.50)}
+.sidebar-note,.sidebar-username{color:rgba(255,249,244,.58)}
+.sidebar-entity-meta{color:rgba(255,249,244,.65)}
+.sidebar-user{border-top-color:rgba(251,227,177,.14)}
+.sidebar-signout{
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(251,227,177,.18);
+  color:#FFF8F2;
+}
+.sidebar-signout:hover:not(:disabled){background:rgba(199,33,41,.82);color:#fff}
+.sidebar-entity select{
+  background:#FFFDFC;
+  color:var(--brand-brown);
+  border-color:#D7C4B5;
+}
+
+.brand,.platform-brand{color:#fff}
+.sidebar-brand-text strong{color:#fff}
+.sidebar-brand-text span{color:rgba(251,227,177,.62)}
+
+.content{background:transparent}
+.page-head h1{color:var(--brand-brown)}
+.page-head p,.muted{color:var(--text-muted)}
+.field label{color:#5F514B}
+
+.card,.table-wrap,.dialog-card,.login-card,.auth-card{
+  background:var(--surface);
+  border-color:var(--border-warm);
+  box-shadow:0 1px 2px rgba(36,12,3,.04);
+}
+.card:hover{border-color:#DCCBBF}
+.metric{color:var(--brand-brown)}
+
+th{
+  color:#6E5B51;
+  background:#FBF7F2;
+  border-bottom-color:#E9DED4;
+}
+td{border-bottom-color:#F0E7DF}
+.table-wrap{border-color:var(--border-warm)}
+.table-link,.audit-details summary{color:var(--brand-red);font-weight:700}
+.table-link:hover,.audit-details summary:hover{color:var(--brand-red-dark)}
+
+.badge{background:#F0E8E2;color:#55443D}
+.badge.POSTED{background:var(--success-bg);color:var(--success)}
+.badge.DRAFT{background:var(--warning-bg);color:var(--warning)}
+.badge.VOIDED,.badge.REVERSED{background:#F8E4E4;color:#8A2227}
+.type-pill{background:#F5E9E3;color:#713032}
+
+.alert{background:#F7EFE9;color:#5C4338;border:1px solid #EAD9CD}
+.alert.error{background:#FDEAEA;color:#8D1E23;border-color:#F1CACA}
+.alert.success{background:#E8F6ED;color:#265F3A;border-color:#CAE7D4}
+
+.empty,.table-empty-cell{color:#81736C}
+.table-empty-cell{background:#FFFCF9}
+
+.action-menu-popover,.entry-menu-panel{
+  border-color:var(--border-warm);
+  box-shadow:0 18px 50px rgba(36,12,3,.16);
+}
+.action-menu-popover a:hover,.entry-menu-panel button:hover,.entry-menu-panel a:hover{background:#FAF0EA}
+.action-menu-popover span,.entry-menu-panel span{color:#7E6A60}
+.menu-separator{background:#E9DDD4}
+
+.file-chip{background:#F6EAE5;color:#6B3733}
+.attachment-card{border-color:#E8DBD0;background:#fff}
+.attachment-card:hover{border-color:#CFA796;box-shadow:0 7px 20px rgba(36,12,3,.08)}
+.attachment-thumb{background:#F7EFE9;color:#76584B}
+.attachment-card-copy span{color:#806F67}
+.attachment-card-actions{border-top-color:#EEE2D9;background:#FFFCFA}
+.attachment-empty{border-color:#D9C6B8;background:#FFFCF8}
+
+.attachment-viewer{background:rgba(18,8,5,.96)}
+.attachment-viewer-toolbar{background:rgba(36,12,3,.64)}
+.attachment-viewer-count{color:#F2E0D7}
+.viewer-button{background:rgba(255,255,255,.12);border-color:rgba(251,227,177,.22)}
+.viewer-button:hover:not(:disabled){background:rgba(199,33,41,.78)}
+
+.dialog::backdrop{background:rgba(36,12,3,.58)}
+.dialog-card h2{color:var(--brand-brown)}
+
+.finance-login-page{background:#F8F1EB}
+.login-brand-panel{
+  background:
+    radial-gradient(circle at 76% 18%,rgba(182,134,86,.18),transparent 31%),
+    linear-gradient(145deg,#2A110B 0%,#1A1A1A 54%,#3A1211 100%);
+  color:#fff;
+}
+.login-brand-panel p{color:rgba(255,247,239,.77)}
+.login-kicker{color:#E8B9A6}
+.login-brand-panel small{color:#EEDDD3}
+.login-form-side{background:linear-gradient(180deg,#FFFDFC,#F8F0E9)}
+.finance-login-page .login-card{
+  border-color:#E1D3C8;
+  box-shadow:0 20px 55px rgba(36,12,3,.10);
+}
+.finance-login-page .login-card h1{color:var(--brand-brown)}
+
+.auth-shell{background:#F8F1EB}
+.auth-brand{color:var(--brand-red)}
+
+.money-positive,.amount-positive{color:#22623C}
+.money-negative,.amount-negative{color:#9B252A}
+
+.draft-management-card{border-color:#E7C987;background:#FFF9E9}
+
+.audit-detail-panel pre{background:#F8F2ED;color:#40322C}
+.pager button.current{background:var(--brand-red)}
+.report-title h3{color:var(--brand-brown)}
+
+.skip-link{
+  color:var(--brand-brown);
+  border-color:var(--brand-red);
+  box-shadow:0 8px 24px rgba(36,12,3,.18);
+}
+:where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{
+  outline-color:#D49A45;
+}
+.skeleton{
+  background:linear-gradient(90deg,#EFE5DD 25%,#FAF6F2 45%,#EFE5DD 65%);
+  background-size:220% 100%;
+}
+.table-loading-row{border-bottom-color:#EEE4DC}
+
+.mobile-nav-overlay{background:rgba(36,12,3,.48)}
+.sidebar.mobile-open{box-shadow:0 18px 50px rgba(36,12,3,.30)}
+
+.system-probe-card,.security-grid .card{border-color:var(--border-warm)}
+
+/* Chieftain accent rules for dense accounting surfaces. */
+.transaction-summary .card:first-child{border-top:3px solid var(--brand-red)}
+.transaction-summary .card:nth-child(2){border-top:3px solid #7C5B3E}
+.transaction-summary .card:nth-child(3){border-top:3px solid var(--brand-tan)}
+.transaction-filters{background:#FFFDFB}
+.locking-grid .card,.account-dialog .dialog-card{border-color:#E4D7CC}
+
+@media (prefers-color-scheme:dark){
+  /* The finance product intentionally keeps a light accounting canvas for
+     legibility and printable parity; browser dark mode does not invert it. */
+}
