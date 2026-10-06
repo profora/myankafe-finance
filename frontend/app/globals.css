@@ -359,3 +359,12 @@ td{border-bottom-color:#F0E7DF}
   background:#FCEBE8;
   box-shadow:0 0 0 3px rgba(199,33,41,.10);
 }
+
+
+.dashboard-combined-head{align-items:end}
+.dashboard-reporting-currency{min-width:220px}
+.dashboard-reporting-currency select{min-width:210px;background:#FFFDFC}
+@media(max-width:700px){
+  .dashboard-combined-head{align-items:stretch;flex-direction:column}
+  .dashboard-reporting-currency,.dashboard-reporting-currency select{width:100%;min-width:0}
+}
