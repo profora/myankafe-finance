@@ -128,7 +128,7 @@ Do not merge if CI is red. CI run #772 passed the complete frontend/backend/cont
    - richer table sorting/export if desired (CSV export is already shipped for transactions, reports, General Ledger and Account Ledger)
    - final accessibility/browser review
    - visual polish of forms and attachment gallery
-   - the MyanKafe logo from `profora/myankafe-platform` `admin/public/brand/logo-head.svg` and `logo-text.svg` is the Finance brand; do not substitute the Chieftain mark or a generic icon
+   - the Chieftain / Chin Coffee logo supplied for this Finance project is the canonical Finance brand; preserve its red / deep-brown / tan / warm-cream theme and do not revert to the older green or MK/MyanKafe-admin treatment
 
 4. **Optional future integrations**
    - Royal Masterpiece ingestion connector using integration events/external references
@@ -252,7 +252,7 @@ Evidence is in [docs/DEPLOYMENT_ACCEPTANCE_REPORT.md](DEPLOYMENT_ACCEPTANCE_REPO
 
 ## 2026-09-26 branding, navigation, currencies, contact types, transfer fees
 
-- Finance branding uses the MyanKafe mark and wordmark copied from `profora/myankafe-platform` `admin/public/brand/logo-head.svg` and `logo-text.svg`. The sidebar and app icon use the mark with the words MyanKafe Finance. Login shows both assets. `chieftain-logo.webp` is unused by the UI and remains in the repo.
+- Finance branding now uses the Chieftain / Chin Coffee mark and wordmark supplied for the Finance app. The sidebar/app icon use the compact mark and login shows the full brand treatment. The global UI palette follows the logo's Chieftain red, deep brown/black, tan and warm cream colors.
 - The sidebar is grouped: Overview, Transactions, Accounting Setup, Reports & Control, Settings. Authorization filtering is unchanged. Cash / Bank is labeled Financial Accounts.
 - Audit Action is an exact-match dropdown filled from `GET /entities/{entity}/audit-actions`.
 - Transactions use limit/offset pagination, default 25, page sizes 25/50/100. Filters, entity changes, and page-size changes return to page 1. CSV export still walks the full filtered set.
