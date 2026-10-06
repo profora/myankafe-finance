@@ -22,6 +22,7 @@ export default function TransactionAttachments({entityID,transactionID,canUpload
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
+  const [dragging,setDragging]=useState(false);
   const [deleteTarget,setDeleteTarget]=useState<TransactionAttachment|null>(null);
   const inputRef=useRef<HTMLInputElement>(null);
 
@@ -41,16 +42,20 @@ export default function TransactionAttachments({entityID,transactionID,canUpload
     return()=>{cancelled=true};
   },[entityID,transactionID]);
 
-  async function selectFiles(e:ChangeEvent<HTMLInputElement>){
-    const files=Array.from(e.target.files??[]);
-    e.target.value="";
-    if(!files.length)return;
+  async function uploadFiles(files:File[]){
+    if(!files.length||busy||loading)return;
     setBusy(true);setError("");
     try{
       await uploadTransactionAttachments(entityID,transactionID,files);
       await load();
     }catch(err){setError(err instanceof Error?err.message:String(err))}
     finally{setBusy(false)}
+  }
+
+  async function selectFiles(e:ChangeEvent<HTMLInputElement>){
+    const files=Array.from(e.target.files??[]);
+    e.target.value="";
+    await uploadFiles(files);
   }
 
   async function move(index:number,direction:-1|1){
@@ -88,6 +93,21 @@ export default function TransactionAttachments({entityID,transactionID,canUpload
       </>}
     </div>
     {error&&<div className="alert error" role="alert">{error}</div>}
+    {canUpload&&<div
+      className={`attachment-dropzone ${dragging?"dragging":""}`}
+      onDragEnter={e=>{e.preventDefault();if(!busy&&!loading)setDragging(true)}}
+      onDragOver={e=>{e.preventDefault();if(!busy&&!loading)setDragging(true)}}
+      onDragLeave={e=>{e.preventDefault();if(e.currentTarget===e.target)setDragging(false)}}
+      onDrop={e=>{e.preventDefault();setDragging(false);void uploadFiles(Array.from(e.dataTransfer.files??[]))}}
+      role="button"
+      tabIndex={0}
+      aria-disabled={busy||loading}
+      onKeyDown={e=>{if((e.key==="Enter"||e.key===" ")&&!busy&&!loading){e.preventDefault();inputRef.current?.click()}}}
+      onClick={()=>{if(!busy&&!loading)inputRef.current?.click()}}
+    >
+      <strong>{dragging?"Drop files to attach":"Drop files here"}</strong>
+      <span>or click to choose multiple receipts, invoices, images, PDFs or supported documents</span>
+    </div>}
     {loading&&!items.length?<div className="attachment-loading" role="status"><span className="skeleton skeleton-wide" aria-hidden="true"/><span className="skeleton skeleton-line" aria-hidden="true"/><span className="sr-only">Loading attachments…</span></div>:items.length?<div className="attachment-grid">{items.map((item,index)=>{
       const kind=previewKind(item.mime_type);
       const src=attachmentContentUrl(entityID,transactionID,item.id);
