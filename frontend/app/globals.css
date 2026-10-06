@@ -307,7 +307,8 @@ td{border-bottom-color:#F0E7DF}
 @media print{
   @page{margin:12mm;size:auto}
   html,body{background:#fff!important;color:#111!important}
-  .sidebar,.mobile-nav-button,.mobile-nav-overlay,.print-hide,.skip-link{display:none!important}
+  .sidebar,.mobile-nav-button,.mobile-nav-overlay,.print-hide,.skip-link,
+  button,.button,.attachment-dropzone,.attachment-card-actions{display:none!important}
   .app{display:block!important;min-height:0!important}
   .main,.content{display:block!important;max-width:none!important;margin:0!important;padding:0!important}
   .page-head{break-inside:avoid;margin:0 0 10px!important}
