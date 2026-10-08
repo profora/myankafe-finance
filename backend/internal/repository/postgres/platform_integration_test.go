@@ -194,7 +194,7 @@ WHERE tr.public_id=$1 AND a.code=$2`, publicID, code).Scan(&gotDebit, &gotCredit
 	}
 	var found bool
 	for _, row := range rows {
-		if row["code"] == "4110" && row["route_code"] == "RETAILER" && row["sales_channel_code"] == "ONLINE" && row["customer_segment"] == "RETAILER" && row["amount"] == "165000.000000" {
+		if row["account_code"] == "4110" && row["route_code"] == "RETAILER" && row["sales_channel_code"] == "ONLINE" && row["customer_segment"] == "RETAILER" && row["amount"] == "165000.000000" {
 			found = true
 		}
 	}
