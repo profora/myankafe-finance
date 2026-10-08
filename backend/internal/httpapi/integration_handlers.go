@@ -31,12 +31,7 @@ func (s *Server) requireIntegrationAuth(next http.Handler) http.Handler {
 		r.Body = io.NopCloser(strings.NewReader(string(body)))
 		conn, currency, lookupErr := s.Store.ActiveIntegrationConnection(r.Context(), system)
 		secret := s.Config.IntegrationSecretMyanKafePlatform
-		if secret == "" || conn.SecretReference == "" {
-			var ie *integration.Error
-			if errors.As(lookupErr, &ie) && ie.Code == "unknown_system" {
-				integrationFail(w, ie)
-				return
-			}
+		if secret == "" {
 			integrationFail(w, &integration.Error{Status: 401, Code: "secret_not_configured", Message: "integration secret is not configured"})
 			return
 		}
@@ -47,6 +42,10 @@ func (s *Server) requireIntegrationAuth(next http.Handler) http.Handler {
 		if err := integration.VerifyTimestamp(r.Header.Get(integration.HeaderTimestamp), time.Now()); err != nil {
 			code := err.Error()
 			integrationFail(w, &integration.Error{Status: 401, Code: code, Message: "integration timestamp was rejected"})
+			return
+		}
+		if lookupErr == nil && conn.SecretReference == "" {
+			integrationFail(w, &integration.Error{Status: 401, Code: "secret_not_configured", Message: "integration secret is not configured"})
 			return
 		}
 		if lookupErr != nil {
