@@ -28,6 +28,10 @@ type Config struct {
 
 	AttachmentMaxBytes int64
 	MetricsBearerToken string
+
+	// IntegrationSecretMyanKafePlatform is the HMAC secret for MyanKafe Platform.
+	// It is never written to the database, logs, or API responses.
+	IntegrationSecretMyanKafePlatform string
 }
 
 func Load() (Config, error) {
@@ -57,8 +61,9 @@ func Load() (Config, error) {
 		R2AccessKey: strings.TrimSpace(os.Getenv("R2_ACCESS_KEY_ID")),
 		R2SecretKey: strings.TrimSpace(os.Getenv("R2_SECRET_ACCESS_KEY")),
 
-		AttachmentMaxBytes: int64(maxMB) << 20,
-		MetricsBearerToken: strings.TrimSpace(os.Getenv("METRICS_BEARER_TOKEN")),
+		AttachmentMaxBytes:                int64(maxMB) << 20,
+		MetricsBearerToken:                strings.TrimSpace(os.Getenv("METRICS_BEARER_TOKEN")),
+		IntegrationSecretMyanKafePlatform: strings.TrimSpace(os.Getenv("INTEGRATION_SECRET_MYANKAFE_PLATFORM")),
 	}
 	if c.DatabaseURL == "" {
 		return c, fmt.Errorf("DATABASE_URL is required")

@@ -63,6 +63,13 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(s.bodyLimit)
 		r.Use(s.originGuard)
+		r.Route("/integrations", func(r chi.Router) {
+			r.Use(s.requireIntegrationAuth)
+			r.Post("/events/preview", s.previewIntegrationEvent)
+			r.Post("/events", s.postIntegrationEvent)
+			r.Get("/events/{externalEventID}", s.getMachineIntegrationEvent)
+			r.Get("/readiness", s.machineIntegrationReadiness)
+		})
 		r.Post("/auth/login", s.login)
 
 		r.Group(func(r chi.Router) {
@@ -129,6 +136,14 @@ func New(store *postgres.Store, cfg config.Config) http.Handler {
 				r.Get("/sales-channels", s.listSalesChannels)
 				r.Post("/sales-channels", s.createSalesChannel)
 				r.Put("/sales-channels/{code}", s.updateSalesChannel)
+
+				r.Get("/integrations/connections", s.listIntegrationConnections)
+				r.Post("/integrations/connections", s.createIntegrationConnection)
+				r.Put("/integrations/connections/{system}", s.updateIntegrationConnection)
+				r.Get("/integrations/mappings", s.listIntegrationMappings)
+				r.Put("/integrations/mappings/{sourceKey}", s.putIntegrationMapping)
+				r.Get("/integrations/events", s.listIntegrationEvents)
+				r.Get("/integrations/readiness", s.entityIntegrationReadiness)
 
 				r.Get("/exchange-rates", s.listExchangeRates)
 				r.Post("/exchange-rates", s.createExchangeRate)
