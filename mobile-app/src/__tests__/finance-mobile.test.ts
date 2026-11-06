@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { assertProductionApiBaseUrl, PRODUCTION_API_BASE_URL } from "../../productionApiGuard.js";
 import { chooseEntity } from "../lib/entitySelection";
 import { canCorrectPostedAccounting, canOperateLedger } from "../lib/roles";

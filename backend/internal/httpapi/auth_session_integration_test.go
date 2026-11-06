@@ -258,4 +258,20 @@ func TestBearerPasswordChangeReturnsReplacementToken(t *testing.T) {
 	if newRec.Code != http.StatusOK {
 		t.Fatalf("replacement bearer status=%d body=%s", newRec.Code, newRec.Body.String())
 	}
+
+	logoutReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", strings.NewReader(`{}`))
+	logoutReq.Header.Set("Content-Type", "application/json")
+	logoutReq.Header.Set("Authorization", "Bearer "+next)
+	logoutRec := httptest.NewRecorder()
+	router.ServeHTTP(logoutRec, logoutReq)
+	if logoutRec.Code != http.StatusNoContent {
+		t.Fatalf("bearer logout status=%d body=%s", logoutRec.Code, logoutRec.Body.String())
+	}
+	afterLogout := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	afterLogout.Header.Set("Authorization", "Bearer "+next)
+	afterRec := httptest.NewRecorder()
+	router.ServeHTTP(afterRec, afterLogout)
+	if afterRec.Code != http.StatusUnauthorized {
+		t.Fatalf("logged-out bearer status=%d body=%s", afterRec.Code, afterRec.Body.String())
+	}
 }
