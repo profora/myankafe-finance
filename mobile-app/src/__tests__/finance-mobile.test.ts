@@ -10,14 +10,14 @@ import { createIdempotencyKey } from "../lib/idempotency";
 import { statusLabel, transactionQuery } from "../lib/transactions";
 import { attachmentError } from "../lib/attachments";
 
-const memory = new Map<string, string>();
+const mockMemory = new Map<string, string>();
 jest.mock("expo-secure-store", () => ({
   setItemAsync: async (k: string, v: string) => {
-    memory.set(k, v);
+    mockMemory.set(k, v);
   },
-  getItemAsync: async (k: string) => memory.get(k) ?? null,
+  getItemAsync: async (k: string) => mockMemory.get(k) ?? null,
   deleteItemAsync: async (k: string) => {
-    memory.delete(k);
+    mockMemory.delete(k);
   },
 }));
 
@@ -33,7 +33,7 @@ function response(status: number, body: unknown) {
 }
 
 describe("authentication", () => {
-  beforeEach(() => memory.clear());
+  beforeEach(() => mockMemory.clear());
 
   test("successful bearer login persists only in SecureStore", async () => {
     const calls: { url: string; headers: Headers }[] = [];
@@ -54,7 +54,7 @@ describe("authentication", () => {
     expect(me.session_token).toBe("tok-1");
     await saveSession(me.session_token!, me.session_expires_at);
     expect(await getSessionToken()).toBe("tok-1");
-    expect(JSON.stringify([...memory.keys()])).not.toMatch(/password/i);
+    expect(JSON.stringify([...mockMemory.keys()])).not.toMatch(/password/i);
     expect(cleared).toBe(false);
   });
 

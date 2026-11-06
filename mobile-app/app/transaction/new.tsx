@@ -2,8 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { useEffect } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { api } from "../../src/api/runtime";
 import { useEntity } from "../../src/auth/EntityContext";
@@ -37,7 +36,7 @@ export default function NewEntryScreen() {
   const [splits, setSplits] = useState<SplitDraft[]>([{ accountId: "", amount: "", description: "" }]);
   const [files, setFiles] = useState<LocalFile[]>([]);
   const [error, setError] = useState("");
-  const [key] = useState(() => createIdempotencyKey());
+  const [key, setKey] = useState(() => createIdempotencyKey());
 
   const accounts = useQuery({
     queryKey: ["accounts", entity?.PublicID],
@@ -148,6 +147,11 @@ export default function NewEntryScreen() {
       }
       router.replace(`/transaction/${result.id}`);
     },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : "Could not save.";
+      if (message.toLowerCase().includes("idempotency")) setKey(createIdempotencyKey());
+      setError(message);
+    },
   });
 
   const problems = entryErrors(draft);
@@ -207,7 +211,7 @@ export default function NewEntryScreen() {
   );
 }
 
-function ViewBlock({ children }: { children: React.ReactNode }) {
+function ViewBlock({ children }: { children: ReactNode }) {
   return <View style={styles.block}>{children}</View>;
 }
 

@@ -82,7 +82,7 @@ export default function HomeScreen() {
         {grouped.length === 0 ? <EmptyState message="No financial accounts for this entity." /> : null}
         {grouped.map((group) => (
           <View key={group.kind} style={{ gap: 8 }}>
-            <Text style={styles.kind}>{group.kind.replaceAll("_", " ")}</Text>
+            <Text style={styles.kind}>{group.kind.replace(/_/g, " ")}</Text>
             {group.items.map((item) => (
               <Card key={item.id}>
                 <Text style={styles.account}>{item.name}</Text>

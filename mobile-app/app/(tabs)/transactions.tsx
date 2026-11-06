@@ -81,7 +81,6 @@ export default function TransactionsScreen() {
       {query.isLoading ? <LoadingState /> : query.isError ? <ErrorState message="Could not load transactions." onRetry={() => void query.refetch()} /> : (
         <FlashList
           data={items}
-          estimatedItemSize={92}
           ListEmptyComponent={<EmptyState message="No transactions match these filters." />}
           onEndReached={() => {
             if (query.data?.has_more) setOffset((n) => n + 40);

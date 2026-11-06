@@ -41,11 +41,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
-    splash: {
-      image: "./assets/icon.png",
-      resizeMode: "contain",
-      backgroundColor: "#0B1F33",
-    },
+    backgroundColor: "#0B1F33",
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.myankafe.finance",
