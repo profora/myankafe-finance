@@ -192,7 +192,14 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.setSessionCookie(w, rawToken, session.ExpiresAt)
-	write(w, 200, map[string]any{"changed": true, "session_expires_at": session.ExpiresAt})
+	response := map[string]any{"changed": true, "session_expires_at": session.ExpiresAt}
+	// Native clients that authenticated with a bearer token cannot read the
+	// replacement HttpOnly cookie. Return the new token only when they ask for
+	// bearer transport. Cookie-based web clients do not send this header.
+	if strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Session-Transport")), "bearer") {
+		response["session_token"] = rawToken
+	}
+	write(w, 200, response)
 }
 
 func (s *Server) setSessionCookie(w http.ResponseWriter, token string, expires time.Time) {
