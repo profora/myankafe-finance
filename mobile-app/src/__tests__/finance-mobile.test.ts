@@ -353,7 +353,22 @@ describe("production guard", () => {
   test("development accepts a local URL and production does not", () => {
     expect(resolveApiBaseUrl("development", "http://10.0.2.2:8180/api/v1")).toBe("http://10.0.2.2:8180/api/v1");
     expect(resolveApiBaseUrl("development", "")).toBe("http://127.0.0.1:8180/api/v1");
+    expect(resolveApiBaseUrl("preview", "")).toBe("http://127.0.0.1:8180/api/v1");
     expect(resolveApiBaseUrl("preview", PRODUCTION_API_BASE_URL)).toBe(PRODUCTION_API_BASE_URL);
+    const rejected = [
+      "http://finance-api.myankafe.com/api/v1",
+      "https://localhost/api/v1",
+      "https://127.0.0.1/api/v1",
+      "https://10.0.2.2/api/v1",
+      "http://127.0.0.1:8180/api/v1",
+      "https://api.myankafe.com/api/v1",
+      "https://evil.example/api/v1",
+      "https://finance-api.myankafe.com.evil.com/api/v1",
+    ];
+    for (const bad of rejected) {
+      expect(() => assertProductionApiBaseUrl(bad)).toThrow();
+      expect(() => resolveApiBaseUrl("production", bad)).toThrow();
+    }
     expect(() => resolveApiBaseUrl("production", "http://10.0.2.2:8180/api/v1")).toThrow();
     expect(() => resolveApiBaseUrl("production", "https://192.168.1.8/api/v1")).toThrow();
     expect(() => assertProductionApiBaseUrl("https://10.0.2.2/api/v1")).toThrow();

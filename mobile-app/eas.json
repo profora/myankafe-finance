@@ -17,8 +17,7 @@
       "channel": "preview",
       "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_APP_ENV": "preview",
-        "EXPO_PUBLIC_API_BASE_URL": "https://finance-api.myankafe.com/api/v1"
+        "EXPO_PUBLIC_APP_ENV": "preview"
       }
     },
     "production": {

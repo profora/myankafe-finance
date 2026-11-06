@@ -46,7 +46,7 @@ npm install
 npm start
 ```
 
-Point `EXPO_PUBLIC_API_BASE_URL` at a disposable Finance API. Do not post test entries to production.
+Point `EXPO_PUBLIC_API_BASE_URL` at a disposable Finance API. Development and preview do not default to production. A production build accepts only `https://finance-api.myankafe.com/api/v1`. Do not post test entries to production.
 
 ## Testing
 
