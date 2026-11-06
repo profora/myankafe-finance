@@ -1,0 +1,88 @@
+name: iOS Simulator compile
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-simulator-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-simulator-compile:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      CI: "1"
+      EXPO_NO_TELEMETRY: "1"
+      EXPO_PUBLIC_APP_ENV: development
+      EXPO_PUBLIC_API_BASE_URL: "http://127.0.0.1:8180/api/v1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mobile-app/package-lock.json
+
+      - name: Install mobile dependencies
+        working-directory: mobile-app
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: mobile-app
+        run: npm run typecheck
+
+      - name: Test, including the production API guard
+        working-directory: mobile-app
+        run: npm test -- --runInBand
+
+      - name: Expo config
+        working-directory: mobile-app
+        run: |
+          npx expo config --json > /tmp/finance-ios-expo-config.json
+          node <<'NODE'
+          const config = require("/tmp/finance-ios-expo-config.json");
+          const extra = (config.expo || config).extra || {};
+          if (extra.appEnv === "production") {
+            console.error("ios simulator workflow must stay non-production", extra);
+            process.exit(1);
+          }
+          if (extra.apiBaseUrl === "https://finance-api.myankafe.com/api/v1") {
+            console.error("ios simulator workflow must not bake production API", extra);
+            process.exit(1);
+          }
+          console.log(JSON.stringify(extra, null, 2));
+          NODE
+
+      - name: Expo iOS prebuild
+        working-directory: mobile-app
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Compile for iOS Simulator without signing
+        working-directory: mobile-app/ios
+        run: |
+          set -euo pipefail
+          ls -la
+          WORKSPACE="$(ls -1 *.xcworkspace | head -n 1)"
+          test -n "$WORKSPACE"
+          echo "workspace=$WORKSPACE"
+          xcodebuild -list -workspace "$WORKSPACE"
+          SCHEME="$(xcodebuild -list -workspace "$WORKSPACE" -json | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data["workspace"]["schemes"][0])')"
+          echo "scheme=$SCHEME"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            build

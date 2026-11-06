@@ -1,0 +1,17 @@
+appId: com.myankafe.finance
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 90000
+- runFlow:
+    file: helpers/login.yaml
+    env:
+      USERNAME: "ci-bookkeeper"
+      PASSWORD: ${BOOKKEEPER_PASSWORD}
+- assertVisible: "Income"
+- assertVisible: "Expenses"
+- assertVisible: "Net Profit"
+- assertVisible: "Cash Drawer"
+- assertVisible: "Bank Account"

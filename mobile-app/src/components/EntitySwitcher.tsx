@@ -9,7 +9,12 @@ export function EntitySwitcher() {
   if (!entity) return null;
   return (
     <>
-      <Pressable accessibilityRole="button" onPress={() => setOpen(true)} style={styles.chip}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Current entity ${entity.Name}`}
+        onPress={() => setOpen(true)}
+        style={styles.chip}
+      >
         <Text style={styles.name}>{entity.Name}</Text>
         <Text style={styles.meta}>
           {entity.Role} · {entity.FunctionalCurrency}
@@ -22,6 +27,8 @@ export function EntitySwitcher() {
             {entities.map((item) => (
               <Pressable
                 key={item.PublicID}
+                accessibilityRole="button"
+                accessibilityLabel={`Switch to ${item.Name}`}
                 style={styles.row}
                 onPress={() => {
                   void select(item.PublicID);
@@ -34,7 +41,7 @@ export function EntitySwitcher() {
                 </Text>
               </Pressable>
             ))}
-            <Pressable onPress={() => setOpen(false)} style={styles.close}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close entity switcher" onPress={() => setOpen(false)} style={styles.close}>
               <Text style={styles.closeText}>Close</Text>
             </Pressable>
           </View>

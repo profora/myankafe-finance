@@ -1,0 +1,20 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Transactions"
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+- tapOn:
+    id: "Search"
+- inputText: "November rent posted"
+- extendedWaitUntil:
+    visible: "November rent posted"
+    timeout: 30000
+- tapOn: "Status POSTED"
+- assertVisible: "November rent posted"
+- tapOn: "Type EXPENSE"
+- assertVisible: "November rent posted"
+- tapOn: "November rent posted"
+- extendedWaitUntil:
+    visible: "Status Posted"
+    timeout: 30000

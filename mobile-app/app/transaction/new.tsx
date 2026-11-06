@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Asset } from "expo-asset";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
-import { api } from "../../src/api/runtime";
+import { appExtra, api } from "../../src/api/runtime";
 import { useEntity } from "../../src/auth/EntityContext";
 import { useOffline } from "../../src/components/NetworkBanner";
 import { Button, SelectField, TextField } from "../../src/components/ui";
@@ -232,6 +233,25 @@ export default function NewEntryScreen() {
             setError("Could not open the file picker.");
           }
         }} />
+        {appExtra().appEnv !== "production" ? (
+          <Button
+            label="Attach sample receipt"
+            tone="secondary"
+            onPress={async () => {
+              try {
+                const asset = Asset.fromModule(require("../../assets/e2e-receipt.png"));
+                await asset.downloadAsync();
+                if (!asset.localUri) {
+                  setError("Sample receipt is not available.");
+                  return;
+                }
+                addFile({ name: "e2e-receipt.png", uri: asset.localUri, mime: "image/png", size: asset.localUri ? undefined : null });
+              } catch {
+                setError("Could not attach the sample receipt.");
+              }
+            }}
+          />
+        ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {problems.length ? <Text style={styles.note}>{problems[0]}</Text> : null}
         <Button label="Save Draft" disabled={offline || save.isPending || problems.length > 0} onPress={() => save.mutate("draft")} />

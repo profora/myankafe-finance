@@ -4,5 +4,5 @@
     "strict": true,
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["app.config.ts", "app/**/*.tsx", "src/**/*.ts", "src/**/*.tsx"]
+  "include": ["app.config.ts", "assets.d.ts", "app/**/*.tsx", "src/**/*.ts", "src/**/*.tsx"]
 }

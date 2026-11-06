@@ -1,0 +1,44 @@
+appId: com.myankafe.finance
+---
+- tapOn: "New Expense"
+- extendedWaitUntil:
+    visible: "Save Draft"
+    timeout: 30000
+- tapOn:
+    id: "Description"
+- inputText: "November rent"
+- tapOn:
+    id: "Paid from"
+- tapOn: "Cash Drawer (MMK)"
+- tapOn:
+    id: "Split 1 account"
+- tapOn: "6210 Rent"
+- tapOn:
+    id: "Amount"
+- inputText: "25000"
+- tapOn: "Save Draft"
+- extendedWaitUntil:
+    visible: "Status Draft"
+    timeout: 60000
+- assertVisible: "November rent"
+- tapOn: "Edit"
+- extendedWaitUntil:
+    visible: "Save Draft"
+    timeout: 30000
+- tapOn:
+    id: "Description"
+- eraseText
+- inputText: "November rent posted"
+- tapOn: "Save Draft"
+- extendedWaitUntil:
+    visible: "Status Draft"
+    timeout: 60000
+- assertVisible: "November rent posted"
+- tapOn: "Post"
+- tapOn: "Post"
+- extendedWaitUntil:
+    visible: "Status Posted"
+    timeout: 60000
+- assertVisible: "6210 Rent"
+- assertVisible: "Debit 25000.000000"
+- assertVisible: "1110 Cash on Hand"

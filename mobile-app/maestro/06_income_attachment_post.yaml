@@ -1,0 +1,36 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Home"
+- extendedWaitUntil:
+    visible: "New Income"
+    timeout: 30000
+- tapOn: "+ New Income"
+- extendedWaitUntil:
+    visible: "Save & Post"
+    timeout: 30000
+- tapOn:
+    id: "Description"
+- inputText: "Coffee sales"
+- tapOn:
+    id: "Received into"
+- tapOn: "Cash Drawer (MMK)"
+- tapOn:
+    id: "Sales channel"
+- tapOn: "COUNTER"
+- tapOn:
+    id: "Split 1 account"
+- tapOn: "4110 Coffee & Beverage Sales"
+- tapOn:
+    id: "Amount"
+- inputText: "80000"
+- tapOn: "Attach sample receipt"
+- assertVisible: "e2e-receipt.png"
+- tapOn: "Save & Post"
+- tapOn: "Post"
+- extendedWaitUntil:
+    visible: "Status Posted"
+    timeout: 90000
+- assertVisible: "Coffee sales"
+- assertVisible: "e2e-receipt.png"
+- assertVisible: "1110 Cash on Hand"
+- assertVisible: "Debit 80000.000000"

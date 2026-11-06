@@ -1,0 +1,228 @@
+name: Mobile Android E2E
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-android-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-emulator-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CI: "1"
+      EXPO_NO_TELEMETRY: "1"
+      APP_ENV: disposable-test
+      AUTH_MODE: password
+      HTTP_ADDR: ":8180"
+      CORS_ORIGIN: "http://10.0.2.2:8180"
+      FINANCE_API: "http://127.0.0.1:8180/api/v1"
+      DATABASE_URL: postgres://finance_e2e:finance_e2e@localhost:5432/myankafe_finance_disposable_accept?sslmode=disable
+      OWNER_USERNAME: ci-owner
+      OWNER_PASSWORD: "CiOwnerPassw0rd!!12chars"
+      BOOKKEEPER_PASSWORD: "CiBookPassw0rd!!12chars"
+      VIEWER_PASSWORD: "CiViewerPassw0rd!!12c"
+      ADMIN_PASSWORD: "CiAdminPassw0rd!!12chars"
+      BOOK_NEXT_PASSWORD: "CiBookNextPass!!12chars"
+      BOOTSTRAP_USERNAME: ci-owner
+      BOOTSTRAP_DISPLAY_NAME: CI Owner
+      BOOTSTRAP_PASSWORD: "CiOwnerPassw0rd!!12chars"
+      BOOTSTRAP_ENTITIES: "true"
+      R2_ENDPOINT: "http://127.0.0.1:19000"
+      R2_BUCKET: finance-e2e
+      R2_REGION: us-east-1
+      R2_ACCESS_KEY_ID: financee2e
+      R2_SECRET_ACCESS_KEY: financee2esecret
+      SEED_OUT: /tmp/finance-e2e-seed.json
+      EXPO_PUBLIC_APP_ENV: preview
+      EXPO_PUBLIC_API_BASE_URL: "http://10.0.2.2:8180/api/v1"
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: myankafe_finance_disposable_accept
+          POSTGRES_USER: finance_e2e
+          POSTGRES_PASSWORD: finance_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U finance_e2e -d myankafe_finance_disposable_accept"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mobile-app/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Verify disposable environment
+        run: |
+          echo "DB host=localhost"
+          echo "DB port=5432"
+          echo "DB name=myankafe_finance_disposable_accept"
+          echo "API port=8180"
+          echo "environment=$APP_ENV"
+          test "$APP_ENV" = "disposable-test"
+          case "$DATABASE_URL" in
+            *prod*|*finance-api.myankafe*|*:54329*|*8180/myankafe_finance?*) echo "refusing production-looking database"; exit 1 ;;
+          esac
+
+      - name: Install Goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@v3.24.3
+
+      - name: Migrate disposable Finance schema
+        run: goose -dir backend/db/migrations postgres "$DATABASE_URL" up
+
+      - name: Build disposable Finance API and bootstrap
+        working-directory: backend
+        run: |
+          go build -o /tmp/finance-e2e-api ./cmd/api
+          go build -o /tmp/finance-e2e-bootstrap ./cmd/bootstrap
+
+      - name: Start object-store stub
+        run: |
+          mkdir -p /tmp/finance-e2e-objects
+          python3 mobile-app/ci/s3_stub.py >/tmp/finance-e2e-s3.log 2>&1 &
+          sleep 1
+
+      - name: Bootstrap and start disposable API
+        run: |
+          /tmp/finance-e2e-bootstrap
+          /tmp/finance-e2e-api >/tmp/finance-e2e-api.log 2>&1 &
+          echo $! >/tmp/finance-e2e-api.pid
+          for i in $(seq 1 60); do
+            if curl -sf "http://127.0.0.1:8180/health" >/dev/null && curl -sf "http://127.0.0.1:8180/ready" >/dev/null; then
+              echo "API ready"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf "http://127.0.0.1:8180/health"
+          curl -sf "http://127.0.0.1:8180/ready"
+
+      - name: Seed disposable acceptance data
+        run: python3 mobile-app/ci/seed_disposable.py
+
+      - name: Install the Expo SDK 57 Android packages
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          SDKMANAGER=/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.1.12297006" \
+            "platform-tools" \
+            "emulator"
+
+      - name: Install mobile dependencies
+        working-directory: mobile-app
+        run: npm ci
+
+      - name: Typecheck and production API guard tests
+        working-directory: mobile-app
+        run: |
+          npm run typecheck
+          npm test -- --runInBand
+
+      - name: Expo preview config must not bake production API
+        working-directory: mobile-app
+        run: |
+          npx expo config --json > /tmp/finance-e2e-expo-config.json
+          node <<'NODE'
+          const config = require("/tmp/finance-e2e-expo-config.json");
+          const extra = (config.expo || config).extra || {};
+          if (extra.appEnv !== "preview") {
+            console.error("expected preview appEnv", extra);
+            process.exit(1);
+          }
+          if (extra.apiBaseUrl !== "http://10.0.2.2:8180/api/v1") {
+            console.error("expected emulator bridge API", extra);
+            process.exit(1);
+          }
+          console.log(JSON.stringify(extra, null, 2));
+          NODE
+
+      - name: Expo Android prebuild and assembleDebug
+        working-directory: mobile-app
+        run: |
+          npx expo prebuild --platform android --clean
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          "$HOME/.maestro/bin/maestro" --version
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Android emulator UI acceptance
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            set -euo pipefail
+            adb wait-for-device
+            adb install -r mobile-app/android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell pm list packages | grep com.myankafe.finance
+            chmod +x mobile-app/ci/run_maestro_e2e.sh
+            mobile-app/ci/run_maestro_e2e.sh
+
+      - name: Assert disposable accounting after UI
+        run: python3 mobile-app/ci/assert_accounting.py
+
+      - name: Upload Maestro evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: finance-android-e2e-evidence
+          path: |
+            /tmp/finance-e2e-artifacts/
+            /tmp/finance-e2e-api.log
+            /tmp/finance-e2e-s3.log
+          if-no-files-found: ignore
+
+      - name: Capture emulator logcat on failure
+        if: failure()
+        run: |
+          adb logcat -d > /tmp/finance-e2e-logcat.txt || true
+        continue-on-error: true
+
+      - name: Upload logcat on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: finance-android-e2e-logcat
+          path: /tmp/finance-e2e-logcat.txt
+          if-no-files-found: ignore

@@ -1,0 +1,39 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Home"
+- extendedWaitUntil:
+    visible: "Transfer"
+    timeout: 30000
+- tapOn: "Transfer"
+- extendedWaitUntil:
+    visible: "From account"
+    timeout: 30000
+- tapOn:
+    id: "Description"
+- inputText: "Cash to bank"
+- tapOn:
+    id: "From account"
+- tapOn: "Cash Drawer (MMK)"
+- tapOn:
+    id: "To account"
+- tapOn: "Cash Drawer (MMK)"
+- assertVisible: "Source and destination must be different accounts."
+- tapOn:
+    id: "To account"
+- tapOn: "Bank Account (MMK)"
+- tapOn:
+    id: "Amount out MMK"
+- inputText: "8000"
+- tapOn: "Transfer"
+- extendedWaitUntil:
+    visible: "Status Posted"
+    timeout: 90000
+- tapOn: "Home"
+- extendedWaitUntil:
+    visible: "Cash Drawer"
+    timeout: 60000
+- scrollUntilVisible:
+    element: "32,000 MMK"
+    direction: DOWN
+- assertVisible: "32,000 MMK"
+- assertVisible: "8,000 MMK"

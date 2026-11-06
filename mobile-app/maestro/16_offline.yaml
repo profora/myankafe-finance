@@ -1,0 +1,24 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Profile"
+- tapOn: "Sign out"
+- tapOn: "Sign out"
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 60000
+- runFlow:
+    file: helpers/login.yaml
+    env:
+      USERNAME: "ci-bookkeeper"
+      PASSWORD: ${BOOK_NEXT_PASSWORD}
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible: "Offline. Accounting changes stay disabled until you are online."
+    timeout: 60000
+- assertVisible: "Reconnect to record entries."
+- assertNotVisible: "New Expense"
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible: "New Expense"
+    timeout: 90000
+- assertNotVisible: "Offline. Accounting changes stay disabled until you are online."

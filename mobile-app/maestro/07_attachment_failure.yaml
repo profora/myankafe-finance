@@ -1,0 +1,42 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Home"
+- extendedWaitUntil:
+    visible: "New Expense"
+    timeout: 30000
+- tapOn: "New Expense"
+- extendedWaitUntil:
+    visible: "Save & Post"
+    timeout: 30000
+- tapOn:
+    id: "Description"
+- inputText: "Attachment failure probe"
+- tapOn:
+    id: "Paid from"
+- tapOn: "Cash Drawer (MMK)"
+- tapOn:
+    id: "Split 1 account"
+- tapOn: "6210 Rent"
+- tapOn:
+    id: "Amount"
+- inputText: "100"
+- tapOn: "Attach sample receipt"
+- assertVisible: "e2e-receipt.png"
+- tapOn: "Save & Post"
+- tapOn: "Post"
+- extendedWaitUntil:
+    visible: "Draft kept"
+    timeout: 90000
+- tapOn: "Open draft"
+- extendedWaitUntil:
+    visible: "Status Draft"
+    timeout: 60000
+- assertVisible: "Attachment failure probe"
+- tapOn:
+    id: "Cancellation reason"
+- inputText: "e2e cleanup"
+- tapOn: "Cancel draft"
+- tapOn: "Cancel draft"
+- extendedWaitUntil:
+    visible: "Status Voided"
+    timeout: 60000
