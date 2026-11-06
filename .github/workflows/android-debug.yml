@@ -100,6 +100,29 @@ jobs:
         working-directory: mobile-app
         run: npx expo prebuild --platform android --clean
 
+      - name: Embed the JS bundle in the debug APK
+        working-directory: mobile-app
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const path = "android/app/build.gradle";
+          let text = fs.readFileSync(path, "utf8");
+          if (!/react\s*\{/.test(text)) {
+            console.error("react block missing from android/app/build.gradle");
+            process.exit(1);
+          }
+          if (!text.includes("debuggableVariants")) {
+            text = text.replace(
+              /react\s*\{/,
+              "react {\n    // Standalone debug APK for CI/emulator installs without Metro.\n    debuggableVariants = []\n",
+            );
+            fs.writeFileSync(path, text);
+            console.log("configured debuggableVariants = []");
+          } else {
+            console.log("debuggableVariants already present");
+          }
+          NODE
+
       - name: Gradle assembleDebug
         working-directory: mobile-app/android
         run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon

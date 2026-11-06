@@ -166,6 +166,26 @@ jobs:
         working-directory: mobile-app
         run: |
           npx expo prebuild --platform android --clean
+          # Emulator CI has no Metro. Embed the JS bundle in the debug APK.
+          node <<'NODE'
+          const fs = require("fs");
+          const path = "android/app/build.gradle";
+          let text = fs.readFileSync(path, "utf8");
+          if (!/react\s*\{/.test(text)) {
+            console.error("react block missing from android/app/build.gradle");
+            process.exit(1);
+          }
+          if (!text.includes("debuggableVariants")) {
+            text = text.replace(
+              /react\s*\{/,
+              "react {\n    // GitHub emulator CI has no Metro server.\n    debuggableVariants = []\n",
+            );
+            fs.writeFileSync(path, text);
+            console.log("configured debuggableVariants = []");
+          } else {
+            console.log("debuggableVariants already present");
+          }
+          NODE
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
