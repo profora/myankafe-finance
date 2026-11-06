@@ -167,6 +167,7 @@ jobs:
         run: |
           npx expo prebuild --platform android --clean
           # Emulator CI has no Metro. Embed the JS bundle in the debug APK.
+          # Expo's template only mentions debuggableVariants in a comment; force an active empty list.
           node <<'NODE'
           const fs = require("fs");
           const path = "android/app/build.gradle";
@@ -175,20 +176,28 @@ jobs:
             console.error("react block missing from android/app/build.gradle");
             process.exit(1);
           }
-          if (!text.includes("debuggableVariants")) {
-            text = text.replace(
-              /react\s*\{/,
-              "react {\n    // GitHub emulator CI has no Metro server.\n    debuggableVariants = []\n",
-            );
-            fs.writeFileSync(path, text);
-            console.log("configured debuggableVariants = []");
+          if (/^\s*debuggableVariants\s*=/m.test(text)) {
+            text = text.replace(/^\s*debuggableVariants\s*=.*$/m, "    debuggableVariants = []");
+          } else if (/^\s*\/\/\s*debuggableVariants\s*=/m.test(text)) {
+            text = text.replace(/^\s*\/\/\s*debuggableVariants\s*=.*$/m, "    debuggableVariants = []");
           } else {
-            console.log("debuggableVariants already present");
+            text = text.replace(/react\s*\{/, "react {\n    // GitHub emulator CI has no Metro server.\n    debuggableVariants = []\n");
           }
+          fs.writeFileSync(path, text);
+          if (!/^\s*debuggableVariants\s*=\s*\[\s*\]/m.test(text)) {
+            console.error("failed to set debuggableVariants = []");
+            process.exit(1);
+          }
+          console.log("configured debuggableVariants = []");
           NODE
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | tee /tmp/finance-e2e-apk-listing.txt | grep -E 'index\.(android\.)?bundle|assets/.*\.bundle|\.hbc' || {
+            echo "FAIL: debug APK is missing an embedded JS bundle"
+            exit 1
+          }
 
       - name: Install Maestro
         run: |

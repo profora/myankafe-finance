@@ -111,16 +111,19 @@ jobs:
             console.error("react block missing from android/app/build.gradle");
             process.exit(1);
           }
-          if (!text.includes("debuggableVariants")) {
-            text = text.replace(
-              /react\s*\{/,
-              "react {\n    // Standalone debug APK for CI/emulator installs without Metro.\n    debuggableVariants = []\n",
-            );
-            fs.writeFileSync(path, text);
-            console.log("configured debuggableVariants = []");
+          if (/^\s*debuggableVariants\s*=/m.test(text)) {
+            text = text.replace(/^\s*debuggableVariants\s*=.*$/m, "    debuggableVariants = []");
+          } else if (/^\s*\/\/\s*debuggableVariants\s*=/m.test(text)) {
+            text = text.replace(/^\s*\/\/\s*debuggableVariants\s*=.*$/m, "    debuggableVariants = []");
           } else {
-            console.log("debuggableVariants already present");
+            text = text.replace(/react\s*\{/, "react {\n    // Standalone debug APK for CI/emulator installs without Metro.\n    debuggableVariants = []\n");
           }
+          fs.writeFileSync(path, text);
+          if (!/^\s*debuggableVariants\s*=\s*\[\s*\]/m.test(text)) {
+            console.error("failed to set debuggableVariants = []");
+            process.exit(1);
+          }
+          console.log("configured debuggableVariants = []");
           NODE
 
       - name: Gradle assembleDebug
@@ -133,6 +136,10 @@ jobs:
           apk="android/app/build/outputs/apk/debug/app-debug.apk"
           test -f "$apk"
           ls -lh "$apk"
+          unzip -l "$apk" | grep -E 'index\.(android\.)?bundle|assets/.*\.bundle|\.hbc' || {
+            echo "FAIL: debug APK is missing an embedded JS bundle"
+            exit 1
+          }
 
       - uses: actions/upload-artifact@v4
         with:
