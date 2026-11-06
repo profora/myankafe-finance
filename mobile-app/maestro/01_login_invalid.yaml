@@ -9,6 +9,6 @@ appId: com.myankafe.finance
 - inputText: "wrong-password-xx"
 - tapOn: "Sign in"
 - extendedWaitUntil:
-    visible: "invalid username or password"
+    visible: "Invalid username or password."
     timeout: 30000
 - assertVisible: "Sign in"
