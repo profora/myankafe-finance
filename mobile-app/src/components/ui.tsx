@@ -25,6 +25,7 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      testID={label}
       accessibilityState={{ disabled: Boolean(disabled) }}
       onPress={onPress}
       disabled={disabled}
@@ -59,6 +60,7 @@ export function TextField({
         secureTextEntry={secure}
         placeholder={placeholder}
         keyboardType={keyboardType}
+        testID={label}
         accessibilityLabel={label}
         autoCapitalize="none"
         style={styles.input}
@@ -86,6 +88,7 @@ export function SelectField({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
+        testID={label}
         onPress={() => setOpen(true)}
         style={styles.input}
       >

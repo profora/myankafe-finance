@@ -12,6 +12,7 @@ export function EntitySwitcher() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Current entity ${entity.Name}`}
+        testID={`Current entity ${entity.Name}`}
         onPress={() => setOpen(true)}
         style={styles.chip}
       >
@@ -29,6 +30,7 @@ export function EntitySwitcher() {
                 key={item.PublicID}
                 accessibilityRole="button"
                 accessibilityLabel={`Switch to ${item.Name}`}
+                testID={`Switch to ${item.Name}`}
                 style={styles.row}
                 onPress={() => {
                   void select(item.PublicID);
