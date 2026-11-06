@@ -1,10 +1,6 @@
 appId: com.myankafe.finance
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible: "Sign in"
-    timeout: 90000
+- runFlow: helpers/boot_login.yaml
 - tapOn:
     id: "Username"
 - inputText: "ci-bookkeeper"

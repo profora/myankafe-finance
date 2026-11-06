@@ -28,6 +28,18 @@ run_flow() {
 }
 
 adb shell pm list packages | grep com.myankafe.finance
+adb shell pm grant com.myankafe.finance android.permission.POST_NOTIFICATIONS || true
+adb shell pm grant com.myankafe.finance android.permission.CAMERA || true
+adb shell pm grant com.myankafe.finance android.permission.READ_MEDIA_IMAGES || true
+adb shell pm grant com.myankafe.finance android.permission.READ_EXTERNAL_STORAGE || true
+
+# Cold-start once so Expo splash/JS settle before Maestro assertions.
+adb shell am force-stop com.myankafe.finance || true
+adb shell monkey -p com.myankafe.finance -c android.intent.category.LAUNCHER 1 || true
+sleep 12
+adb exec-out screencap -p > "$REPORT_DIR/boot-before-maestro.png" || true
+timeout 20s adb logcat -d -t 200 > "$REPORT_DIR/boot-before-maestro.logcat.txt" || true
+adb shell am force-stop com.myankafe.finance || true
 
 run_flow 01_login_invalid.yaml
 run_flow 02_login_and_home.yaml

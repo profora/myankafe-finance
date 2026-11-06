@@ -216,7 +216,7 @@ jobs:
       - name: Capture emulator logcat on failure
         if: failure()
         run: |
-          adb logcat -d > /tmp/finance-e2e-logcat.txt || true
+          timeout 30s adb logcat -d -t 400 > /tmp/finance-e2e-logcat.txt || true
         continue-on-error: true
 
       - name: Upload logcat on failure
