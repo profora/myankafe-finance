@@ -6,8 +6,13 @@ import { transferErrors } from "../lib/transfer";
 import { groupBalanceSheet, groupProfitLoss } from "../lib/reports";
 import { formatDisplay, parseAmount } from "../lib/money";
 import { createClient } from "../api/client";
-import { createIdempotencyKey } from "../lib/idempotency";
-import { statusLabel, transactionQuery } from "../lib/transactions";
+import { createIdempotencyKey, createKeyStore } from "../lib/idempotency";
+import { mergeTransactionRows, nextTransactionOffset, statusLabel, transactionQuery } from "../lib/transactions";
+import { reportRequest } from "../lib/reports";
+import { amountsEqual, formatDisplay as showMoney } from "../lib/money";
+import { passwordChangeError } from "../lib/password";
+import { removeSplit } from "../lib/entry";
+import { resolveApiBaseUrl } from "../../productionApiGuard.js";
 import { attachmentError } from "../lib/attachments";
 
 const mockMemory = new Map<string, string>();
@@ -142,6 +147,9 @@ describe("dashboard", () => {
     ];
     const currencies = new Set(balances.map((b) => b.currency));
     expect(currencies.size).toBe(2);
+    expect(showMoney("-12.50", "USD")).toContain("-12.5");
+    expect(showMoney("1000000000000.25", "MMK")).toContain("1,000,000,000,000.25");
+    expect(showMoney("0", "MMK")).toContain("0");
   });
 });
 
@@ -206,7 +214,7 @@ describe("entry", () => {
       },
     });
     expect(result).toMatchObject({ ok: true, posted: true });
-    expect(order).toEqual(["create:stable", "upload", "post:stable"]);
+    expect(order).toEqual(["create:stable", "upload", "post:stable:post"]);
   });
   test("failed attachment keeps the draft unposted", async () => {
     let posted = false;
@@ -226,10 +234,22 @@ describe("entry", () => {
     expect(posted).toBe(false);
     expect(result).toMatchObject({ ok: false, draftKept: true, id: "draft-9" });
   });
-  test("idempotency key is stable across retries", () => {
+  test("idempotency key is stable across retries of the same action", () => {
     const key = createIdempotencyKey(() => "fixed");
     expect(key).toBe("fixed");
-    expect(createIdempotencyKey(() => "fixed")).toBe(key);
+    let n = 0;
+    const store = createKeyStore(() => `k${++n}`);
+    expect(store.keyFor("post:{}")).toBe("k1");
+    expect(store.keyFor("post:{}")).toBe("k1");
+    expect(store.keyFor("post:changed")).toBe("k2");
+  });
+  test("removing a split keeps the last row", () => {
+    expect(removeSplit([{ accountId: "a" }, { accountId: "b" }], 0)).toEqual([{ accountId: "b" }]);
+    expect(removeSplit([{ accountId: "a" }], 0)).toHaveLength(1);
+  });
+  test("negative and blank amounts are rejected", () => {
+    expect(entryErrors({ ...base, splits: [{ accountId: "exp", amount: "-5", description: "" }] })[0]).toMatch(/greater than zero/);
+    expect(entryErrors({ ...base, date: "11/06/2026" })).toContain("Enter a valid date.");
   });
 });
 
@@ -248,6 +268,8 @@ describe("transfer", () => {
     expect(transferErrors(draft)).toEqual([]);
     expect(transferErrors({ ...draft, fromId: "a", toId: "a" })[0]).toMatch(/different/);
     expect(transferErrors({ ...draft, toAmount: "9" })[0]).toMatch(/equal amounts/);
+    expect(transferErrors({ ...draft, toAmount: "10.00" })).toEqual([]);
+    expect(amountsEqual("10", "10.000000")).toBe(true);
   });
 });
 
@@ -258,6 +280,16 @@ describe("transactions", () => {
     expect(query).toContain("status=DRAFT");
     expect(query).toContain("financial_account_id=fa");
     expect(transactionQuery({})).toContain("limit=50");
+  });
+  test("pagination advances once and stops on an empty page", () => {
+    expect(nextTransactionOffset(40, true, 0)).toBe(40);
+    expect(nextTransactionOffset(0, true, 40)).toBeUndefined();
+    expect(nextTransactionOffset(10, false, 0)).toBeUndefined();
+    const rows = mergeTransactionRows(
+      [[{ row_id: "a" }, { row_id: "b" }], [{ row_id: "b" }, { row_id: "c" }]],
+      (row) => row.row_id,
+    );
+    expect(rows.map((row) => row.row_id)).toEqual(["a", "b", "c"]);
   });
   test("draft posted and voided labels", () => {
     expect(statusLabel("DRAFT")).toBe("Draft");
@@ -295,6 +327,15 @@ describe("reports", () => {
   });
   test("empty reports", () => {
     expect(groupProfitLoss([])).toEqual({ income: [], expenses: [], other: [] });
+    expect(groupBalanceSheet([])).toEqual({ assets: [], liabilities: [], equity: [], earnings: [] });
+  });
+  test("report paths stay bounded", () => {
+    expect(reportRequest("en", "profit-loss", "2026-01-01", "2026-01-31")).toContain("/reports/profit-loss");
+    expect(reportRequest("en", "balance-sheet", "2026-01-01", "2026-01-31")).toContain("through=2026-01-31");
+    expect(reportRequest("en", "trial-balance", "2026-01-01", "2026-01-31")).toContain("trial-balance");
+    expect(reportRequest("en", "cash-movement", "2026-01-01", "2026-01-31")).toContain("cash-movement");
+    expect(reportRequest("en", "sales-analysis", "2026-01-01", "2026-01-31")).toContain("sales-analysis");
+    expect(reportRequest("en", "general-ledger", "2026-01-01", "2026-01-31")).toContain("limit=200");
   });
 });
 
@@ -307,6 +348,14 @@ describe("production guard", () => {
   });
   test("accepts the documented production API", () => {
     expect(assertProductionApiBaseUrl(PRODUCTION_API_BASE_URL)).toBe("https://finance-api.myankafe.com/api/v1");
+  });
+  test("development accepts a local URL and production does not", () => {
+    expect(resolveApiBaseUrl("development", "http://10.0.2.2:8180/api/v1")).toBe("http://10.0.2.2:8180/api/v1");
+    expect(resolveApiBaseUrl("development", "")).toBe("http://127.0.0.1:8180/api/v1");
+    expect(resolveApiBaseUrl("preview", PRODUCTION_API_BASE_URL)).toBe(PRODUCTION_API_BASE_URL);
+    expect(() => resolveApiBaseUrl("production", "http://10.0.2.2:8180/api/v1")).toThrow();
+    expect(() => resolveApiBaseUrl("production", "https://192.168.1.8/api/v1")).toThrow();
+    expect(() => assertProductionApiBaseUrl("https://10.0.2.2/api/v1")).toThrow();
   });
 });
 
@@ -346,5 +395,34 @@ describe("sessions and password", () => {
     await client.request("/auth/sessions/revoke-others", { method: "POST", body: "{}" });
     expect(paths.some((p) => p.endsWith("/auth/sessions/sess-2"))).toBe(true);
     expect(paths.some((p) => p.endsWith("/auth/sessions/revoke-others"))).toBe(true);
+  });
+
+  test("a wrong current password does not clear the bearer session", async () => {
+    await saveSession("still-valid");
+    let cleared = false;
+    const client = createClient({
+      baseUrl: "https://finance-api.myankafe.com/api/v1",
+      getToken: getSessionToken,
+      onUnauthorized: async () => {
+        cleared = true;
+        await clearSession();
+      },
+      fetchImpl: async () => response(401, { error: "current password is incorrect" }),
+    });
+    await expect(
+      client.request("/auth/change-password", {
+        method: "POST",
+        endSessionOn401: false,
+        headers: { "X-Session-Transport": "bearer" },
+        body: "{}",
+      }),
+    ).rejects.toThrow(/Current password is incorrect/);
+    expect(cleared).toBe(false);
+    expect(await getSessionToken()).toBe("still-valid");
+  });
+
+  test("password rules match Finance", () => {
+    expect(passwordChangeError("old", "short")).toMatch(/12 characters/);
+    expect(passwordChangeError("old", "long enough password")).toBeNull();
   });
 });

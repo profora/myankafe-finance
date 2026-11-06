@@ -10,6 +10,7 @@ export class ApiError extends Error {
 
 export function friendlyError(err: unknown): string {
   if (err instanceof ApiError) {
+    if (err.status === 401 && /password/i.test(err.message)) return err.message;
     if (err.status === 401) return "Sign in again to continue.";
     if (err.status === 403) return "You do not have permission for that action.";
     if (err.status === 429) return "Too many attempts. Wait a moment and try again.";

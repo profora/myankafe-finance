@@ -66,42 +66,49 @@ export async function saveEntry(args: {
   draft: EntryDraft;
   idempotencyKey: string;
   attachments: { name: string }[];
-  create: (body: unknown, key: string) => Promise<{ PublicID: string }>;
+  create: (body: unknown, key: string) => Promise<{ PublicID?: string; id?: string }>;
   upload: (id: string, files: { name: string }[]) => Promise<void>;
   post: (id: string, key: string) => Promise<void>;
 }): Promise<SaveResult> {
   const errors = entryErrors(args.draft);
   if (errors.length) return { ok: false, draftKept: false, message: errors[0] };
-  let created: { PublicID: string };
+  let created: { PublicID?: string; id?: string };
   try {
     created = await args.create(entryPayload(args.draft), args.idempotencyKey);
   } catch (err) {
     return { ok: false, draftKept: false, message: err instanceof Error ? err.message : "Could not save the draft." };
   }
+  const id = created.PublicID || created.id || "";
+  if (!id) return { ok: false, draftKept: false, message: "Finance did not return the draft id." };
   if (args.attachments.length) {
     try {
-      await args.upload(created.PublicID, args.attachments);
+      await args.upload(id, args.attachments);
     } catch (err) {
       const detail = err instanceof Error ? err.message : "upload failed";
       return {
         ok: false,
         draftKept: true,
-        id: created.PublicID,
-        message: `Draft ${created.PublicID} was created, but attachment upload failed. It was not posted. ${detail}`,
+        id,
+        message: `Draft ${id} was created, but attachment upload failed. It was not posted. ${detail}`,
       };
     }
   }
   if (args.mode === "post") {
     try {
-      await args.post(created.PublicID, args.idempotencyKey);
+      await args.post(id, `${args.idempotencyKey}:post`);
     } catch (err) {
       return {
         ok: false,
         draftKept: true,
-        id: created.PublicID,
+        id,
         message: err instanceof Error ? err.message : "Draft was saved but posting failed.",
       };
     }
   }
-  return { ok: true, posted: args.mode === "post", id: created.PublicID };
+  return { ok: true, posted: args.mode === "post", id };
+}
+
+export function removeSplit<T>(splits: T[], index: number): T[] {
+  if (splits.length <= 1) return splits;
+  return splits.filter((_, i) => i !== index);
 }

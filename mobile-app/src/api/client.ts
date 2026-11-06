@@ -14,25 +14,41 @@ export type ClientDeps = {
   fetchImpl?: FetchLike;
 };
 
-function messageFrom(payload: unknown, status: number): string {
-  if (status === 401) return "Invalid username or password.";
-  if (status === 429) return "Too many attempts. Wait a moment and try again.";
-  if (status === 403) return "You do not have permission for that action.";
+function serverText(payload: unknown): string {
   if (payload && typeof payload === "object") {
     const obj = payload as Record<string, unknown>;
     if (typeof obj.error === "string") return obj.error;
     if (typeof obj.message === "string") return obj.message;
   }
-  if (status === 401) return "Invalid username or password.";
+  return "";
+}
+
+function safeAccountingMessage(raw: string, fallback: string): string {
+  const text = raw.trim();
+  if (!text) return fallback;
+  if (/pq:|sql|panic|stack trace|password_hash|session_token/i.test(text)) return fallback;
+  return text.length > 300 ? `${text.slice(0, 300)}…` : text;
+}
+
+export function messageFrom(payload: unknown, status: number): string {
+  const server = serverText(payload);
+  if (status === 401) {
+    if (/current password/i.test(server)) return "Current password is incorrect.";
+    return "Invalid username or password.";
+  }
   if (status === 429) return "Too many attempts. Wait a moment and try again.";
-  return "Request failed.";
+  if (status === 403) return "You do not have permission for that action.";
+  if (status === 409) return safeAccountingMessage(server, "That action conflicted with one already in progress. Try again.");
+  if (status === 400 || status === 422) return safeAccountingMessage(server, "Finance rejected that entry. Check the fields and try again.");
+  if (status >= 500) return "Finance is unavailable. Try again.";
+  return safeAccountingMessage(server, "Request failed.");
 }
 
 export function createClient(deps: ClientDeps) {
   const fetchImpl = deps.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
   const base = deps.baseUrl.replace(/\/$/, "");
 
-  async function request<T>(path: string, init: RequestInit & { auth?: boolean; idempotencyKey?: string } = {}): Promise<T> {
+  async function request<T>(path: string, init: RequestInit & { auth?: boolean; idempotencyKey?: string; endSessionOn401?: boolean } = {}): Promise<T> {
     const headers = new Headers(init.headers);
     headers.set("Accept", "application/json");
     headers.set("X-Requested-With", "MyanKafe-Finance");
@@ -53,7 +69,7 @@ export function createClient(deps: ClientDeps) {
     }
     const text = await response.text();
     const payload = text ? safeJson(text) : null;
-    if (response.status === 401 && init.auth !== false) {
+    if (response.status === 401 && init.auth !== false && init.endSessionOn401 !== false) {
       await deps.onUnauthorized();
       throw new ApiError("Sign in again to continue.", 401);
     }

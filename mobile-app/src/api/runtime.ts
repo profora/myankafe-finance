@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import { createClient } from "./client";
 import { clearSession, getSessionToken } from "../auth/session";
+import { clearFinanceCache } from "../lib/queryClient";
 
 type Extra = { apiBaseUrl?: string; appEnv?: string };
 
@@ -28,6 +29,7 @@ export function api() {
     baseUrl: base,
     getToken: getSessionToken,
     onUnauthorized: async () => {
+      clearFinanceCache();
       await clearSession();
       unauthorized();
     },

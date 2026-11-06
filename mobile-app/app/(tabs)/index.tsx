@@ -14,7 +14,7 @@ import { canOperateLedger } from "../../src/lib/roles";
 import { colors, space } from "../../src/theme";
 
 type Dash = { income: string; expenses: string; net_profit: string };
-type Balance = { entity_id: string; entity_name: string; id: string; name: string; kind: string; currency: string; balance: string };
+type Balance = { entity_id: string; entity_name: string; id: string; name: string; kind: string; currency: string; balance: string; ledger_account_id?: string };
 type Combined = { reporting_currency: string; income: string; expenses: string; net_profit: string; entities: { entity_name: string; functional_currency: string; net_profit: string }[] };
 
 const KINDS = ["CASH", "BANK", "MOBILE_WALLET", "CREDIT_CARD", "OTHER"] as const;
@@ -84,13 +84,15 @@ export default function HomeScreen() {
           <View key={group.kind} style={{ gap: 8 }}>
             <Text style={styles.kind}>{group.kind.replace(/_/g, " ")}</Text>
             {group.items.map((item) => (
-              <Card key={item.id}>
-                <Text style={styles.account}>{item.name}</Text>
-                <Text style={styles.meta}>
-                  {item.kind} · {item.entity_name}
-                </Text>
-                <Text style={styles.amount}>{formatDisplay(item.balance, item.currency)}</Text>
-              </Card>
+              <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.name} ${formatDisplay(item.balance, item.currency)}`} onPress={() => item.ledger_account_id && router.push({ pathname: "/account/[id]/ledger", params: { id: item.ledger_account_id } })}>
+                <Card>
+                  <Text style={styles.account}>{item.name}</Text>
+                  <Text style={styles.meta}>
+                    {item.kind.replace(/_/g, " ")} · {item.entity_name} · {item.currency}
+                  </Text>
+                  <Text style={styles.amount}>{formatDisplay(item.balance, item.currency)}</Text>
+                </Card>
+              </Pressable>
             ))}
           </View>
         ))}

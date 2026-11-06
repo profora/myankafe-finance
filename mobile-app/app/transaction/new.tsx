@@ -10,8 +10,9 @@ import { useOffline } from "../../src/components/NetworkBanner";
 import { Button, SelectField, TextField } from "../../src/components/ui";
 import { attachmentError } from "../../src/lib/attachments";
 import { todayInTimeZone } from "../../src/lib/dates";
-import { EntryDraft, entryErrors, entryTotal, saveEntry, SplitDraft } from "../../src/lib/entry";
+import { EntryDraft, entryErrors, entryTotal, removeSplit, saveEntry, SplitDraft } from "../../src/lib/entry";
 import { createIdempotencyKey } from "../../src/lib/idempotency";
+import { friendlyError } from "../../src/api/errors";
 import { colors, space } from "../../src/theme";
 
 type Account = { PublicID: string; Code: string; Name: string; Type: string; Postable: boolean; Active: boolean };
@@ -100,6 +101,11 @@ export default function NewEntryScreen() {
       setError(problem);
       return;
     }
+    if (files.length >= 10) {
+      setError("A transaction can attach up to 10 files at a time.");
+      return;
+    }
+    setError("");
     setFiles((current) => [...current, file]);
   }
 
@@ -142,13 +148,14 @@ export default function NewEntryScreen() {
         return;
       }
       if (!result.ok) {
+        if (/idempotency/i.test(result.message)) setKey(createIdempotencyKey());
         setError(result.message);
         return;
       }
       router.replace(`/transaction/${result.id}`);
     },
     onError: (err) => {
-      const message = err instanceof Error ? err.message : "Could not save.";
+      const message = friendlyError(err);
       if (message.toLowerCase().includes("idempotency")) setKey(createIdempotencyKey());
       setError(message);
     },
@@ -158,7 +165,7 @@ export default function NewEntryScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <Stack.Screen options={{ title: "New Entry" }} />
+      <Stack.Screen options={{ title: params.edit ? "Edit draft" : "New Entry" }} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <SelectField label="Type" value={type} onChange={(id) => setType(id as "INCOME" | "EXPENSE")} options={[{ id: "INCOME", label: "Income" }, { id: "EXPENSE", label: "Expense" }]} />
         <TextField label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
@@ -185,22 +192,45 @@ export default function NewEntryScreen() {
             <SelectField label={`Split ${index + 1} account`} value={split.accountId} onChange={(id) => setSplits((rows) => rows.map((row, i) => i === index ? { ...row, accountId: id } : row))} options={ledger.map((item) => ({ id: item.PublicID, label: `${item.Code} ${item.Name}` }))} />
             <TextField label="Amount" value={split.amount} onChangeText={(amount) => setSplits((rows) => rows.map((row, i) => i === index ? { ...row, amount } : row))} keyboardType="decimal-pad" />
             <TextField label="Line description" value={split.description} onChangeText={(description) => setSplits((rows) => rows.map((row, i) => i === index ? { ...row, description } : row))} />
+            {splits.length > 1 ? <Button label={`Remove split ${index + 1}`} tone="secondary" onPress={() => setSplits((rows) => removeSplit(rows, index))} /> : null}
           </ViewBlock>
         ))}
         <Button label="Add split" tone="secondary" onPress={() => setSplits((rows) => [...rows, { accountId: "", amount: "", description: "" }])} />
         <Text style={styles.total}>Total {total ?? "—"} {draft.currency}</Text>
         {files.map((file) => <Text key={file.uri}>{file.name}</Text>)}
         <Button label="Camera" tone="secondary" onPress={async () => {
-          const shot = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.8 });
-          if (!shot.canceled) addFile({ name: "camera.jpg", uri: shot.assets[0].uri, mime: "image/jpeg", size: shot.assets[0].fileSize });
+          try {
+            const permission = await ImagePicker.requestCameraPermissionsAsync();
+            if (!permission.granted) {
+              setError("Camera permission is required to attach a receipt.");
+              return;
+            }
+            const shot = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.8 });
+            if (!shot.canceled) addFile({ name: "camera.jpg", uri: shot.assets[0].uri, mime: shot.assets[0].mimeType || "image/jpeg", size: shot.assets[0].fileSize });
+          } catch {
+            setError("Could not open the camera.");
+          }
         }} />
         <Button label="Photo library" tone="secondary" onPress={async () => {
-          const shot = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
-          if (!shot.canceled) addFile({ name: shot.assets[0].fileName || "photo.jpg", uri: shot.assets[0].uri, mime: shot.assets[0].mimeType, size: shot.assets[0].fileSize });
+          try {
+            const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permission.granted) {
+              setError("Photo library permission is required to attach a receipt.");
+              return;
+            }
+            const shot = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
+            if (!shot.canceled) addFile({ name: shot.assets[0].fileName || "photo.jpg", uri: shot.assets[0].uri, mime: shot.assets[0].mimeType, size: shot.assets[0].fileSize });
+          } catch {
+            setError("Could not open the photo library.");
+          }
         }} />
         <Button label="File" tone="secondary" onPress={async () => {
-          const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: false });
-          if (!picked.canceled) addFile({ name: picked.assets[0].name, uri: picked.assets[0].uri, mime: picked.assets[0].mimeType, size: picked.assets[0].size });
+          try {
+            const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: false, multiple: false });
+            if (!picked.canceled) addFile({ name: picked.assets[0].name, uri: picked.assets[0].uri, mime: picked.assets[0].mimeType, size: picked.assets[0].size });
+          } catch {
+            setError("Could not open the file picker.");
+          }
         }} />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {problems.length ? <Text style={styles.note}>{problems[0]}</Text> : null}

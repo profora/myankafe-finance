@@ -1,21 +1,24 @@
-/** Decimal strings only. No floating-point accounting decisions. Scale is 4. */
+/** Decimal strings only. No floating-point accounting decisions. Scale matches Finance amounts (6 dp). */
 
-const SCALE = 4n;
+const SCALE = 6n;
 const BASE = 10n ** SCALE;
 
 export function parseAmount(raw: string): bigint | null {
   const text = raw.trim();
-  if (!/^\d+(\.\d{1,4})?$/.test(text)) return null;
-  const [whole, frac = ""] = text.split(".");
-  const padded = (frac + "0000").slice(0, 4);
-  return BigInt(whole) * BASE + BigInt(padded);
+  const match = /^(-)?(\d+)(?:\.(\d{1,6}))?$/.exec(text);
+  if (!match) return null;
+  const negative = Boolean(match[1]);
+  const whole = BigInt(match[2]);
+  const padded = (match[3] ?? "").padEnd(6, "0");
+  const units = whole * BASE + BigInt(padded || "0");
+  return negative ? -units : units;
 }
 
 export function formatAmount(units: bigint): string {
   const negative = units < 0n;
   const abs = negative ? -units : units;
   const whole = abs / BASE;
-  const frac = (abs % BASE).toString().padStart(4, "0").replace(/0+$/, "");
+  const frac = (abs % BASE).toString().padStart(6, "0").replace(/0+$/, "");
   const body = frac ? `${whole.toString()}.${frac}` : whole.toString();
   return negative ? `-${body}` : body;
 }
@@ -28,6 +31,24 @@ export function addAmounts(values: string[]): bigint | null {
     total += parsed;
   }
   return total;
+}
+
+export function sumAmountStrings(values: string[]): string | null {
+  const total = addAmounts(values);
+  return total == null ? null : formatAmount(total);
+}
+
+export function subtractAmountStrings(left: string, right: string): string | null {
+  const a = parseAmount(left);
+  const b = parseAmount(right);
+  if (a == null || b == null) return null;
+  return formatAmount(a - b);
+}
+
+export function amountsEqual(left: string, right: string): boolean {
+  const a = parseAmount(left);
+  const b = parseAmount(right);
+  return a != null && b != null && a === b;
 }
 
 export function isPositiveAmount(raw: string): boolean {

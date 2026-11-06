@@ -14,10 +14,19 @@ export type BalanceRow = { type?: string; account_type?: string; name?: string; 
 
 export function groupBalanceSheet(items: BalanceRow[]) {
   const bucket = (type: string) => items.filter((r) => (r.type || r.account_type || "").toUpperCase() === type);
+  const earnings = items.filter((r) => (r.name || "").toLowerCase().includes("current earnings"));
   return {
     assets: bucket("ASSET"),
     liabilities: bucket("LIABILITY"),
-    equity: bucket("EQUITY"),
-    earnings: items.filter((r) => (r.type || "").toUpperCase().includes("EARNING") || (r.name || "").toLowerCase().includes("current earnings")),
+    equity: bucket("EQUITY").filter((r) => !earnings.includes(r)),
+    earnings,
   };
+}
+
+export function reportRequest(entityId: string, report: string, from: string, to: string): string {
+  const range = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  if (report === "balance-sheet") return `/entities/${entityId}/reports/balance-sheet?through=${encodeURIComponent(to)}`;
+  if (report === "trial-balance") return `/entities/${entityId}/reports/trial-balance?through=${encodeURIComponent(to)}`;
+  if (report === "general-ledger") return `/entities/${entityId}/reports/general-ledger?${range}&limit=200`;
+  return `/entities/${entityId}/reports/${report}?${range}`;
 }

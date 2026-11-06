@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { api, setUnauthorizedHandler } from "../api/runtime";
+import { clearFinanceCache } from "../lib/queryClient";
 import { clearSession, getSessionToken, saveSession } from "./session";
 import { friendlyError } from "../api/errors";
 
@@ -24,7 +25,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
 
   useEffect(() => {
-    setUnauthorizedHandler(() => setUser(null));
+    setUnauthorizedHandler(() => {
+      clearFinanceCache();
+      setUser(null);
+    });
     (async () => {
       const token = await getSessionToken();
       if (!token) {
@@ -63,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {
           /* local session still clears */
         }
+        clearFinanceCache();
         await clearSession();
         setUser(null);
       },

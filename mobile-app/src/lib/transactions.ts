@@ -36,6 +36,25 @@ export function transactionQuery(filters: TransactionFilters): string {
   return params.toString();
 }
 
+export function nextTransactionOffset(lastCount: number, hasMore: boolean, previousOffset: number): number | undefined {
+  if (!hasMore || lastCount <= 0) return undefined;
+  return previousOffset + lastCount;
+}
+
+export function mergeTransactionRows<T>(pages: T[][], key: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const page of pages) {
+    for (const item of page) {
+      const id = key(item);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
 export function statusLabel(status: string): string {
   if (status === "DRAFT") return "Draft";
   if (status === "POSTED") return "Posted";

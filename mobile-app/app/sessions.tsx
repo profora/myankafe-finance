@@ -32,13 +32,14 @@ export default function SessionsScreen() {
           <Text>Created {session.created_at}</Text>
           <Text>Last seen {session.last_seen_at}</Text>
           <Text>Expires {session.expires_at}</Text>
-          {!session.current ? <Button label="Revoke" tone="danger" onPress={() => Alert.alert("Revoke session", "Sign that device out?", [{ text: "Cancel", style: "cancel" }, { text: "Revoke", style: "destructive", onPress: () => revoke.mutate(session.id) }])} /> : null}
+          {!session.current ? <Button label="Revoke" tone="danger" disabled={revoke.isPending || revokeOthers.isPending} onPress={() => Alert.alert("Revoke session", "Sign that device out?", [{ text: "Cancel", style: "cancel" }, { text: "Revoke", style: "destructive", onPress: () => { if (!revoke.isPending) revoke.mutate(session.id); } }])} /> : null}
         </Card>
       ))}
       <Button
         label="Revoke all other sessions"
         tone="danger"
-        onPress={() => Alert.alert("Revoke other sessions", "This signs out every device except this one.", [{ text: "Cancel", style: "cancel" }, { text: "Revoke others", style: "destructive", onPress: () => revokeOthers.mutate() }])}
+        disabled={revoke.isPending || revokeOthers.isPending}
+        onPress={() => Alert.alert("Revoke other sessions", "This signs out every device except this one. It does not sign out this phone.", [{ text: "Cancel", style: "cancel" }, { text: "Revoke others", style: "destructive", onPress: () => { if (!revokeOthers.isPending) revokeOthers.mutate(); } }])}
       />
     </ScrollView>
   );

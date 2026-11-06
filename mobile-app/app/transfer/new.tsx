@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from "react-native";
 import { api } from "../../src/api/runtime";
 import { useEntity } from "../../src/auth/EntityContext";
 import { useOffline } from "../../src/components/NetworkBanner";
 import { Button, SelectField, TextField } from "../../src/components/ui";
 import { todayInTimeZone } from "../../src/lib/dates";
-import { createIdempotencyKey } from "../../src/lib/idempotency";
+import { createKeyStore } from "../../src/lib/idempotency";
+import { friendlyError } from "../../src/api/errors";
 import { transferErrors, transferPayload, TransferDraft } from "../../src/lib/transfer";
 import { colors, space } from "../../src/theme";
 
@@ -18,7 +19,7 @@ export default function TransferScreen() {
   const router = useRouter();
   const offline = useOffline();
   const client = useQueryClient();
-  const [key] = useState(() => createIdempotencyKey());
+  const keys = useMemo(() => createKeyStore(), []);
   const [draft, setDraft] = useState<TransferDraft>({
     date: entity ? todayInTimeZone(entity.Timezone) : "",
     description: "",
@@ -38,18 +39,20 @@ export default function TransferScreen() {
   const accounts = (fins.data?.items ?? []).filter((item) => item.Active);
   const problems = transferErrors(draft);
   const save = useMutation({
-    mutationFn: () =>
-      api().request<{ id: string }>(`/entities/${entity!.PublicID}/transfers`, {
+    mutationFn: () => {
+      const body = transferPayload(draft);
+      return api().request<{ id: string }>(`/entities/${entity!.PublicID}/transfers`, {
         method: "POST",
-        idempotencyKey: key,
-        body: JSON.stringify(transferPayload(draft)),
-      }),
+        idempotencyKey: keys.keyFor(JSON.stringify(body)),
+        body: JSON.stringify(body),
+      });
+    },
     onSuccess: async (result) => {
       await client.invalidateQueries({ queryKey: ["balances"] });
       await client.invalidateQueries({ queryKey: ["transactions"] });
       router.replace(`/transaction/${result.id}`);
     },
-    onError: (err) => setError(err instanceof Error ? err.message : "Transfer failed."),
+    onError: (err) => setError(friendlyError(err)),
   });
   function pick(which: "from" | "to", id: string) {
     const account = accounts.find((item) => item.PublicID === id);

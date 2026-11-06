@@ -1,7 +1,7 @@
 import { ExpoConfig, ConfigContext } from "expo/config";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PRODUCTION_API_BASE_URL, assertProductionApiBaseUrl } = require("./productionApiGuard.js");
+const { PRODUCTION_API_BASE_URL, resolveApiBaseUrl } = require("./productionApiGuard.js");
 
 /**
  * MyanKafe Finance — native app.
@@ -20,18 +20,17 @@ function resolveAppEnv(): AppEnv {
   return "development";
 }
 
-function resolveApiBaseUrl(appEnv: AppEnv): string {
-  const fromEnv = process.env.EXPO_PUBLIC_API_BASE_URL?.trim().replace(/\/$/, "");
+function apiBaseFor(appEnv: AppEnv): string {
+  const fromEnv = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
   if (appEnv === "production") {
-    return assertProductionApiBaseUrl(fromEnv || PRODUCTION_API_BASE_URL);
+    return resolveApiBaseUrl(appEnv, fromEnv || PRODUCTION_API_BASE_URL);
   }
-  if (fromEnv) return fromEnv;
-  return "http://127.0.0.1:8180/api/v1";
+  return resolveApiBaseUrl(appEnv, fromEnv);
 }
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const appEnv = resolveAppEnv();
-  const apiBaseUrl = resolveApiBaseUrl(appEnv);
+  const apiBaseUrl = apiBaseFor(appEnv);
   return {
     ...config,
     name: "MyanKafe Finance",
@@ -48,12 +47,36 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: "com.myankafe.finance",
+      softwareKeyboardLayoutMode: "resize",
+      blockedPermissions: [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+      ],
       adaptiveIcon: {
         foregroundImage: "./assets/icon.png",
         backgroundColor: "#0B1F33",
       },
     },
-    plugins: ["expo-router", "expo-secure-store"],
+    plugins: [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          image: "./assets/icon.png",
+          backgroundColor: "#0B1F33",
+          resizeMode: "contain",
+        },
+      ],
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "MyanKafe Finance attaches receipt photos to draft transactions.",
+          cameraPermission: "MyanKafe Finance uses the camera to capture receipts.",
+        },
+      ],
+    ],
     experiments: { typedRoutes: false },
     extra: {
       appEnv,

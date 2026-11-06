@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ReactNode, useState } from "react";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { colors, space } from "../theme";
 
 export function Screen({ children }: { children: ReactNode }) {
@@ -24,6 +24,8 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: Boolean(disabled) }}
       onPress={onPress}
       disabled={disabled}
       style={[styles.button, tone === "secondary" && styles.secondary, tone === "danger" && styles.danger, disabled && styles.disabled]}
@@ -57,6 +59,7 @@ export function TextField({
         secureTextEntry={secure}
         placeholder={placeholder}
         keyboardType={keyboardType}
+        accessibilityLabel={label}
         autoCapitalize="none"
         style={styles.input}
       />
@@ -75,16 +78,46 @@ export function SelectField({
   options: { id: string; label: string }[];
   onChange: (id: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.id === value);
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.options}>
-        {options.map((option) => (
-          <Pressable key={option.id || option.label} onPress={() => onChange(option.id)} style={[styles.option, value === option.id && styles.optionOn]}>
-            <Text style={value === option.id ? styles.optionOnText : styles.optionText}>{option.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        onPress={() => setOpen(true)}
+        style={styles.input}
+      >
+        <Text style={selected ? styles.optionText : styles.muted}>{selected?.label || "Choose"}</Text>
+      </Pressable>
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>{label}</Text>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {options.map((option) => (
+                <Pressable
+                  key={`${option.id}:${option.label}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={option.label}
+                  accessibilityState={{ selected: option.id === value }}
+                  onPress={() => {
+                    onChange(option.id);
+                    setOpen(false);
+                  }}
+                  style={styles.sheetRow}
+                >
+                  <Text style={styles.optionText}>{option.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => setOpen(false)} style={styles.sheetRow}>
+              <Text style={styles.closeText}>Close</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -92,10 +125,14 @@ export function SelectField({
 export function StatusBadge({ status }: { status: string }) {
   const label = status === "DRAFT" ? "Draft" : status === "POSTED" ? "Posted" : status === "VOIDED" ? "Voided" : status;
   return (
-    <View style={styles.badge}>
+    <View style={styles.badge} accessibilityRole="text" accessibilityLabel={`Status ${label}`}>
       <Text style={styles.badgeText}>{label}</Text>
     </View>
   );
+}
+
+export function Page({ children }: { children: ReactNode }) {
+  return <View style={styles.page}>{children}</View>;
 }
 
 export function LoadingState({ label = "Loading" }: { label?: string }) {
@@ -135,7 +172,13 @@ const styles = StyleSheet.create({
   secondaryText: { color: colors.ink },
   field: { gap: 6 },
   label: { color: colors.inkSoft, fontWeight: "600" },
-  input: { minHeight: 48, borderWidth: 1, borderColor: colors.line, borderRadius: 12, paddingHorizontal: 12, backgroundColor: colors.card, fontSize: 16, color: colors.ink },
+  input: { minHeight: 48, borderWidth: 1, borderColor: colors.line, borderRadius: 12, paddingHorizontal: 12, backgroundColor: colors.card, fontSize: 16, color: colors.ink, justifyContent: "center" },
+  page: { width: "100%", maxWidth: 840, alignSelf: "center", gap: 12 },
+  backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(11,31,51,0.45)" },
+  sheet: { maxHeight: "80%", backgroundColor: colors.paper, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: space.md, gap: 8 },
+  sheetTitle: { fontSize: 18, fontWeight: "800", color: colors.ink },
+  sheetRow: { minHeight: 48, justifyContent: "center" },
+  closeText: { color: colors.accent, fontWeight: "700" },
   options: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   option: { minHeight: 44, justifyContent: "center", paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
   optionOn: { backgroundColor: colors.ink, borderColor: colors.ink },

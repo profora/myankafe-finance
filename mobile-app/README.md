@@ -93,7 +93,7 @@ Amounts stay decimal strings. The client does not convert currencies.
 
 Home, transactions, new income/expense (draft and post), transfer, six reports, account ledger, profile, sessions, and password change.
 
-Attachment flow matches the website: create the draft, upload files, and post only if every upload succeeds. A failed upload leaves the draft unposted.
+Attachment flow matches the website: create the draft, upload files, and post only if every upload succeeds. A failed upload leaves the draft unposted. Cancelling a draft requires a reason of at least 3 characters. A wrong current password does not sign the phone out; a successful password change stores the replacement bearer token.
 
 ## Intentionally web-only
 

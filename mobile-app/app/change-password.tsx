@@ -5,6 +5,7 @@ import { friendlyError } from "../src/api/errors";
 import { api } from "../src/api/runtime";
 import { useAuth } from "../src/auth/AuthContext";
 import { Button, TextField } from "../src/components/ui";
+import { passwordChangeError } from "../src/lib/password";
 import { colors, space } from "../src/theme";
 
 export default function ChangePasswordScreen() {
@@ -15,12 +16,18 @@ export default function ChangePasswordScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function submit() {
+    const problem = passwordChangeError(current, next);
+    if (problem) {
+      setError(problem);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       const result = await api().request<{ session_token?: string; session_expires_at?: string }>("/auth/change-password", {
         method: "POST",
         headers: { "X-Session-Transport": "bearer" },
+        endSessionOn401: false,
         body: JSON.stringify({ current_password: current, new_password: next }),
       });
       if (!result.session_token) throw new Error("Password changed, but no replacement session was returned. Sign in again.");

@@ -11,7 +11,7 @@ export function NetworkBanner() {
   const offline = useOffline();
   if (!offline) return null;
   return (
-    <View style={styles.banner}>
+    <View style={styles.banner} accessibilityRole="alert" accessibilityLabel="Offline. Accounting changes stay disabled until you are online.">
       <Text style={styles.text}>Offline. Accounting changes stay disabled until you are online.</Text>
     </View>
   );

@@ -9,8 +9,8 @@ import { EntitySwitcher } from "../../src/components/EntitySwitcher";
 import { NetworkBanner } from "../../src/components/NetworkBanner";
 import { Card, EmptyState, ErrorState, LoadingState, TextField } from "../../src/components/ui";
 import { todayInTimeZone } from "../../src/lib/dates";
-import { formatDisplay } from "../../src/lib/money";
-import { groupBalanceSheet, groupProfitLoss } from "../../src/lib/reports";
+import { formatDisplay, subtractAmountStrings, sumAmountStrings } from "../../src/lib/money";
+import { groupBalanceSheet, groupProfitLoss, reportRequest } from "../../src/lib/reports";
 import { colors, space } from "../../src/theme";
 
 const REPORTS = [
@@ -34,14 +34,7 @@ export default function ReportsScreen() {
     queryKey: ["report", entity?.PublicID, report, from, to],
     enabled: Boolean(entity),
     queryFn: async () => {
-      const id = entity!.PublicID;
-      const range = `from=${from}&to=${to}`;
-      if (report === "profit-loss") return api().request<{ items: Row[] }>(`/entities/${id}/reports/profit-loss?${range}`);
-      if (report === "balance-sheet") return api().request<unknown>(`/entities/${id}/reports/balance-sheet?through=${to}`);
-      if (report === "trial-balance") return api().request<{ items: Row[] }>(`/entities/${id}/reports/trial-balance?through=${to}`);
-      if (report === "cash-movement") return api().request<{ items: Row[] }>(`/entities/${id}/reports/cash-movement?${range}`);
-      if (report === "sales-analysis") return api().request<{ items: Row[] }>(`/entities/${id}/reports/sales-analysis?${range}`);
-      return api().request<{ items: Row[] }>(`/entities/${id}/reports/general-ledger?${range}&limit=200`);
+      return api().request<unknown>(reportRequest(entity!.PublicID, report, from, to));
     },
   });
   const items = extractItems(query.data);
@@ -86,10 +79,14 @@ function earnings(data: unknown): string {
 function ReportBody({ report, items, currency, earnings: currentEarnings, onAccount }: { report: string; items: Row[]; currency: string; earnings?: string; onAccount: (id: string) => void }) {
   if (report === "profit-loss") {
     const grouped = groupProfitLoss(items);
+    const incomeTotal = sumAmountStrings(grouped.income.map((row) => row.amount || "0")) || "0";
+    const expenseTotal = sumAmountStrings(grouped.expenses.map((row) => row.amount || "0")) || "0";
+    const net = subtractAmountStrings(incomeTotal, expenseTotal) || "0";
     return (
       <View style={{ gap: 10 }}>
-        <Section title="Revenue" rows={grouped.income} currency={currency} onAccount={onAccount} />
-        <Section title="Expenses" rows={grouped.expenses} currency={currency} onAccount={onAccount} />
+        <Section title="Revenue" rows={grouped.income} currency={currency} onAccount={onAccount} total={incomeTotal} />
+        <Section title="Expenses" rows={grouped.expenses} currency={currency} onAccount={onAccount} total={expenseTotal} />
+        <Card><Text style={styles.name}>Net Profit</Text><Text style={styles.amount}>{formatDisplay(net, currency)}</Text></Card>
       </View>
     );
   }
@@ -121,11 +118,12 @@ function ReportBody({ report, items, currency, earnings: currentEarnings, onAcco
   ))}</View>;
 }
 
-function Section({ title, rows, currency, onAccount }: { title: string; rows: Row[]; currency: string; onAccount: (id: string) => void }) {
-  if (!rows.length) return null;
+function Section({ title, rows, currency, onAccount, total }: { title: string; rows: Row[]; currency: string; onAccount: (id: string) => void; total?: string }) {
   return (
     <View style={{ gap: 8 }}>
       <Text style={styles.section}>{title}</Text>
+      {rows.length === 0 ? <Text style={styles.muted}>None</Text> : null}
+      {total ? <Text style={styles.amount}>{formatDisplay(total, currency)}</Text> : null}
       {rows.map((row, i) => (
         <Pressable key={i} onPress={() => (row.id || row.account_id) && onAccount(String(row.id || row.account_id))}>
           <Card><Text style={styles.name}>{row.code} {row.name}</Text><Text style={styles.amount}>{formatDisplay(row.amount || row.balance || "0", currency)}</Text></Card>
@@ -138,11 +136,12 @@ function Section({ title, rows, currency, onAccount }: { title: string; rows: Ro
 const styles = StyleSheet.create({
   body: { padding: space.md, gap: 12, paddingBottom: 40 },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { minHeight: 40, justifyContent: "center", paddingHorizontal: 10, borderRadius: 999, backgroundColor: "#fff", borderWidth: 1, borderColor: colors.line },
+  chip: { minHeight: 44, justifyContent: "center", paddingHorizontal: 12, borderRadius: 999, backgroundColor: "#fff", borderWidth: 1, borderColor: colors.line },
   chipOn: { backgroundColor: colors.ink },
   on: { color: "#fff", fontWeight: "700" },
   off: { color: colors.ink },
   section: { fontWeight: "800", fontSize: 18, color: colors.ink },
-  name: { fontWeight: "700", color: colors.ink },
+  muted: { color: colors.muted },
+  name: { fontWeight: "700", color: colors.ink, flexShrink: 1 },
   amount: { fontVariant: ["tabular-nums"], fontWeight: "800", fontSize: 18 },
 });

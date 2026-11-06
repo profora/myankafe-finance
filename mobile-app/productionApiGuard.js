@@ -33,8 +33,22 @@ function assertProductionApiBaseUrl(raw) {
   return `${url.origin}${path}`;
 }
 
+const DEV_API_BASE_URL = "http://127.0.0.1:8180/api/v1";
+
+/** Production fails closed. Development and preview may use an explicit URL. */
+function resolveApiBaseUrl(appEnv, fromEnv) {
+  const value = String(fromEnv || "").trim().replace(/\/$/, "");
+  if (appEnv === "production") {
+    return assertProductionApiBaseUrl(value || PRODUCTION_API_BASE_URL);
+  }
+  if (value) return value;
+  return DEV_API_BASE_URL;
+}
+
 module.exports = {
   PRODUCTION_API_ORIGIN,
   PRODUCTION_API_BASE_URL,
+  DEV_API_BASE_URL,
   assertProductionApiBaseUrl,
+  resolveApiBaseUrl,
 };

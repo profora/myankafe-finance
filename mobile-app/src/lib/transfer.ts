@@ -1,4 +1,4 @@
-import { isPositiveAmount } from "./money";
+import { amountsEqual, isPositiveAmount } from "./money";
 import { isIsoDate } from "./dates";
 
 export type TransferDraft = {
@@ -21,7 +21,14 @@ export function transferErrors(draft: TransferDraft): string[] {
   if (!isPositiveAmount(draft.fromAmount) || !isPositiveAmount(draft.toAmount)) {
     errors.push("Amounts must be greater than zero.");
   }
-  if (draft.fromCurrency && draft.toCurrency && draft.fromCurrency === draft.toCurrency && draft.fromAmount.trim() !== draft.toAmount.trim()) {
+  if (
+    draft.fromCurrency &&
+    draft.toCurrency &&
+    draft.fromCurrency === draft.toCurrency &&
+    isPositiveAmount(draft.fromAmount) &&
+    isPositiveAmount(draft.toAmount) &&
+    !amountsEqual(draft.fromAmount, draft.toAmount)
+  ) {
     errors.push("Same-currency transfers must use equal amounts. Fee conversion stays on Finance web.");
   }
   return errors;

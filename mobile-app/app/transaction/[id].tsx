@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { api, appExtra } from "../../src/api/runtime";
 import { getSessionToken } from "../../src/auth/session";
@@ -11,7 +11,8 @@ import { Button, Card, ErrorState, LoadingState, StatusBadge, TextField } from "
 import { todayInTimeZone } from "../../src/lib/dates";
 import { formatDisplay } from "../../src/lib/money";
 import { canCorrectPostedAccounting, canOperateLedger } from "../../src/lib/roles";
-import { createIdempotencyKey } from "../../src/lib/idempotency";
+import { createKeyStore } from "../../src/lib/idempotency";
+import { friendlyError } from "../../src/api/errors";
 import { colors, space } from "../../src/theme";
 
 type Detail = {
@@ -40,7 +41,10 @@ export default function TransactionDetailScreen() {
   const client = useQueryClient();
   const [token, setToken] = useState<string | null>(null);
   const [reason, setReason] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [actionError, setActionError] = useState("");
   const [reversalDate, setReversalDate] = useState(entity ? todayInTimeZone(entity.Timezone) : "");
+  const keys = useRef(createKeyStore());
   const detail = useQuery({
     queryKey: ["transaction", entity?.PublicID, id],
     enabled: Boolean(entity && id),
@@ -56,21 +60,29 @@ export default function TransactionDetailScreen() {
   });
   const act = useMutation({
     mutationFn: async (action: "post" | "cancel" | "reverse") => {
-      const key = createIdempotencyKey();
-      if (action === "reverse") {
-        return api().request(`/entities/${entity!.PublicID}/transactions/${id}/reverse`, {
-          method: "POST",
-          idempotencyKey: key,
-          body: JSON.stringify({ reversal_date: reversalDate, reason }),
-        });
-      }
-      return api().request(`/entities/${entity!.PublicID}/transactions/${id}/${action}`, { method: "POST", body: "{}", idempotencyKey: key });
+      const body =
+        action === "reverse"
+          ? { reversal_date: reversalDate, reason: reason.trim() }
+          : action === "cancel"
+            ? { reason: cancelReason.trim() }
+            : {};
+      const key = keys.current.keyFor(`${action}:${JSON.stringify(body)}`);
+      return api().request(`/entities/${entity!.PublicID}/transactions/${id}/${action}`, {
+        method: "POST",
+        idempotencyKey: key,
+        body: JSON.stringify(body),
+      });
     },
     onSuccess: async () => {
+      setActionError("");
+      keys.current.reset();
       await client.invalidateQueries({ queryKey: ["transaction", entity?.PublicID, id] });
       await client.invalidateQueries({ queryKey: ["transactions"] });
       await client.invalidateQueries({ queryKey: ["balances"] });
+      await client.invalidateQueries({ queryKey: ["dashboard"] });
+      await client.invalidateQueries({ queryKey: ["report"] });
     },
+    onError: (err) => setActionError(friendlyError(err)),
   });
   const tx = detail.data;
   const mayOperate = canOperateLedger(entity?.Role) && !offline;
@@ -82,7 +94,7 @@ export default function TransactionDetailScreen() {
         <>
           <Card>
             <StatusBadge status={tx.status} />
-            <Text style={styles.id}>{tx.id}</Text>
+            <Text style={styles.id}>Public ID {tx.id}</Text>
             <Text style={styles.desc}>{tx.description}</Text>
             <Text>{tx.date} · {tx.type}</Text>
             <Text>Account {tx.financial_account?.name || "—"}</Text>
@@ -116,11 +128,13 @@ export default function TransactionDetailScreen() {
               ) : null}
             </Card>
           ))}
+          {actionError ? <Text style={styles.error}>{actionError}</Text> : null}
           {tx.status === "DRAFT" && mayOperate ? (
             <>
               <Button label="Edit" tone="secondary" onPress={() => router.push({ pathname: "/transaction/new", params: { edit: tx.id } })} />
-              <Button label="Post" disabled={act.isPending} onPress={() => Alert.alert("Post transaction", "Post this draft?", [{ text: "Cancel", style: "cancel" }, { text: "Post", onPress: () => act.mutate("post") }])} />
-              <Button label="Cancel draft" tone="danger" disabled={act.isPending} onPress={() => Alert.alert("Cancel draft", "Void this draft?", [{ text: "Keep", style: "cancel" }, { text: "Cancel draft", style: "destructive", onPress: () => act.mutate("cancel") }])} />
+              <Button label="Post" disabled={act.isPending} onPress={() => Alert.alert("Post transaction", "Post this draft to the ledger?", [{ text: "Cancel", style: "cancel" }, { text: "Post", onPress: () => { if (!act.isPending) act.mutate("post"); } }])} />
+              <TextField label="Cancellation reason" value={cancelReason} onChangeText={setCancelReason} placeholder="At least 3 characters" />
+              <Button label="Cancel draft" tone="danger" disabled={act.isPending || cancelReason.trim().length < 3} onPress={() => Alert.alert("Cancel draft", "Void this draft? This stays in the audit log.", [{ text: "Keep", style: "cancel" }, { text: "Cancel draft", style: "destructive", onPress: () => { if (!act.isPending) act.mutate("cancel"); } }])} />
             </>
           ) : null}
           {tx.status === "POSTED" && mayReverse ? (
@@ -129,7 +143,7 @@ export default function TransactionDetailScreen() {
               <Text style={styles.meta}>This posts a reversing entry. It cannot be undone from the phone.</Text>
               <TextField label="Reversal date" value={reversalDate} onChangeText={setReversalDate} />
               <TextField label="Reason" value={reason} onChangeText={setReason} />
-              <Button label="Reverse Transaction" tone="danger" disabled={!reason.trim() || act.isPending} onPress={() => Alert.alert("Confirm reversal", reason, [{ text: "Back", style: "cancel" }, { text: "Reverse", style: "destructive", onPress: () => act.mutate("reverse") }])} />
+              <Button label="Reverse Transaction" tone="danger" disabled={!reason.trim() || act.isPending} onPress={() => Alert.alert("Confirm reversal", "This posts a reversing entry. It is not a swipe action and cannot be undone from the phone.", [{ text: "Back", style: "cancel" }, { text: "Reverse", style: "destructive", onPress: () => { if (!act.isPending) act.mutate("reverse"); } }])} />
             </Card>
           ) : null}
         </>
@@ -144,5 +158,6 @@ const styles = StyleSheet.create({
   desc: { fontSize: 18, fontWeight: "800", color: colors.ink },
   total: { fontSize: 24, fontWeight: "800", fontVariant: ["tabular-nums"] },
   meta: { color: colors.muted },
+  error: { color: colors.negative, fontWeight: "700" },
   image: { width: "100%", height: 220, borderRadius: 12 },
 });
