@@ -1,14 +1,22 @@
 appId: com.myankafe.finance
 ---
-- tapOn: "Home"
+- tapOn: "Transactions"
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
 - scrollUntilVisible:
-    element: "New Expense"
+    element:
+      id: "New entry"
     direction: DOWN
     timeout: 30000
-- tapOn: "New Expense"
+- tapOn:
+    id: "New entry"
 - extendedWaitUntil:
     visible: "Save Draft"
     timeout: 30000
+- tapOn:
+    id: "Type"
+- tapOn: "Expense"
 - tapOn:
     id: "Description"
 - inputText: "November rent"
@@ -21,12 +29,20 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Amount"
 - inputText: "25000"
-- tapOn: "Save Draft"
+- scrollUntilVisible:
+    element:
+      id: "Save Draft"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "Save Draft"
 - extendedWaitUntil:
-    visible: "Status Draft"
+    visible:
+      id: "Status Draft"
     timeout: 60000
 - assertVisible: "November rent"
-- tapOn: "Edit"
+- tapOn:
+    id: "Edit"
 - extendedWaitUntil:
     visible: "Save Draft"
     timeout: 30000
@@ -34,15 +50,24 @@ appId: com.myankafe.finance
     id: "Description"
 - eraseText
 - inputText: "November rent posted"
-- tapOn: "Save Draft"
+- scrollUntilVisible:
+    element:
+      id: "Save Draft"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "Save Draft"
 - extendedWaitUntil:
-    visible: "Status Draft"
+    visible:
+      id: "Status Draft"
     timeout: 60000
 - assertVisible: "November rent posted"
-- tapOn: "Post"
+- tapOn:
+    id: "Post"
 - tapOn: "Post"
 - extendedWaitUntil:
-    visible: "Status Posted"
+    visible:
+      id: "Status Posted"
     timeout: 60000
 - assertVisible: "6210 Rent"
 - assertVisible: "Debit 25000.000000"

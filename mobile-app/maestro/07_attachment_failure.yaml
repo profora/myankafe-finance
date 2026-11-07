@@ -1,14 +1,22 @@
 appId: com.myankafe.finance
 ---
-- tapOn: "Home"
+- tapOn: "Transactions"
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
 - scrollUntilVisible:
-    element: "New Expense"
+    element:
+      id: "New entry"
     direction: DOWN
     timeout: 30000
-- tapOn: "New Expense"
+- tapOn:
+    id: "New entry"
 - extendedWaitUntil:
     visible: "Save & Post"
     timeout: 30000
+- tapOn:
+    id: "Type"
+- tapOn: "Expense"
 - tapOn:
     id: "Description"
 - inputText: "Attachment failure probe"
@@ -21,23 +29,38 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Amount"
 - inputText: "100"
-- tapOn: "Attach sample receipt"
+- scrollUntilVisible:
+    element:
+      id: "Attach sample receipt"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "Attach sample receipt"
 - assertVisible: "e2e-receipt.png"
-- tapOn: "Save & Post"
+- scrollUntilVisible:
+    element:
+      id: "Save & Post"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "Save & Post"
 - tapOn: "Post"
 - extendedWaitUntil:
     visible: "Draft kept"
     timeout: 90000
 - tapOn: "Open draft"
 - extendedWaitUntil:
-    visible: "Status Draft"
+    visible:
+      id: "Status Draft"
     timeout: 60000
 - assertVisible: "Attachment failure probe"
 - tapOn:
     id: "Cancellation reason"
 - inputText: "e2e cleanup"
-- tapOn: "Cancel draft"
+- tapOn:
+    id: "Cancel draft"
 - tapOn: "Cancel draft"
 - extendedWaitUntil:
-    visible: "Status Voided"
+    visible:
+      id: "Status Voided"
     timeout: 60000

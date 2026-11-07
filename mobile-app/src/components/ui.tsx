@@ -128,7 +128,7 @@ export function SelectField({
 export function StatusBadge({ status }: { status: string }) {
   const label = status === "DRAFT" ? "Draft" : status === "POSTED" ? "Posted" : status === "VOIDED" ? "Voided" : status;
   return (
-    <View style={styles.badge} accessibilityRole="text" accessibilityLabel={`Status ${label}`}>
+    <View style={styles.badge} accessibilityRole="text" accessibilityLabel={`Status ${label}`} testID={`Status ${label}`}>
       <Text style={styles.badgeText}>{label}</Text>
     </View>
   );

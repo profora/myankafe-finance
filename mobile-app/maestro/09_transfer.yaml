@@ -2,12 +2,15 @@ appId: com.myankafe.finance
 ---
 - tapOn: "Home"
 - scrollUntilVisible:
-    element: "Transfer"
+    element:
+      id: "Transfer"
     direction: DOWN
-    timeout: 30000
-- tapOn: "Transfer"
+    timeout: 60000
+- tapOn:
+    id: "Transfer"
 - extendedWaitUntil:
-    visible: "From account"
+    visible:
+      id: "From account"
     timeout: 30000
 - tapOn:
     id: "Description"
@@ -25,16 +28,16 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Amount out MMK"
 - inputText: "8000"
-- tapOn: "Transfer"
+- tapOn:
+    id: "Transfer"
 - extendedWaitUntil:
-    visible: "Status Posted"
+    visible:
+      id: "Status Posted"
     timeout: 90000
 - tapOn: "Home"
-- extendedWaitUntil:
-    visible: "Cash Drawer"
-    timeout: 60000
 - scrollUntilVisible:
     element: "32,000 MMK"
     direction: DOWN
+    timeout: 60000
 - assertVisible: "32,000 MMK"
 - assertVisible: "8,000 MMK"

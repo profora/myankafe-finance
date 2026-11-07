@@ -116,7 +116,7 @@ export default function TransactionsScreen() {
         options={[{ id: "", label: "Any account" }, ...(accounts.data?.items ?? []).filter((item) => item.Active).map((item) => ({ id: item.PublicID, label: `${item.Name} (${item.Currency})` }))]}
       />
       {canOperateLedger(entity?.Role) && !offline ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="New entry" style={styles.new} onPress={() => router.push("/transaction/new")}>
+        <Pressable accessibilityRole="button" accessibilityLabel="New entry" testID="New entry" style={styles.new} onPress={() => router.push("/transaction/new")}>
           <Text style={styles.newText}>+ New Entry</Text>
         </Pressable>
       ) : null}

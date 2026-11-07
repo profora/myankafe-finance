@@ -99,13 +99,31 @@ export default function HomeScreen() {
         <Text style={styles.section}>Quick actions</Text>
         {mayEdit ? (
           <>
-            <Pressable style={styles.primary} onPress={() => router.push({ pathname: "/transaction/new", params: { type: "INCOME" } })}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="+ New Income"
+              testID="+ New Income"
+              style={styles.primary}
+              onPress={() => router.push({ pathname: "/transaction/new", params: { type: "INCOME" } })}
+            >
               <Text style={styles.primaryText}>+ New Income</Text>
             </Pressable>
-            <Pressable style={styles.secondary} onPress={() => router.push({ pathname: "/transaction/new", params: { type: "EXPENSE" } })}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="New Expense"
+              testID="New Expense"
+              style={styles.secondary}
+              onPress={() => router.push({ pathname: "/transaction/new", params: { type: "EXPENSE" } })}
+            >
               <Text style={styles.secondaryText}>New Expense</Text>
             </Pressable>
-            <Pressable style={styles.secondary} onPress={() => router.push("/transfer/new")}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Transfer"
+              testID="Transfer"
+              style={styles.secondary}
+              onPress={() => router.push("/transfer/new")}
+            >
               <Text style={styles.secondaryText}>Transfer</Text>
             </Pressable>
           </>
