@@ -1,0 +1,18 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Profile"
+- extendedWaitUntil:
+    visible: "Active sessions"
+    timeout: 30000
+- tapOn: "Active sessions"
+- extendedWaitUntil:
+    visible: "This device"
+    timeout: 60000
+- assertVisible: "Other session"
+- tapOn: "Revoke"
+- tapOn: "Revoke"
+- extendedWaitUntil:
+    visible: "This device"
+    timeout: 60000
+- assertNotVisible: "Other session"
+- pressKey: back

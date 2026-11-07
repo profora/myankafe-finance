@@ -1,0 +1,10 @@
+appId: com.myankafe.finance
+---
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "MyanKafe Finance"
+    timeout: 90000
+- assertVisible: "Income"
+- assertNotVisible: "Sign in"

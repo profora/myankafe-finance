@@ -1,0 +1,42 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Reports"
+- extendedWaitUntil:
+    visible: "Profit & Loss"
+    timeout: 30000
+- tapOn:
+    id: "From"
+- eraseText
+- inputText: "2026-11-01"
+- tapOn:
+    id: "To / Through"
+- eraseText
+- inputText: "2026-11-30"
+- tapOn: "Profit & Loss"
+- extendedWaitUntil:
+    visible: "Net Profit"
+    timeout: 60000
+- assertVisible: "80,000 MMK"
+- assertVisible: "40,000 MMK"
+- tapOn: "Balance Sheet"
+- extendedWaitUntil:
+    visible: "Assets"
+    timeout: 60000
+- assertVisible: "32,000 MMK"
+- assertVisible: "8,000 MMK"
+- tapOn: "Trial Balance"
+- extendedWaitUntil:
+    visible: "Trial Balance"
+    timeout: 60000
+- tapOn: "Cash Movement"
+- extendedWaitUntil:
+    visible: "Cash Movement"
+    timeout: 30000
+- tapOn: "Sales Analysis"
+- extendedWaitUntil:
+    visible: "80,000 MMK"
+    timeout: 60000
+- tapOn: "General Ledger"
+- extendedWaitUntil:
+    visible: "General Ledger"
+    timeout: 30000

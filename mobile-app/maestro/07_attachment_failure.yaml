@@ -1,0 +1,53 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Transactions"
+- extendedWaitUntil:
+    visible:
+      id: "Search"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "New entry"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "New entry"
+- runFlow:
+    file: helpers/fill_expense.yaml
+    env:
+      DESCRIPTION: "Attachment failure probe"
+      SPLIT_ACCOUNT: "6210 Rent"
+      AMOUNT: "100"
+      TOTAL_LABEL: "Total 100 MMK"
+- swipe:
+    direction: UP
+    duration: 500
+- tapOn:
+    id: "Attach sample receipt"
+- assertVisible: "e2e-receipt.png"
+- swipe:
+    direction: UP
+    duration: 400
+- tapOn:
+    id: "Save & Post"
+- tapOn: "Post"
+- extendedWaitUntil:
+    visible: "Draft kept"
+    timeout: 90000
+- tapOn: "Open draft"
+- extendedWaitUntil:
+    visible:
+      id: "Status Draft"
+    timeout: 60000
+- assertVisible: "Attachment failure probe"
+- tapOn:
+    id: "Cancellation reason"
+- inputText: "e2e cleanup"
+- hideKeyboard
+- tapOn:
+    id: "Cancel draft"
+- tapOn: "Cancel draft"
+- extendedWaitUntil:
+    visible:
+      id: "Status Voided"
+    timeout: 60000

@@ -1,0 +1,30 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Reports"
+- extendedWaitUntil:
+    visible: "Profit & Loss"
+    timeout: 30000
+- tapOn: "Profit & Loss"
+- extendedWaitUntil:
+    visible: "6210 Rent"
+    timeout: 60000
+- tapOn: "6210 Rent"
+- extendedWaitUntil:
+    visible: "Account ledger"
+    timeout: 60000
+- assertVisible: "Debit 25000.000000"
+- pressKey: back
+- tapOn: "Home"
+- extendedWaitUntil:
+    visible: "Cash Drawer"
+    timeout: 30000
+- tapOn:
+    id: "Cash Drawer 32,000 MMK"
+- extendedWaitUntil:
+    visible: "Account ledger"
+    timeout: 60000
+- assertVisible: "Debit"
+- pressKey: back
+- extendedWaitUntil:
+    visible: "MyanKafe Finance"
+    timeout: 30000

@@ -1,0 +1,21 @@
+appId: com.myankafe.finance
+---
+- runFlow: helpers/boot_login.yaml
+- runFlow:
+    file: helpers/login.yaml
+    env:
+      USERNAME: "ci-bookkeeper"
+      PASSWORD: ${BOOKKEEPER_PASSWORD}
+- assertVisible: "Income"
+- assertVisible: "Expenses"
+- assertVisible: "Net Profit"
+- scrollUntilVisible:
+    element: "Cash Drawer"
+    direction: DOWN
+    timeout: 30000
+- assertVisible: "Cash Drawer"
+- scrollUntilVisible:
+    element: "Bank Account"
+    direction: DOWN
+    timeout: 30000
+- assertVisible: "Bank Account"

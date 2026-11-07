@@ -1,0 +1,76 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Transactions"
+- extendedWaitUntil:
+    visible:
+      id: "Search"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "New entry"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "New entry"
+- extendedWaitUntil:
+    visible:
+      id: "Description"
+    timeout: 60000
+- tapOn:
+    id: "Type"
+- tapOn: "Income"
+- tapOn:
+    id: "Description"
+- eraseText
+- inputText: "Coffee sales"
+- tapOn:
+    id: "Received into"
+- extendedWaitUntil:
+    visible: "Cash Drawer (MMK)"
+    timeout: 30000
+- tapOn: "Cash Drawer (MMK)"
+- tapOn:
+    id: "Sales channel"
+- extendedWaitUntil:
+    visible: "COUNTER"
+    timeout: 30000
+- tapOn: "COUNTER"
+- scrollUntilVisible:
+    element:
+      id: "Split 1 account"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "Split 1 account"
+- extendedWaitUntil:
+    visible: "4110 Coffee & Beverage Sales"
+    timeout: 30000
+- tapOn: "4110 Coffee & Beverage Sales"
+- tapOn:
+    id: "Amount"
+- eraseText
+- inputText: "80000"
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "Total 80000 MMK"
+    timeout: 30000
+- swipe:
+    direction: UP
+    duration: 500
+- tapOn:
+    id: "Attach sample receipt"
+- assertVisible: "e2e-receipt.png"
+- swipe:
+    direction: UP
+    duration: 400
+- tapOn:
+    id: "Save & Post"
+- tapOn: "Post"
+- extendedWaitUntil:
+    visible:
+      id: "Status Posted"
+    timeout: 90000
+- assertVisible: "Coffee sales"
+- assertVisible: "e2e-receipt.png"
+- assertVisible: "1110 Cash on Hand"
+- assertVisible: "Debit 80000.000000"

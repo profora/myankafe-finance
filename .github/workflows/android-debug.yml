@@ -1,0 +1,148 @@
+name: Android debug
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      app_env:
+        description: Non-production app environment baked into the APK
+        type: choice
+        options:
+          - development
+          - preview
+        default: development
+      api_base_url:
+        description: Explicit API base URL for a development or preview APK. Leave empty for the local development default. Never required for production credentials.
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-debug-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CI: "1"
+      EXPO_NO_TELEMETRY: "1"
+      EXPO_PUBLIC_APP_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.app_env || 'development' }}
+      EXPO_PUBLIC_API_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.api_base_url || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mobile-app/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install the Expo SDK 57 Android packages
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          SDKMANAGER=/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" --install \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.1.12297006" \
+            "platform-tools"
+
+      - name: Install mobile dependencies
+        working-directory: mobile-app
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: mobile-app
+        run: npm run typecheck
+
+      - name: Test, including the production API guard
+        working-directory: mobile-app
+        run: npm test -- --runInBand
+
+      - name: Expo config
+        working-directory: mobile-app
+        run: |
+          npx expo config --json > /tmp/finance-expo-config.json
+          node <<'NODE'
+          const config = require("/tmp/finance-expo-config.json");
+          const extra = (config.expo || config).extra || {};
+          const appEnv = extra.appEnv;
+          const api = extra.apiBaseUrl;
+          if (appEnv !== "development" && appEnv !== "preview") {
+            console.error("this workflow only builds non-production APKs, got", appEnv);
+            process.exit(1);
+          }
+          if (api === "https://finance-api.myankafe.com/api/v1") {
+            console.error("debug workflow must not bake in the production Finance API");
+            process.exit(1);
+          }
+          console.log(JSON.stringify({ appEnv, api }, null, 2));
+          NODE
+
+      - name: Expo doctor
+        working-directory: mobile-app
+        run: npx expo-doctor
+
+      - name: Expo Android prebuild
+        working-directory: mobile-app
+        run: npx expo prebuild --platform android --clean
+
+      - name: Embed the JS bundle in the debug APK
+        working-directory: mobile-app
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const path = "android/app/build.gradle";
+          let text = fs.readFileSync(path, "utf8");
+          if (!/react\s*\{/.test(text)) {
+            console.error("react block missing from android/app/build.gradle");
+            process.exit(1);
+          }
+          if (/^\s*debuggableVariants\s*=/m.test(text)) {
+            text = text.replace(/^\s*debuggableVariants\s*=.*$/m, "    debuggableVariants = []");
+          } else if (/^\s*\/\/\s*debuggableVariants\s*=/m.test(text)) {
+            text = text.replace(/^\s*\/\/\s*debuggableVariants\s*=.*$/m, "    debuggableVariants = []");
+          } else {
+            text = text.replace(/react\s*\{/, "react {\n    // Standalone debug APK for CI/emulator installs without Metro.\n    debuggableVariants = []\n");
+          }
+          fs.writeFileSync(path, text);
+          if (!/^\s*debuggableVariants\s*=\s*\[\s*\]/m.test(text)) {
+            console.error("failed to set debuggableVariants = []");
+            process.exit(1);
+          }
+          console.log("configured debuggableVariants = []");
+          NODE
+
+      - name: Gradle assembleDebug
+        working-directory: mobile-app/android
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+
+      - name: Record the debug APK
+        working-directory: mobile-app
+        run: |
+          apk="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$apk"
+          ls -lh "$apk"
+          unzip -l "$apk" | grep -E 'index\.(android\.)?bundle|assets/.*\.bundle|\.hbc' || {
+            echo "FAIL: debug APK is missing an embedded JS bundle"
+            exit 1
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myankafe-finance-android-debug
+          path: mobile-app/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

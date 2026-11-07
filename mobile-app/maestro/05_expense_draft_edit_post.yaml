@@ -1,0 +1,66 @@
+appId: com.myankafe.finance
+---
+- tapOn: "Transactions"
+- extendedWaitUntil:
+    visible:
+      id: "Search"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "New entry"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "New entry"
+- runFlow:
+    file: helpers/fill_expense.yaml
+    env:
+      DESCRIPTION: "November rent"
+      SPLIT_ACCOUNT: "6210 Rent"
+      AMOUNT: "25000"
+      TOTAL_LABEL: "Total 25000 MMK"
+- swipe:
+    direction: UP
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: "Save Draft"
+    timeout: 30000
+- tapOn:
+    id: "Save Draft"
+- extendedWaitUntil:
+    visible:
+      id: "Status Draft"
+    timeout: 60000
+- assertVisible: "November rent"
+- tapOn:
+    id: "Edit"
+- extendedWaitUntil:
+    visible:
+      id: "Description"
+    timeout: 30000
+- tapOn:
+    id: "Description"
+- eraseText
+- inputText: "November rent posted"
+- hideKeyboard
+- swipe:
+    direction: UP
+    duration: 400
+- tapOn:
+    id: "Save Draft"
+- extendedWaitUntil:
+    visible:
+      id: "Status Draft"
+    timeout: 60000
+- assertVisible: "November rent posted"
+- tapOn:
+    id: "Post"
+- tapOn: "Post"
+- extendedWaitUntil:
+    visible:
+      id: "Status Posted"
+    timeout: 60000
+- assertVisible: "6210 Rent"
+- assertVisible: "Debit 25000.000000"
+- assertVisible: "1110 Cash on Hand"
