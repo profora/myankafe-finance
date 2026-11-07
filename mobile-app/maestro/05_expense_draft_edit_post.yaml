@@ -18,7 +18,7 @@ appId: com.myankafe.finance
       DESCRIPTION: "November rent"
       SPLIT_ACCOUNT: "6210 Rent"
       AMOUNT: "25000"
-      TOTAL_LABEL: "Total 25000"
+      TOTAL_LABEL: "Total 25000 MMK"
 - swipe:
     direction: UP
     duration: 400

@@ -64,7 +64,7 @@ appId: com.myankafe.finance
 - inputText: "5000"
 - hideKeyboard
 - extendedWaitUntil:
-    visible: "Total 15000"
+    visible: "Total 15000 MMK"
     timeout: 30000
 - swipe:
     direction: UP
