@@ -1,8 +1,9 @@
 appId: com.myankafe.finance
 ---
 - tapOn: "Home"
-- extendedWaitUntil:
-    visible: "New Income"
+- scrollUntilVisible:
+    element: "+ New Income"
+    direction: DOWN
     timeout: 30000
 - tapOn: "+ New Income"
 - extendedWaitUntil:

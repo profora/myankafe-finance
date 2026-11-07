@@ -1,8 +1,9 @@
 appId: com.myankafe.finance
 ---
 - tapOn: "Home"
-- extendedWaitUntil:
-    visible: "Transfer"
+- scrollUntilVisible:
+    element: "Transfer"
+    direction: DOWN
     timeout: 30000
 - tapOn: "Transfer"
 - extendedWaitUntil:
