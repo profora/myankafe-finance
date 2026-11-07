@@ -2,7 +2,8 @@ appId: com.myankafe.finance
 ---
 - tapOn: "Transactions"
 - extendedWaitUntil:
-    visible: "Search"
+    visible:
+      id: "Search"
     timeout: 30000
 - scrollUntilVisible:
     element:
@@ -12,8 +13,9 @@ appId: com.myankafe.finance
 - tapOn:
     id: "New entry"
 - extendedWaitUntil:
-    visible: "Save Draft"
-    timeout: 30000
+    visible:
+      id: "Description"
+    timeout: 60000
 - tapOn:
     id: "Type"
 - tapOn: "Expense"
@@ -44,7 +46,8 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Edit"
 - extendedWaitUntil:
-    visible: "Save Draft"
+    visible:
+      id: "Description"
     timeout: 30000
 - tapOn:
     id: "Description"
