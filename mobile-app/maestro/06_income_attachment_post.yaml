@@ -2,7 +2,8 @@ appId: com.myankafe.finance
 ---
 - tapOn: "Transactions"
 - extendedWaitUntil:
-    visible: "Search"
+    visible:
+      id: "Search"
     timeout: 30000
 - scrollUntilVisible:
     element:
@@ -12,13 +13,15 @@ appId: com.myankafe.finance
 - tapOn:
     id: "New entry"
 - extendedWaitUntil:
-    visible: "Save & Post"
-    timeout: 30000
+    visible:
+      id: "Description"
+    timeout: 60000
 - tapOn:
     id: "Type"
 - tapOn: "Income"
 - tapOn:
     id: "Description"
+- eraseText
 - inputText: "Coffee sales"
 - tapOn:
     id: "Received into"
@@ -45,20 +48,21 @@ appId: com.myankafe.finance
 - tapOn: "4110 Coffee & Beverage Sales"
 - tapOn:
     id: "Amount"
+- eraseText
 - inputText: "80000"
-- scrollUntilVisible:
-    element:
-      id: "Attach sample receipt"
-    direction: DOWN
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "Total 80000"
     timeout: 30000
+- swipe:
+    direction: UP
+    duration: 500
 - tapOn:
     id: "Attach sample receipt"
 - assertVisible: "e2e-receipt.png"
-- scrollUntilVisible:
-    element:
-      id: "Save & Post"
-    direction: DOWN
-    timeout: 30000
+- swipe:
+    direction: UP
+    duration: 400
 - tapOn:
     id: "Save & Post"
 - tapOn: "Post"

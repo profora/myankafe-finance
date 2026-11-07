@@ -12,40 +12,19 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn:
     id: "New entry"
+- runFlow:
+    file: helpers/fill_expense.yaml
+    env:
+      DESCRIPTION: "November rent"
+      SPLIT_ACCOUNT: "6210 Rent"
+      AMOUNT: "25000"
+      TOTAL_LABEL: "Total 25000"
+- swipe:
+    direction: UP
+    duration: 400
 - extendedWaitUntil:
     visible:
-      id: "Description"
-    timeout: 60000
-- tapOn:
-    id: "Type"
-- tapOn: "Expense"
-- tapOn:
-    id: "Description"
-- inputText: "November rent"
-- tapOn:
-    id: "Paid from"
-- extendedWaitUntil:
-    visible: "Cash Drawer (MMK)"
-    timeout: 30000
-- tapOn: "Cash Drawer (MMK)"
-- scrollUntilVisible:
-    element:
-      id: "Split 1 account"
-    direction: DOWN
-    timeout: 30000
-- tapOn:
-    id: "Split 1 account"
-- extendedWaitUntil:
-    visible: "6210 Rent"
-    timeout: 30000
-- tapOn: "6210 Rent"
-- tapOn:
-    id: "Amount"
-- inputText: "25000"
-- scrollUntilVisible:
-    element:
       id: "Save Draft"
-    direction: DOWN
     timeout: 30000
 - tapOn:
     id: "Save Draft"
@@ -64,11 +43,10 @@ appId: com.myankafe.finance
     id: "Description"
 - eraseText
 - inputText: "November rent posted"
-- scrollUntilVisible:
-    element:
-      id: "Save Draft"
-    direction: DOWN
-    timeout: 30000
+- hideKeyboard
+- swipe:
+    direction: UP
+    duration: 400
 - tapOn:
     id: "Save Draft"
 - extendedWaitUntil:

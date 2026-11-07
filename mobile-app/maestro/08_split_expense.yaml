@@ -2,7 +2,8 @@ appId: com.myankafe.finance
 ---
 - tapOn: "Transactions"
 - extendedWaitUntil:
-    visible: "Search"
+    visible:
+      id: "Search"
     timeout: 30000
 - scrollUntilVisible:
     element:
@@ -12,13 +13,15 @@ appId: com.myankafe.finance
 - tapOn:
     id: "New entry"
 - extendedWaitUntil:
-    visible: "Save Draft"
-    timeout: 30000
+    visible:
+      id: "Description"
+    timeout: 60000
 - tapOn:
     id: "Type"
 - tapOn: "Expense"
 - tapOn:
     id: "Description"
+- eraseText
 - inputText: "Office and utilities"
 - tapOn:
     id: "Paid from"
@@ -39,6 +42,7 @@ appId: com.myankafe.finance
 - tapOn: "6520 Office Supplies"
 - tapOn:
     id: "Amount"
+- eraseText
 - inputText: "10000"
 - tapOn:
     id: "Add split"
@@ -49,17 +53,22 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn:
     id: "Split 2 account"
+- extendedWaitUntil:
+    visible: "6220 Utilities"
+    timeout: 30000
 - tapOn: "6220 Utilities"
 - tapOn:
     id: "Amount"
     index: 1
+- eraseText
 - inputText: "5000"
-- assertVisible: "Total 15000"
-- scrollUntilVisible:
-    element:
-      id: "Save & Post"
-    direction: DOWN
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "Total 15000"
     timeout: 30000
+- swipe:
+    direction: UP
+    duration: 500
 - tapOn:
     id: "Save & Post"
 - tapOn: "Post"

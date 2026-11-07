@@ -1,0 +1,38 @@
+appId: com.myankafe.finance
+---
+- extendedWaitUntil:
+    visible:
+      id: "Description"
+    timeout: 60000
+- tapOn:
+    id: "Type"
+- tapOn: "Expense"
+- tapOn:
+    id: "Description"
+- eraseText
+- inputText: ${DESCRIPTION}
+- tapOn:
+    id: "Paid from"
+- extendedWaitUntil:
+    visible: "Cash Drawer (MMK)"
+    timeout: 30000
+- tapOn: "Cash Drawer (MMK)"
+- scrollUntilVisible:
+    element:
+      id: "Split 1 account"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "Split 1 account"
+- extendedWaitUntil:
+    visible: ${SPLIT_ACCOUNT}
+    timeout: 30000
+- tapOn: ${SPLIT_ACCOUNT}
+- tapOn:
+    id: "Amount"
+- eraseText
+- inputText: ${AMOUNT}
+- hideKeyboard
+- extendedWaitUntil:
+    visible: ${TOTAL_LABEL}
+    timeout: 30000

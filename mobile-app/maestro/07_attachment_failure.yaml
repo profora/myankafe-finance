@@ -2,7 +2,8 @@ appId: com.myankafe.finance
 ---
 - tapOn: "Transactions"
 - extendedWaitUntil:
-    visible: "Search"
+    visible:
+      id: "Search"
     timeout: 30000
 - scrollUntilVisible:
     element:
@@ -11,48 +12,22 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn:
     id: "New entry"
-- extendedWaitUntil:
-    visible: "Save & Post"
-    timeout: 30000
-- tapOn:
-    id: "Type"
-- tapOn: "Expense"
-- tapOn:
-    id: "Description"
-- inputText: "Attachment failure probe"
-- tapOn:
-    id: "Paid from"
-- extendedWaitUntil:
-    visible: "Cash Drawer (MMK)"
-    timeout: 30000
-- tapOn: "Cash Drawer (MMK)"
-- scrollUntilVisible:
-    element:
-      id: "Split 1 account"
-    direction: DOWN
-    timeout: 30000
-- tapOn:
-    id: "Split 1 account"
-- extendedWaitUntil:
-    visible: "6210 Rent"
-    timeout: 30000
-- tapOn: "6210 Rent"
-- tapOn:
-    id: "Amount"
-- inputText: "100"
-- scrollUntilVisible:
-    element:
-      id: "Attach sample receipt"
-    direction: DOWN
-    timeout: 30000
+- runFlow:
+    file: helpers/fill_expense.yaml
+    env:
+      DESCRIPTION: "Attachment failure probe"
+      SPLIT_ACCOUNT: "6210 Rent"
+      AMOUNT: "100"
+      TOTAL_LABEL: "Total 100"
+- swipe:
+    direction: UP
+    duration: 500
 - tapOn:
     id: "Attach sample receipt"
 - assertVisible: "e2e-receipt.png"
-- scrollUntilVisible:
-    element:
-      id: "Save & Post"
-    direction: DOWN
-    timeout: 30000
+- swipe:
+    direction: UP
+    duration: 400
 - tapOn:
     id: "Save & Post"
 - tapOn: "Post"
@@ -68,6 +43,7 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Cancellation reason"
 - inputText: "e2e cleanup"
+- hideKeyboard
 - tapOn:
     id: "Cancel draft"
 - tapOn: "Cancel draft"
