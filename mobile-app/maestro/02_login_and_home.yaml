@@ -9,5 +9,13 @@ appId: com.myankafe.finance
 - assertVisible: "Income"
 - assertVisible: "Expenses"
 - assertVisible: "Net Profit"
+- scrollUntilVisible:
+    element: "Cash Drawer"
+    direction: DOWN
+    timeout: 30000
 - assertVisible: "Cash Drawer"
+- scrollUntilVisible:
+    element: "Bank Account"
+    direction: DOWN
+    timeout: 30000
 - assertVisible: "Bank Account"
