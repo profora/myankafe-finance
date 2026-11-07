@@ -22,9 +22,20 @@ appId: com.myankafe.finance
 - inputText: "Office and utilities"
 - tapOn:
     id: "Paid from"
+- extendedWaitUntil:
+    visible: "Cash Drawer (MMK)"
+    timeout: 30000
 - tapOn: "Cash Drawer (MMK)"
+- scrollUntilVisible:
+    element:
+      id: "Split 1 account"
+    direction: DOWN
+    timeout: 30000
 - tapOn:
     id: "Split 1 account"
+- extendedWaitUntil:
+    visible: "6520 Office Supplies"
+    timeout: 30000
 - tapOn: "6520 Office Supplies"
 - tapOn:
     id: "Amount"

@@ -22,9 +22,20 @@ appId: com.myankafe.finance
 - inputText: "Attachment failure probe"
 - tapOn:
     id: "Paid from"
+- extendedWaitUntil:
+    visible: "Cash Drawer (MMK)"
+    timeout: 30000
 - tapOn: "Cash Drawer (MMK)"
+- scrollUntilVisible:
+    element:
+      id: "Split 1 account"
+    direction: DOWN
+    timeout: 30000
 - tapOn:
     id: "Split 1 account"
+- extendedWaitUntil:
+    visible: "6210 Rent"
+    timeout: 30000
 - tapOn: "6210 Rent"
 - tapOn:
     id: "Amount"
