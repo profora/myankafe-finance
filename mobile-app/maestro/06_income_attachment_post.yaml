@@ -11,10 +11,10 @@ appId: com.myankafe.finance
     id: "New entry"
 - extendedWaitUntil:
     visible:
-      id: "Description"
+      id: "^Description$"
     timeout: 90000
 - tapOn:
-    id: "Type"
+    id: "^Type$"
 - tapOn: "Income"
 - runFlow:
     when:
@@ -23,10 +23,10 @@ appId: com.myankafe.finance
       - tapOn: "Close"
 - extendedWaitUntil:
     visible:
-      id: "Sales channel"
+      id: "^Sales channel$"
     timeout: 60000
 - tapOn:
-    id: "Description"
+    id: "^Description$"
 - eraseText
 - inputText: "Coffee sales"
 - hideKeyboard
@@ -39,11 +39,11 @@ appId: com.myankafe.finance
 - hideKeyboard
 - scrollUntilVisible:
     element:
-      id: "Sales channel"
+      id: "^Sales channel$"
     direction: DOWN
     timeout: 60000
 - tapOn:
-    id: "Sales channel"
+    id: "^Sales channel$"
 - extendedWaitUntil:
     visible: "COUNTER"
     timeout: 30000

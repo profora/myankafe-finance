@@ -88,7 +88,7 @@ export default function TransactionsScreen() {
   const header = (
     <Page>
       <EntitySwitcher />
-      <TextField label="Search" value={q} onChangeText={setQ} placeholder="Description or contact" />
+      <TextField label="Search" value={q} onChangeText={setQ} placeholder="Find by text or contact" />
       <Text style={styles.meta}>Status</Text>
       <View style={styles.row}>
         {["", ...TRANSACTION_STATUSES].map((value) => (
@@ -97,10 +97,10 @@ export default function TransactionsScreen() {
           </Pressable>
         ))}
       </View>
-      <Text style={styles.meta}>Type</Text>
+      <Text style={styles.meta}>Entry type</Text>
       <View style={styles.row}>
         {["", "INCOME", "EXPENSE", "ACCOUNT_TRANSFER"].map((value) => (
-          <Pressable key={value || "any-type"} accessibilityRole="button" accessibilityLabel={value ? `Type ${value}` : "Any type"} accessibilityState={{ selected: type === value }} onPress={() => setType(value)} style={[styles.chip, type === value && styles.chipOn]}>
+          <Pressable key={value || "any-type"} accessibilityRole="button" accessibilityLabel={value ? `Filter ${value}` : "Any entry type"} accessibilityState={{ selected: type === value }} onPress={() => setType(value)} style={[styles.chip, type === value && styles.chipOn]}>
             <Text style={type === value ? styles.chipOnText : styles.chipText}>{value || "Any"}</Text>
           </Pressable>
         ))}

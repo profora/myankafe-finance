@@ -14,7 +14,7 @@ appId: com.myankafe.finance
       id: "From account"
     timeout: 30000
 - tapOn:
-    id: "Description"
+    id: "^Description$"
 - inputText: "Cash to bank"
 - tapOn:
     id: "From account"

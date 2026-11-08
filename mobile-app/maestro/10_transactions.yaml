@@ -3,7 +3,7 @@ appId: com.myankafe.finance
 - runFlow:
     file: helpers/open_transactions.yaml
 - tapOn:
-    id: "Search"
+    id: "^Search$"
 - inputText: "November rent posted"
 - extendedWaitUntil:
     visible: "November rent posted"

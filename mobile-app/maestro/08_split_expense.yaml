@@ -11,13 +11,13 @@ appId: com.myankafe.finance
     id: "New entry"
 - extendedWaitUntil:
     visible:
-      id: "Description"
+      id: "^Description$"
     timeout: 60000
 - tapOn:
-    id: "Type"
+    id: "^Type$"
 - tapOn: "Expense"
 - tapOn:
-    id: "Description"
+    id: "^Description$"
 - eraseText
 - inputText: "Office and utilities"
 - tapOn:

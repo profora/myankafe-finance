@@ -32,10 +32,10 @@ appId: com.myankafe.finance
     id: "Edit"
 - extendedWaitUntil:
     visible:
-      id: "Description"
+      id: "^Description$"
     timeout: 30000
 - tapOn:
-    id: "Description"
+    id: "^Description$"
 - eraseText
 - inputText: "November rent posted"
 - hideKeyboard
