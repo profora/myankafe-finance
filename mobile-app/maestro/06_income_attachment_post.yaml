@@ -9,72 +9,22 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn:
     id: "New entry"
-- extendedWaitUntil:
-    visible:
-      id: "^Description$"
-    timeout: 90000
-- tapOn:
-    id: "^Type$"
-- tapOn: "Income"
 - runFlow:
-    when:
-      visible: "Close"
-    commands:
-      - tapOn: "Close"
-- extendedWaitUntil:
-    visible:
-      id: "^Sales channel$"
-    timeout: 60000
-- tapOn:
-    id: "^Sales channel$"
-- extendedWaitUntil:
-    visible: "COUNTER"
-    timeout: 30000
-- tapOn: "COUNTER"
-- tapOn:
-    id: "^Description$"
-- eraseText
-- inputText: "Coffee sales"
-- hideKeyboard
-- tapOn:
-    id: "Received into"
-- extendedWaitUntil:
-    visible: "Cash Drawer (MMK)"
-    timeout: 30000
-- tapOn: "Cash Drawer (MMK)"
-- hideKeyboard
-- scrollUntilVisible:
-    element:
-      id: "Split 1 account"
-    direction: DOWN
-    timeout: 30000
-- tapOn:
-    id: "Split 1 account"
-- extendedWaitUntil:
-    visible: "4110 Coffee & Beverage Sales"
-    timeout: 30000
-- tapOn: "4110 Coffee & Beverage Sales"
-- tapOn:
-    id: "Amount"
-- eraseText
-- inputText: "80000"
-- hideKeyboard
-- extendedWaitUntil:
-    visible: "Total 80000 MMK"
-    timeout: 30000
-- scrollUntilVisible:
-    element:
-      id: "Attach sample receipt"
-    direction: DOWN
-    timeout: 30000
+    file: helpers/fill_income.yaml
+    env:
+      DESCRIPTION: "Coffee sales"
+      SPLIT_ACCOUNT: "4110 Coffee & Beverage Sales"
+      AMOUNT: "80000"
+      TOTAL_LABEL: "Total 80000 MMK"
+- swipe:
+    direction: UP
+    duration: 400
 - tapOn:
     id: "Attach sample receipt"
 - assertVisible: "e2e-receipt.png"
-- scrollUntilVisible:
-    element:
-      id: "Save & Post"
-    direction: DOWN
-    timeout: 30000
+- swipe:
+    direction: UP
+    duration: 400
 - tapOn:
     id: "Save & Post"
 - tapOn: "Post"

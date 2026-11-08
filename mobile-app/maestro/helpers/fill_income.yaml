@@ -1,0 +1,57 @@
+appId: com.myankafe.finance
+---
+- extendedWaitUntil:
+    visible:
+      id: "^Description$"
+    timeout: 60000
+- tapOn:
+    id: "^Type$"
+- tapOn: "Income"
+- runFlow:
+    when:
+      visible: "Close"
+    commands:
+      - tapOn: "Close"
+- extendedWaitUntil:
+    visible:
+      id: "^Sales channel$"
+    timeout: 60000
+- tapOn:
+    id: "^Sales channel$"
+- extendedWaitUntil:
+    visible: "COUNTER"
+    timeout: 30000
+- tapOn: "COUNTER"
+- tapOn:
+    id: "^Description$"
+- eraseText
+- inputText: ${DESCRIPTION}
+- hideKeyboard
+- tapOn:
+    id: "Received into"
+- extendedWaitUntil:
+    visible: "Cash Drawer (MMK)"
+    timeout: 30000
+- tapOn: "Cash Drawer (MMK)"
+- hideKeyboard
+- swipe:
+    direction: UP
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: "Split 1 account"
+    timeout: 30000
+- tapOn:
+    id: "Split 1 account"
+- extendedWaitUntil:
+    visible: ${SPLIT_ACCOUNT}
+    timeout: 30000
+- tapOn: ${SPLIT_ACCOUNT}
+- tapOn:
+    id: "Amount"
+- eraseText
+- inputText: ${AMOUNT}
+- hideKeyboard
+- extendedWaitUntil:
+    visible: ${TOTAL_LABEL}
+    timeout: 30000
