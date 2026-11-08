@@ -1,22 +1,22 @@
 appId: com.myankafe.finance
 ---
 - runFlow:
-    file: helpers/open_transactions.yaml
+    file: helpers/open_home.yaml
 - scrollUntilVisible:
     element:
-      id: "New entry"
+      id: "+ New Income"
     direction: DOWN
-    timeout: 30000
+    timeout: 60000
 - tapOn:
-    id: "New entry"
+    id: "+ New Income"
+- extendedWaitUntil:
+    visible:
+      id: "Type"
+    timeout: 90000
 - extendedWaitUntil:
     visible:
       id: "Description"
-    timeout: 60000
-- tapOn:
-    id: "Type"
-- tapOn: "Income"
-- hideKeyboard
+    timeout: 30000
 - tapOn:
     id: "Description"
 - eraseText

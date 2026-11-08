@@ -17,14 +17,24 @@ REPORT_DIR=/tmp/finance-e2e-artifacts
 
 run_flow() {
   local file="$1"
+  local base
+  base="$(basename "$file" .yaml)"
   echo "=== Maestro flow: $file ==="
-  maestro test \
+  if maestro test \
     --format junit \
-    --output "$REPORT_DIR/$(basename "$file" .yaml).xml" \
+    --output "$REPORT_DIR/${base}.xml" \
     -e BOOKKEEPER_PASSWORD="$BOOKKEEPER_PASSWORD" \
     -e BOOK_NEXT_PASSWORD="$BOOK_NEXT_PASSWORD" \
     -e VIEWER_PASSWORD="$VIEWER_PASSWORD" \
-    "$MOBILE/maestro/$file"
+    "$MOBILE/maestro/$file"; then
+    return 0
+  fi
+  local rc=$?
+  adb exec-out screencap -p >"$REPORT_DIR/${base}-fail.png" || true
+  timeout 20s adb logcat -d -t 200 >"$REPORT_DIR/${base}-fail.logcat.txt" || true
+  adb shell uiautomator dump /sdcard/finance-e2e-ui.xml >/dev/null 2>&1 || true
+  adb pull /sdcard/finance-e2e-ui.xml "$REPORT_DIR/${base}-fail-ui.xml" >/dev/null 2>&1 || true
+  return "$rc"
 }
 
 adb shell pm list packages | grep com.myankafe.finance
