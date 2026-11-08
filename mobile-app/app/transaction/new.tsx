@@ -24,11 +24,13 @@ type LocalFile = { name: string; uri: string; mime?: string | null; size?: numbe
 
 export default function NewEntryScreen() {
   const { entity } = useEntity();
-  const params = useLocalSearchParams<{ type?: string; edit?: string }>();
+  const params = useLocalSearchParams<{ type?: string | string[]; edit?: string | string[] }>();
   const router = useRouter();
   const offline = useOffline();
   const client = useQueryClient();
-  const [type, setType] = useState<"INCOME" | "EXPENSE">(params.type === "INCOME" ? "INCOME" : "EXPENSE");
+  const paramType = Array.isArray(params.type) ? params.type[0] : params.type;
+  const paramEdit = Array.isArray(params.edit) ? params.edit[0] : params.edit;
+  const [type, setType] = useState<"INCOME" | "EXPENSE">(paramType === "INCOME" ? "INCOME" : "EXPENSE");
   const [date, setDate] = useState(entity ? todayInTimeZone(entity.Timezone) : "");
   const [description, setDescription] = useState("");
   const [financialAccountId, setFinancialAccountId] = useState("");
@@ -84,8 +86,8 @@ export default function NewEntryScreen() {
   const total = entryTotal(draft);
 
   useEffect(() => {
-    if (!entity || !params.edit) return;
-    void api().request<{ date: string; description: string; type: string; currency: string; financial_account?: { id?: string }; contact?: { id?: string }; sales_channel?: { id?: string }; splits: { account_id: string; amount: string; description: string }[] }>(`/entities/${entity.PublicID}/transactions/${params.edit}`).then((tx) => {
+    if (!entity || !paramEdit) return;
+    void api().request<{ date: string; description: string; type: string; currency: string; financial_account?: { id?: string }; contact?: { id?: string }; sales_channel?: { id?: string }; splits: { account_id: string; amount: string; description: string }[] }>(`/entities/${entity.PublicID}/transactions/${paramEdit}`).then((tx) => {
       setType(tx.type === "INCOME" ? "INCOME" : "EXPENSE");
       setDate(tx.date);
       setDescription(tx.description);
@@ -94,7 +96,7 @@ export default function NewEntryScreen() {
       setSalesChannelId(tx.sales_channel?.id || "");
       setSplits(tx.splits.map((split) => ({ accountId: split.account_id, amount: split.amount, description: split.description })));
     });
-  }, [entity, params.edit]);
+  }, [entity, paramEdit]);
 
   function addFile(file: LocalFile) {
     const problem = attachmentError(file);
@@ -118,8 +120,8 @@ export default function NewEntryScreen() {
         idempotencyKey: key,
         attachments: files,
         create: (body, idempotencyKey) =>
-          params.edit
-            ? api().request<{ PublicID: string }>(`/entities/${entity!.PublicID}/transactions/${params.edit}`, {
+          paramEdit
+            ? api().request<{ PublicID: string }>(`/entities/${entity!.PublicID}/transactions/${paramEdit}`, {
                 method: "PUT",
                 body: JSON.stringify(body),
                 idempotencyKey,
@@ -166,7 +168,7 @@ export default function NewEntryScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <Stack.Screen options={{ title: params.edit ? "Edit draft" : "New Entry" }} />
+      <Stack.Screen options={{ title: paramEdit ? "Edit draft" : "New Entry" }} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <SelectField label="Type" value={type} onChange={(id) => setType(id as "INCOME" | "EXPENSE")} options={[{ id: "INCOME", label: "Income" }, { id: "EXPENSE", label: "Expense" }]} />
         <TextField label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />

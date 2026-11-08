@@ -8,10 +8,14 @@ appId: com.myankafe.finance
     visible:
       id: "Type"
     timeout: 90000
+- tapOn:
+    id: "Type"
+- tapOn: "Income"
+- hideKeyboard
 - extendedWaitUntil:
     visible:
-      id: "Description"
-    timeout: 30000
+      id: "Sales channel"
+    timeout: 60000
 - tapOn:
     id: "Description"
 - eraseText
