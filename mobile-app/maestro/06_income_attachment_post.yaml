@@ -26,6 +26,12 @@ appId: com.myankafe.finance
       id: "^Sales channel$"
     timeout: 60000
 - tapOn:
+    id: "^Sales channel$"
+- extendedWaitUntil:
+    visible: "COUNTER"
+    timeout: 30000
+- tapOn: "COUNTER"
+- tapOn:
     id: "^Description$"
 - eraseText
 - inputText: "Coffee sales"
@@ -37,17 +43,6 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn: "Cash Drawer (MMK)"
 - hideKeyboard
-- scrollUntilVisible:
-    element:
-      id: "^Sales channel$"
-    direction: DOWN
-    timeout: 60000
-- tapOn:
-    id: "^Sales channel$"
-- extendedWaitUntil:
-    visible: "COUNTER"
-    timeout: 30000
-- tapOn: "COUNTER"
 - scrollUntilVisible:
     element:
       id: "Split 1 account"
