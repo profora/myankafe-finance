@@ -1,10 +1,7 @@
 appId: com.myankafe.finance
 ---
-- tapOn: "Transactions"
-- extendedWaitUntil:
-    visible:
-      id: "Search"
-    timeout: 30000
+- runFlow:
+    file: helpers/open_transactions.yaml
 - scrollUntilVisible:
     element:
       id: "New entry"

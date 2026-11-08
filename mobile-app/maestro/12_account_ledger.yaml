@@ -1,9 +1,7 @@
 appId: com.myankafe.finance
 ---
-- tapOn: "Reports"
-- extendedWaitUntil:
-    visible: "Profit & Loss"
-    timeout: 30000
+- runFlow:
+    file: helpers/open_reports.yaml
 - tapOn: "Profit & Loss"
 - extendedWaitUntil:
     visible: "6210 Rent"
@@ -14,10 +12,8 @@ appId: com.myankafe.finance
     timeout: 60000
 - assertVisible: "Debit 25000.000000"
 - pressKey: back
-- tapOn: "Home"
-- extendedWaitUntil:
-    visible: "Cash Drawer"
-    timeout: 30000
+- runFlow:
+    file: helpers/open_home.yaml
 - tapOn:
     id: "Cash Drawer 32,000 MMK"
 - extendedWaitUntil:

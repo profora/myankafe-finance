@@ -1,0 +1,23 @@
+appId: com.myankafe.finance
+---
+# Leave stack screens, then open the Home tab.
+- repeat:
+    times: 8
+    while:
+      notVisible:
+        id: "Current entity MyanKafe"
+    commands:
+      - runFlow:
+          when:
+            visible: "Home"
+          commands:
+            - tapOn: "Home"
+      - runFlow:
+          when:
+            notVisible: "Home"
+          commands:
+            - pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: "Current entity MyanKafe"
+    timeout: 30000

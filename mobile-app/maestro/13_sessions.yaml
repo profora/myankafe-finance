@@ -1,9 +1,7 @@
 appId: com.myankafe.finance
 ---
-- tapOn: "Profile"
-- extendedWaitUntil:
-    visible: "Active sessions"
-    timeout: 30000
+- runFlow:
+    file: helpers/open_profile.yaml
 - tapOn: "Active sessions"
 - extendedWaitUntil:
     visible: "This device"

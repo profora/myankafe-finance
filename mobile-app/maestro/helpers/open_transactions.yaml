@@ -1,0 +1,23 @@
+appId: com.myankafe.finance
+---
+# Leave transaction/transfer stack screens, then open the Transactions tab.
+- repeat:
+    times: 8
+    while:
+      notVisible:
+        id: "Search"
+    commands:
+      - runFlow:
+          when:
+            visible: "Transactions"
+          commands:
+            - tapOn: "Transactions"
+      - runFlow:
+          when:
+            notVisible: "Transactions"
+          commands:
+            - pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: "Search"
+    timeout: 30000

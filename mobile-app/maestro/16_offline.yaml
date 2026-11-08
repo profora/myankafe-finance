@@ -1,6 +1,7 @@
 appId: com.myankafe.finance
 ---
-- tapOn: "Profile"
+- runFlow:
+    file: helpers/open_profile.yaml
 - tapOn: "Sign out"
 - tapOn: "Sign out"
 - extendedWaitUntil:

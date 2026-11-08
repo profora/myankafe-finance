@@ -1,6 +1,7 @@
 appId: com.myankafe.finance
 ---
-- tapOn: "Home"
+- runFlow:
+    file: helpers/open_home.yaml
 - scrollUntilVisible:
     element:
       id: "Transfer"
@@ -34,7 +35,8 @@ appId: com.myankafe.finance
     visible:
       id: "Status Posted"
     timeout: 90000
-- tapOn: "Home"
+- runFlow:
+    file: helpers/open_home.yaml
 - scrollUntilVisible:
     element: "32,000 MMK"
     direction: DOWN

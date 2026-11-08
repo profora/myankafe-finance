@@ -1,0 +1,21 @@
+appId: com.myankafe.finance
+---
+# Leave stack screens, then open the Profile tab.
+- repeat:
+    times: 8
+    while:
+      notVisible: "Sign out"
+    commands:
+      - runFlow:
+          when:
+            visible: "Profile"
+          commands:
+            - tapOn: "Profile"
+      - runFlow:
+          when:
+            notVisible: "Profile"
+          commands:
+            - pressKey: back
+- extendedWaitUntil:
+    visible: "Sign out"
+    timeout: 30000
