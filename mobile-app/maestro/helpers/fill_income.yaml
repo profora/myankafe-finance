@@ -38,10 +38,18 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn: "Cash Drawer (MMK)"
 - hideKeyboard
-- scrollUntilVisible:
-    element:
+- runFlow:
+    when:
+      notVisible:
+        id: "Split 1 account"
+    commands:
+      - swipe:
+          start: "50%, 65%"
+          end: "50%, 45%"
+          duration: 400
+- extendedWaitUntil:
+    visible:
       id: "Split 1 account"
-    direction: DOWN
     timeout: 30000
 - tapOn:
     id: "Split 1 account"

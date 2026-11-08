@@ -44,6 +44,11 @@ adb shell pm grant com.myankafe.finance android.permission.POST_NOTIFICATIONS ||
 adb shell pm grant com.myankafe.finance android.permission.CAMERA || true
 adb shell pm grant com.myankafe.finance android.permission.READ_MEDIA_IMAGES || true
 adb shell pm grant com.myankafe.finance android.permission.READ_EXTERNAL_STORAGE || true
+# Maestro scrolls are full-screen swipes; gesture nav treats them as Back and
+# pops New Entry back to the transactions list. Force 3-button navigation.
+adb shell settings put secure navigation_mode 0 || true
+adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton || true
+adb shell settings put global force_desktop_mode_on_external_displays 0 || true
 
 # Cold-start once so Expo splash/JS settle before Maestro assertions.
 adb shell am force-stop com.myankafe.finance || true
