@@ -177,6 +177,18 @@ export default function NewEntryScreen() {
       <Stack.Screen options={{ title: paramEdit ? "Edit draft" : "New Entry" }} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <SelectField label="Type" value={type} onChange={(id) => setType(id as "INCOME" | "EXPENSE")} options={[{ id: "INCOME", label: "Income" }, { id: "EXPENSE", label: "Expense" }]} />
+        {type === "INCOME" ? (
+          <SelectField
+            label="Sales channel"
+            value={salesChannelId}
+            onChange={setSalesChannelId}
+            options={
+              activeChannels.length
+                ? activeChannels.map((item) => ({ id: item.id, label: item.name }))
+                : [{ id: "", label: channels.isLoading ? "Loading channels…" : "No sales channels" }]
+            }
+          />
+        ) : null}
         <TextField label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
         <TextField label="Description" value={description} onChangeText={setDescription} />
         <SelectField
@@ -193,18 +205,6 @@ export default function NewEntryScreen() {
           options={[{ id: "", label: "None" }, ...visibleContacts.map((item) => ({ id: item.id, label: item.display_name }))]}
         />
         {contactQuery && visibleContacts.length === 0 ? <Text style={styles.note}>No matching contact. Create it in Finance web, then search again.</Text> : null}
-        {type === "INCOME" ? (
-          <SelectField
-            label="Sales channel"
-            value={salesChannelId}
-            onChange={setSalesChannelId}
-            options={
-              activeChannels.length
-                ? activeChannels.map((item) => ({ id: item.id, label: item.name }))
-                : [{ id: "", label: channels.isLoading ? "Loading channels…" : "No sales channels" }]
-            }
-          />
-        ) : null}
         {splits.map((split, index) => (
           <ViewBlock key={index}>
             <SelectField label={`Split ${index + 1} account`} value={split.accountId} onChange={(id) => setSplits((rows) => rows.map((row, i) => i === index ? { ...row, accountId: id } : row))} options={ledger.map((item) => ({ id: item.PublicID, label: `${item.Code} ${item.Name}` }))} />
