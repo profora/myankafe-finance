@@ -152,6 +152,12 @@ def main() -> None:
         {"Code": "COUNTER", "Name": "COUNTER", "Active": True},
     )
     channel = must(status, channel, 201, "sales channel")
+    status, listed = call("GET", f"/entities/{cafe_id}/sales-channels", token)
+    listed = must(status, listed, 200, "list sales channels")
+    items = listed.get("items") or []
+    if not any(item.get("active") and item.get("name") == "COUNTER" for item in items):
+        raise SystemExit(f"FAIL sales channel list missing active COUNTER: {listed!r}")
+    print(f"SEED_CHANNELS {items!r}", flush=True)
 
     users = {}
     for username, password, display, role in (

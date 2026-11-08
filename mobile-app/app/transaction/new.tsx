@@ -63,7 +63,13 @@ export default function NewEntryScreen() {
     queryFn: () => api().request<{ items: Channel[] }>(`/entities/${entity!.PublicID}/sales-channels`),
   });
 
-  const activeChannels = (channels.data?.items ?? []).filter((c) => c.active);
+  const activeChannels = (channels.data?.items ?? [])
+    .map((c) => ({
+      id: c.id || (c as { PublicID?: string }).PublicID || "",
+      name: c.name || (c as { Name?: string }).Name || "",
+      active: c.active ?? (c as { Active?: boolean }).Active ?? false,
+    }))
+    .filter((c) => c.id && c.active);
   const visibleContacts = (contacts.data?.items ?? []).filter((item) =>
     item.display_name.toLowerCase().includes(contactQuery.trim().toLowerCase()),
   );
@@ -187,8 +193,17 @@ export default function NewEntryScreen() {
           options={[{ id: "", label: "None" }, ...visibleContacts.map((item) => ({ id: item.id, label: item.display_name }))]}
         />
         {contactQuery && visibleContacts.length === 0 ? <Text style={styles.note}>No matching contact. Create it in Finance web, then search again.</Text> : null}
-        {type === "INCOME" && activeChannels.length > 0 ? (
-          <SelectField label="Sales channel" value={salesChannelId} onChange={setSalesChannelId} options={activeChannels.map((item) => ({ id: item.id, label: item.name }))} />
+        {type === "INCOME" ? (
+          <SelectField
+            label="Sales channel"
+            value={salesChannelId}
+            onChange={setSalesChannelId}
+            options={
+              activeChannels.length
+                ? activeChannels.map((item) => ({ id: item.id, label: item.name }))
+                : [{ id: "", label: channels.isLoading ? "Loading channels…" : "No sales channels" }]
+            }
+          />
         ) : null}
         {splits.map((split, index) => (
           <ViewBlock key={index}>
