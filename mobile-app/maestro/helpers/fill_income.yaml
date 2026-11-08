@@ -5,7 +5,9 @@ appId: com.myankafe.finance
       id: "^Description$"
     timeout: 60000
 - assertVisible:
-    id: "Save Draft"
+    id: "^Type$"
+- assertVisible:
+    id: "Date"
 - tapOn:
     id: "^Type$"
 - tapOn: "Income"
