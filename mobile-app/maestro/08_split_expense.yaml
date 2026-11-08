@@ -78,5 +78,9 @@ appId: com.myankafe.finance
     timeout: 90000
 - assertVisible: "6520 Office Supplies"
 - assertVisible: "6220 Utilities"
-- assertVisible: "Debit 10000.000000"
-- assertVisible: "Debit 5000.000000"
+- scrollUntilVisible:
+    element: "Debit 10000.000000 · Credit 0.000000"
+    direction: DOWN
+    timeout: 30000
+- assertVisible: "Debit 5000.000000 · Credit 0.000000"
+- assertVisible: "Debit 0.000000 · Credit 15000.000000"

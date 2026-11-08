@@ -72,5 +72,9 @@ appId: com.myankafe.finance
     timeout: 90000
 - assertVisible: "Coffee sales"
 - assertVisible: "e2e-receipt.png"
+- scrollUntilVisible:
+    element: "Debit 80000.000000 · Credit 0.000000"
+    direction: DOWN
+    timeout: 30000
 - assertVisible: "1110 Cash on Hand"
-- assertVisible: "Debit 80000.000000"
+- assertVisible: "Debit 0.000000 · Credit 80000.000000"
