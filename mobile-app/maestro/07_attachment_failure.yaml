@@ -16,15 +16,19 @@ appId: com.myankafe.finance
       SPLIT_ACCOUNT: "6210 Rent"
       AMOUNT: "100"
       TOTAL_LABEL: "Total 100 MMK"
-- swipe:
-    direction: UP
-    duration: 500
+- scrollUntilVisible:
+    element:
+      id: "Attach sample receipt"
+    direction: DOWN
+    timeout: 30000
 - tapOn:
     id: "Attach sample receipt"
 - assertVisible: "e2e-receipt.png"
-- swipe:
-    direction: UP
-    duration: 400
+- scrollUntilVisible:
+    element:
+      id: "Save & Post"
+    direction: DOWN
+    timeout: 30000
 - tapOn:
     id: "Save & Post"
 - tapOn: "Post"

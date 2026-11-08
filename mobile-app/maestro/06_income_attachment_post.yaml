@@ -16,16 +16,24 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Type"
 - tapOn: "Income"
+- hideKeyboard
 - tapOn:
     id: "Description"
 - eraseText
 - inputText: "Coffee sales"
+- hideKeyboard
 - tapOn:
     id: "Received into"
 - extendedWaitUntil:
     visible: "Cash Drawer (MMK)"
     timeout: 30000
 - tapOn: "Cash Drawer (MMK)"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "Sales channel"
+    direction: DOWN
+    timeout: 60000
 - tapOn:
     id: "Sales channel"
 - extendedWaitUntil:
