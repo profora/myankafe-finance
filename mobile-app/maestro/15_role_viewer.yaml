@@ -14,5 +14,6 @@ appId: com.myankafe.finance
       PASSWORD: ${VIEWER_PASSWORD}
 - assertVisible: "This role can review but not post entries."
 - assertNotVisible: "New Expense"
-- assertNotVisible: "+ New Income"
+- assertNotVisible:
+    id: "New Income"
 - assertNotVisible: "Transfer"

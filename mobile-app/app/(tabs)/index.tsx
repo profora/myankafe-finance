@@ -101,8 +101,8 @@ export default function HomeScreen() {
           <>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="+ New Income"
-              testID="+ New Income"
+              accessibilityLabel="New Income"
+              testID="New Income"
               style={styles.primary}
               onPress={() => router.push({ pathname: "/transaction/new", params: { type: "INCOME" } })}
             >

@@ -2,13 +2,8 @@ appId: com.myankafe.finance
 ---
 - runFlow:
     file: helpers/open_home.yaml
-- scrollUntilVisible:
-    element:
-      id: "+ New Income"
-    direction: DOWN
-    timeout: 60000
 - tapOn:
-    id: "+ New Income"
+    id: "New Income"
 - extendedWaitUntil:
     visible:
       id: "Type"
