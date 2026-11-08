@@ -192,7 +192,17 @@ jobs:
           NODE
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          export GRADLE_OPTS="${GRADLE_OPTS:-} -Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000"
+          for attempt in 1 2 3 4 5; do
+            if ./gradlew assembleDebug --no-daemon; then
+              break
+            fi
+            echo "assembleDebug attempt $attempt failed; retrying after network/transient error"
+            sleep $((attempt * 15))
+            if [[ "$attempt" -eq 5 ]]; then
+              exit 1
+            fi
+          done
           test -f app/build/outputs/apk/debug/app-debug.apk
           unzip -l app/build/outputs/apk/debug/app-debug.apk | tee /tmp/finance-e2e-apk-listing.txt | grep -E 'index\.(android\.)?bundle|assets/.*\.bundle|\.hbc' || {
             echo "FAIL: debug APK is missing an embedded JS bundle"

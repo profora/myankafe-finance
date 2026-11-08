@@ -128,7 +128,20 @@ jobs:
 
       - name: Gradle assembleDebug
         working-directory: mobile-app/android
-        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          export GRADLE_OPTS="${GRADLE_OPTS:-} -Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000"
+          for attempt in 1 2 3 4 5; do
+            if ./gradlew assembleDebug --no-daemon; then
+              break
+            fi
+            echo "assembleDebug attempt $attempt failed; retrying after network/transient error"
+            sleep $((attempt * 15))
+            if [[ "$attempt" -eq 5 ]]; then
+              exit 1
+            fi
+          done
 
       - name: Record the debug APK
         working-directory: mobile-app
