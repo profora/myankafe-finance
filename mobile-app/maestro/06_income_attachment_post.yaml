@@ -16,15 +16,19 @@ appId: com.myankafe.finance
       SPLIT_ACCOUNT: "4110 Coffee & Beverage Sales"
       AMOUNT: "80000"
       TOTAL_LABEL: "Total 80000 MMK"
-- swipe:
-    direction: UP
-    duration: 400
+- scrollUntilVisible:
+    element:
+      id: "Attach sample receipt"
+    direction: DOWN
+    timeout: 30000
 - tapOn:
     id: "Attach sample receipt"
 - assertVisible: "e2e-receipt.png"
-- swipe:
-    direction: UP
-    duration: 400
+- scrollUntilVisible:
+    element:
+      id: "Save & Post"
+    direction: DOWN
+    timeout: 30000
 - tapOn:
     id: "Save & Post"
 - tapOn: "Post"

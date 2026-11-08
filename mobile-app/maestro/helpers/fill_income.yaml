@@ -4,6 +4,8 @@ appId: com.myankafe.finance
     visible:
       id: "^Description$"
     timeout: 60000
+- assertVisible:
+    id: "Save Draft"
 - tapOn:
     id: "^Type$"
 - tapOn: "Income"
@@ -34,12 +36,10 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn: "Cash Drawer (MMK)"
 - hideKeyboard
-- swipe:
-    direction: UP
-    duration: 400
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: "Split 1 account"
+    direction: DOWN
     timeout: 30000
 - tapOn:
     id: "Split 1 account"
