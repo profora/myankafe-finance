@@ -2,30 +2,12 @@ appId: com.myankafe.finance
 ---
 - launchApp:
     clearState: false
-    stopApp: false
-- runFlow:
-    when:
-      visible:
-        id: "Status Posted"
-    commands:
-      - pressKey: back
-- runFlow:
-    when:
-      visible:
-        id: "Status Draft"
-    commands:
-      - pressKey: back
-- runFlow:
-    when:
-      visible:
-        id: "Status Voided"
-    commands:
-      - pressKey: back
-- runFlow:
-    when:
-      notVisible: "Profit & Loss"
-    commands:
-      - tapOn: "Reports"
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: "Current entity MyanKafe"
+    timeout: 120000
+- tapOn: "Reports"
 - extendedWaitUntil:
     visible: "Profit & Loss"
     timeout: 60000

@@ -65,6 +65,4 @@ appId: com.myankafe.finance
     timeout: 30000
 - assertVisible: "1110 Cash on Hand"
 - assertVisible: "Debit 0.000000 · Credit 25000.000000"
-- runFlow:
-    file: helpers/open_home.yaml
 

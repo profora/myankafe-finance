@@ -1,33 +1,13 @@
 appId: com.myankafe.finance
 ---
-# Resume the app if needed, then open Home. Avoid repeated Android back.
 - launchApp:
     clearState: false
-    stopApp: false
-- runFlow:
-    when:
-      visible:
-        id: "Status Posted"
-    commands:
-      - pressKey: back
-- runFlow:
-    when:
-      visible:
-        id: "Status Draft"
-    commands:
-      - pressKey: back
-- runFlow:
-    when:
-      visible:
-        id: "Status Voided"
-    commands:
-      - pressKey: back
-- runFlow:
-    when:
-      notVisible:
-        id: "+ New Income"
-    commands:
-      - tapOn: "Home"
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: "Current entity MyanKafe"
+    timeout: 120000
+- tapOn: "Home"
 - extendedWaitUntil:
     visible:
       id: "+ New Income"

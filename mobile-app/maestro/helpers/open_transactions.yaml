@@ -1,34 +1,15 @@
 appId: com.myankafe.finance
 ---
-# Resume the app if Android back left the launcher, then open Transactions.
-# Never spam back: that exits the app onto launcher3 (false Home/Search).
+# Restart the Activity without clearing storage. Android back from a
+# replaced stack screen exits to launcher3; do not pressKey back here.
 - launchApp:
     clearState: false
-    stopApp: false
-- runFlow:
-    when:
-      visible:
-        id: "Status Posted"
-    commands:
-      - pressKey: back
-- runFlow:
-    when:
-      visible:
-        id: "Status Draft"
-    commands:
-      - pressKey: back
-- runFlow:
-    when:
-      visible:
-        id: "Status Voided"
-    commands:
-      - pressKey: back
-- runFlow:
-    when:
-      notVisible:
-        id: "New entry"
-    commands:
-      - tapOn: "Transactions"
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: "Current entity MyanKafe"
+    timeout: 120000
+- tapOn: "Transactions"
 - extendedWaitUntil:
     visible:
       id: "New entry"
