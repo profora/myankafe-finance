@@ -63,9 +63,11 @@ appId: com.myankafe.finance
 - extendedWaitUntil:
     visible: "Total 15000 MMK"
     timeout: 30000
-- swipe:
-    direction: UP
-    duration: 500
+- scrollUntilVisible:
+    element:
+      id: "Save & Post"
+    direction: DOWN
+    timeout: 30000
 - tapOn:
     id: "Save & Post"
 - tapOn: "Post"
