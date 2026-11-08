@@ -174,7 +174,7 @@ export default function NewEntryScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <Stack.Screen options={{ title: paramEdit ? "Edit draft" : "New Entry" }} />
+      <Stack.Screen options={{ title: paramEdit ? "Edit draft" : "New Entry", gestureEnabled: false }} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <SelectField label="Type" value={type} onChange={(id) => setType(id as "INCOME" | "EXPENSE")} options={[{ id: "INCOME", label: "Income" }, { id: "EXPENSE", label: "Expense" }]} />
         {type === "INCOME" ? (
