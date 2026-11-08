@@ -1,23 +1,35 @@
 appId: com.myankafe.finance
 ---
-# Leave transaction/transfer stack screens, then open the Transactions tab.
-- repeat:
-    times: 8
-    while:
-      notVisible:
-        id: "Search"
+# Resume the app if Android back left the launcher, then open Transactions.
+# Never spam back: that exits the app onto launcher3 (false Home/Search).
+- launchApp:
+    clearState: false
+    stopApp: false
+- runFlow:
+    when:
+      visible:
+        id: "Status Posted"
     commands:
-      - runFlow:
-          when:
-            visible: "Transactions"
-          commands:
-            - tapOn: "Transactions"
-      - runFlow:
-          when:
-            notVisible: "Transactions"
-          commands:
-            - pressKey: back
+      - pressKey: back
+- runFlow:
+    when:
+      visible:
+        id: "Status Draft"
+    commands:
+      - pressKey: back
+- runFlow:
+    when:
+      visible:
+        id: "Status Voided"
+    commands:
+      - pressKey: back
+- runFlow:
+    when:
+      notVisible:
+        id: "New entry"
+    commands:
+      - tapOn: "Transactions"
 - extendedWaitUntil:
     visible:
-      id: "Search"
-    timeout: 30000
+      id: "New entry"
+    timeout: 60000

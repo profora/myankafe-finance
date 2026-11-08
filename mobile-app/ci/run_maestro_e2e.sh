@@ -17,23 +17,25 @@ REPORT_DIR=/tmp/finance-e2e-artifacts
 
 run_flow() {
   local file="$1"
-  local base
+  local base rc
   base="$(basename "$file" .yaml)"
   echo "=== Maestro flow: $file ==="
-  if maestro test \
+  set +e
+  maestro test \
     --format junit \
     --output "$REPORT_DIR/${base}.xml" \
     -e BOOKKEEPER_PASSWORD="$BOOKKEEPER_PASSWORD" \
     -e BOOK_NEXT_PASSWORD="$BOOK_NEXT_PASSWORD" \
     -e VIEWER_PASSWORD="$VIEWER_PASSWORD" \
-    "$MOBILE/maestro/$file"; then
-    return 0
+    "$MOBILE/maestro/$file"
+  rc=$?
+  set -e
+  if [[ "$rc" -ne 0 ]]; then
+    adb exec-out screencap -p >"$REPORT_DIR/${base}-fail.png" || true
+    timeout 20s adb logcat -d -t 200 >"$REPORT_DIR/${base}-fail.logcat.txt" || true
+    adb shell uiautomator dump /sdcard/finance-e2e-ui.xml >/dev/null 2>&1 || true
+    adb pull /sdcard/finance-e2e-ui.xml "$REPORT_DIR/${base}-fail-ui.xml" >/dev/null 2>&1 || true
   fi
-  local rc=$?
-  adb exec-out screencap -p >"$REPORT_DIR/${base}-fail.png" || true
-  timeout 20s adb logcat -d -t 200 >"$REPORT_DIR/${base}-fail.logcat.txt" || true
-  adb shell uiautomator dump /sdcard/finance-e2e-ui.xml >/dev/null 2>&1 || true
-  adb pull /sdcard/finance-e2e-ui.xml "$REPORT_DIR/${base}-fail-ui.xml" >/dev/null 2>&1 || true
   return "$rc"
 }
 

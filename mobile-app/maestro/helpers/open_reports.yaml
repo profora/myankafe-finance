@@ -1,21 +1,31 @@
 appId: com.myankafe.finance
 ---
-# Leave stack screens, then open the Reports tab.
-- repeat:
-    times: 8
-    while:
+- launchApp:
+    clearState: false
+    stopApp: false
+- runFlow:
+    when:
+      visible:
+        id: "Status Posted"
+    commands:
+      - pressKey: back
+- runFlow:
+    when:
+      visible:
+        id: "Status Draft"
+    commands:
+      - pressKey: back
+- runFlow:
+    when:
+      visible:
+        id: "Status Voided"
+    commands:
+      - pressKey: back
+- runFlow:
+    when:
       notVisible: "Profit & Loss"
     commands:
-      - runFlow:
-          when:
-            visible: "Reports"
-          commands:
-            - tapOn: "Reports"
-      - runFlow:
-          when:
-            notVisible: "Reports"
-          commands:
-            - pressKey: back
+      - tapOn: "Reports"
 - extendedWaitUntil:
     visible: "Profit & Loss"
-    timeout: 30000
+    timeout: 60000
