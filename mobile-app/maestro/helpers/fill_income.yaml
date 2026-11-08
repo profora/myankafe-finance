@@ -1,5 +1,7 @@
 appId: com.myankafe.finance
 ---
+# Keep field order matching the on-screen form so we never scroll up/down
+# past the Android back affordance while filling.
 - extendedWaitUntil:
     visible:
       id: "^Description$"
@@ -16,16 +18,6 @@ appId: com.myankafe.finance
       visible: "Close"
     commands:
       - tapOn: "Close"
-- extendedWaitUntil:
-    visible:
-      id: "^Sales channel$"
-    timeout: 60000
-- tapOn:
-    id: "^Sales channel$"
-- extendedWaitUntil:
-    visible: "COUNTER"
-    timeout: 30000
-- tapOn: "COUNTER"
 - tapOn:
     id: "^Description$"
 - eraseText
@@ -38,18 +30,21 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn: "Cash Drawer (MMK)"
 - hideKeyboard
-- runFlow:
-    when:
-      notVisible:
-        id: "Split 1 account"
-    commands:
-      - swipe:
-          start: "50%, 65%"
-          end: "50%, 45%"
-          duration: 400
+- scrollUntilVisible:
+    element:
+      id: "^Sales channel$"
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: "^Sales channel$"
 - extendedWaitUntil:
-    visible:
+    visible: "COUNTER"
+    timeout: 30000
+- tapOn: "COUNTER"
+- scrollUntilVisible:
+    element:
       id: "Split 1 account"
+    direction: DOWN
     timeout: 30000
 - tapOn:
     id: "Split 1 account"
