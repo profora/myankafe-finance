@@ -200,8 +200,23 @@ jobs:
           }
 
       - name: Install Maestro
+        env:
+          MAESTRO_VERSION: "2.12.1"
         run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
+          set -euo pipefail
+          mkdir -p "$HOME/.maestro/tmp" "$HOME/.maestro/bin" "$HOME/.maestro/lib"
+          url="https://github.com/mobile-dev-inc/maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip"
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --location --retry 3 --retry-delay 5 --retry-all-errors \
+              -o "$HOME/.maestro/tmp/maestro.zip" "$url"; then
+              break
+            fi
+            echo "Maestro download attempt $attempt failed"
+            sleep $((attempt * 5))
+          done
+          test -s "$HOME/.maestro/tmp/maestro.zip"
+          unzip -qo "$HOME/.maestro/tmp/maestro.zip" -d "$HOME/.maestro/tmp"
+          cp -R "$HOME/.maestro/tmp/maestro/." "$HOME/.maestro/"
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
           "$HOME/.maestro/bin/maestro" --version
 
