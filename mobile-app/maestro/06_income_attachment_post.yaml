@@ -11,7 +11,7 @@ appId: com.myankafe.finance
     id: "New entry"
 - extendedWaitUntil:
     visible:
-      id: "Type"
+      id: "Description"
     timeout: 90000
 - tapOn:
     id: "Type"
