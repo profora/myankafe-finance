@@ -13,4 +13,6 @@ appId: com.myankafe.finance
     visible: "This device"
     timeout: 60000
 - assertNotVisible: "Other session"
-- pressKey: back
+- runFlow:
+    file: helpers/open_profile.yaml
+- assertVisible: "Active sessions"
