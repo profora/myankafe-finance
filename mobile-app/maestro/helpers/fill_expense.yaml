@@ -11,6 +11,8 @@ appId: com.myankafe.finance
     id: "^Description$"
 - eraseText
 - inputText: ${DESCRIPTION}
+- hideKeyboard
+- assertVisible: ${DESCRIPTION}
 - tapOn:
     id: "Paid from"
 - extendedWaitUntil:
@@ -27,11 +29,18 @@ appId: com.myankafe.finance
     visible: ${SPLIT_ACCOUNT}
     timeout: 30000
 - tapOn: ${SPLIT_ACCOUNT}
+- extendedWaitUntil:
+    visible:
+      id: "Amount"
+    timeout: 30000
 - tapOn:
     id: "Amount"
 - eraseText
 - inputText: ${AMOUNT}
 - hideKeyboard
-- extendedWaitUntil:
-    visible: ${TOTAL_LABEL}
+- assertVisible: ${DESCRIPTION}
+- scrollUntilVisible:
+    element: ${TOTAL_LABEL}
+    direction: DOWN
     timeout: 30000
+- assertVisible: ${TOTAL_LABEL}
