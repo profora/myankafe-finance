@@ -14,3 +14,11 @@ appId: com.myankafe.finance
     visible:
       id: "New entry"
     timeout: 60000
+# ListHeader can sit above the viewport after prior scrolls; bring filters back.
+- scrollUntilVisible:
+    element:
+      id: "Any status"
+    direction: UP
+    timeout: 60000
+- assertVisible:
+    id: "New entry"

@@ -3,7 +3,7 @@ appId: com.myankafe.finance
 - runFlow:
     file: helpers/open_transactions.yaml
 - assertVisible:
-    id: "New entry"
+    id: "Any status"
 - tapOn:
     id: "Status POSTED"
 - tapOn:
@@ -12,7 +12,6 @@ appId: com.myankafe.finance
     id: "^Search$"
 - eraseText
 - inputText: "November rent posted"
-# Filters sit above Search, so chips stay reachable; tap Status again to blur IME.
 - tapOn:
     id: "Status POSTED"
 - extendedWaitUntil:
