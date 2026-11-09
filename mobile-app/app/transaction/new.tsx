@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Asset } from "expo-asset";
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ReactNode, useEffect, useMemo, useState } from "react";
@@ -262,7 +263,21 @@ export default function NewEntryScreen() {
                   setError("Sample receipt is not available.");
                   return;
                 }
-                addFile({ name: "e2e-receipt.png", uri: asset.localUri, mime: "image/png", size: asset.localUri ? undefined : null });
+                // Bundled asset URIs are not always readable by Android FormData uploads.
+                // Copy into cache so multipart upload gets a plain file:// path.
+                if (!FileSystem.cacheDirectory) {
+                  setError("Sample receipt cache is not available.");
+                  return;
+                }
+                const dest = `${FileSystem.cacheDirectory}e2e-receipt.png`;
+                await FileSystem.copyAsync({ from: asset.localUri, to: dest });
+                const info = await FileSystem.getInfoAsync(dest);
+                addFile({
+                  name: "e2e-receipt.png",
+                  uri: dest,
+                  mime: "image/png",
+                  size: info.exists && "size" in info ? info.size : undefined,
+                });
               } catch {
                 setError("Could not attach the sample receipt.");
               }
