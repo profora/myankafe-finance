@@ -4,24 +4,22 @@ appId: com.myankafe.finance
     file: helpers/open_transactions.yaml
 - assertVisible:
     id: "New entry"
-- scrollUntilVisible:
-    element: "November rent posted"
-    direction: DOWN
+- tapOn:
+    id: "^Search$"
+- eraseText
+- inputText: "November rent posted"
+# Blur Search without Maestro hideKeyboard (that was exiting to launcher).
+- tapOn:
+    id: "Any status"
+- extendedWaitUntil:
+    visible: "November rent posted"
     timeout: 60000
 - assertVisible: "November rent posted"
 - tapOn:
     id: "Status POSTED"
-- scrollUntilVisible:
-    element: "November rent posted"
-    direction: DOWN
-    timeout: 60000
 - assertVisible: "November rent posted"
 - tapOn:
     id: "Filter EXPENSE"
-- scrollUntilVisible:
-    element: "November rent posted"
-    direction: DOWN
-    timeout: 60000
 - assertVisible: "November rent posted"
 - tapOn: "November rent posted"
 - extendedWaitUntil:
