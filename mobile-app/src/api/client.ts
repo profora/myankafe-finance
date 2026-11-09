@@ -49,21 +49,33 @@ export function createClient(deps: ClientDeps) {
   const base = deps.baseUrl.replace(/\/$/, "");
 
   async function request<T>(path: string, init: RequestInit & { auth?: boolean; idempotencyKey?: string; endSessionOn401?: boolean } = {}): Promise<T> {
-    const headers = new Headers(init.headers);
-    headers.set("Accept", "application/json");
-    headers.set("X-Requested-With", "MyanKafe-Finance");
-    const body = init.body;
-    if (body && typeof body === "string" && !headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
+    // Plain object headers: RN Android FormData uploads break when Content-Type is forced via Headers.
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "X-Requested-With": "MyanKafe-Finance",
+    };
+    if (init.headers) {
+      new Headers(init.headers).forEach((value, key) => {
+        headers[key] = value;
+      });
     }
-    if (init.idempotencyKey) headers.set("Idempotency-Key", init.idempotencyKey);
+    const body = init.body;
+    const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+    if (body && typeof body === "string" && !headers["Content-Type"] && !headers["content-type"]) {
+      headers["Content-Type"] = "application/json";
+    }
+    if (isFormData) {
+      delete headers["Content-Type"];
+      delete headers["content-type"];
+    }
+    if (init.idempotencyKey) headers["Idempotency-Key"] = init.idempotencyKey;
     if (init.auth !== false) {
       const token = await deps.getToken();
-      if (token) headers.set("Authorization", `Bearer ${token}`);
+      if (token) headers.Authorization = `Bearer ${token}`;
     }
     let response: Awaited<ReturnType<FetchLike>>;
     try {
-      response = await fetchImpl(`${base}${path}`, { ...init, headers });
+      response = await fetchImpl(`${base}${path}`, { ...init, headers, body });
     } catch {
       throw new ApiError("Network unavailable. Check your connection and try again.", 0, "network");
     }

@@ -14,6 +14,7 @@ import { attachmentError } from "../../src/lib/attachments";
 import { todayInTimeZone } from "../../src/lib/dates";
 import { EntryDraft, entryErrors, entryTotal, removeSplit, saveEntry, SplitDraft } from "../../src/lib/entry";
 import { createIdempotencyKey } from "../../src/lib/idempotency";
+import { uploadTransactionAttachments } from "../../src/lib/uploadAttachments";
 import { friendlyError } from "../../src/api/errors";
 import { colors, space } from "../../src/theme";
 
@@ -138,13 +139,12 @@ export default function NewEntryScreen() {
                 body: JSON.stringify(body),
                 idempotencyKey,
               }),
-        upload: async (id, attachments) => {
-          const body = new FormData();
-          attachments.forEach((file, index) => {
-            const local = files[index];
-            body.append("files", { uri: local.uri, name: file.name, type: local.mime || "application/octet-stream" } as unknown as Blob);
-          });
-          await api().request(`/entities/${entity!.PublicID}/transactions/${id}/attachments`, { method: "POST", body });
+        upload: async (id) => {
+          await uploadTransactionAttachments(
+            entity!.PublicID,
+            id,
+            files.map((file) => ({ name: file.name, uri: file.uri, mime: file.mime })),
+          );
         },
         post: (id, idempotencyKey) =>
           api().request(`/entities/${entity!.PublicID}/transactions/${id}/post`, { method: "POST", body: "{}", idempotencyKey }),
