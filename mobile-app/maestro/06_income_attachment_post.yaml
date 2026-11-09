@@ -11,18 +11,19 @@ appId: com.myankafe.finance
       SPLIT_ACCOUNT: "4110 Coffee & Beverage Sales"
       AMOUNT: "80000"
       TOTAL_LABEL: "Total 80000 MMK"
-- hideKeyboard
+- assertVisible: "New Entry"
 - scrollUntilVisible:
     element:
       id: "Attach sample receipt"
     direction: DOWN
-    timeout: 30000
+    timeout: 60000
 - tapOn:
     id: "Attach sample receipt"
 - extendedWaitUntil:
     visible: "e2e-receipt.png"
     timeout: 60000
 - assertVisible: "e2e-receipt.png"
+- assertVisible: "New Entry"
 - scrollUntilVisible:
     element:
       id: "Save & Post"

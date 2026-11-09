@@ -208,14 +208,6 @@ export default function NewEntryScreen() {
         ))}
         <Button label="Add split" tone="secondary" onPress={() => setSplits((rows) => [...rows, { accountId: "", amount: "", description: "" }])} />
         <Text style={styles.total}>Total {total ?? "—"} {draft.currency}</Text>
-        <TextField label={type === "INCOME" ? "Payer" : "Payee"} value={contactQuery} onChangeText={setContactQuery} placeholder="Search contacts" />
-        <SelectField
-          label="Contact"
-          value={contactId}
-          onChange={setContactId}
-          options={[{ id: "", label: "None" }, ...visibleContacts.map((item) => ({ id: item.id, label: item.display_name }))]}
-        />
-        {contactQuery && visibleContacts.length === 0 ? <Text style={styles.note}>No matching contact. Create it in Finance web, then search again.</Text> : null}
         {files.map((file) => <Text key={file.uri}>{file.name}</Text>)}
         <Button label="Camera" tone="secondary" onPress={async () => {
           try {
@@ -292,6 +284,14 @@ export default function NewEntryScreen() {
             }}
           />
         ) : null}
+        <TextField label={type === "INCOME" ? "Payer" : "Payee"} value={contactQuery} onChangeText={setContactQuery} placeholder="Search contacts" />
+        <SelectField
+          label="Contact"
+          value={contactId}
+          onChange={setContactId}
+          options={[{ id: "", label: "None" }, ...visibleContacts.map((item) => ({ id: item.id, label: item.display_name }))]}
+        />
+        {contactQuery && visibleContacts.length === 0 ? <Text style={styles.note}>No matching contact. Create it in Finance web, then search again.</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {problems.length ? <Text style={styles.note}>{problems[0]}</Text> : null}
         <Button label="Save Draft" disabled={offline || save.isPending || problems.length > 0} onPress={() => save.mutate("draft")} />
