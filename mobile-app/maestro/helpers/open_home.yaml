@@ -1,7 +1,6 @@
 appId: com.myankafe.finance
 ---
-# Relaunch restores the Home tab (session kept). Avoid tapOn "Home" — that
-# string also matches the Android launcher content-desc after stopApp.
+# Relaunch restores session. Prefer Tab Home over tapOn "Home" (launcher conflict).
 - launchApp:
     clearState: false
     stopApp: true
@@ -9,6 +8,8 @@ appId: com.myankafe.finance
     visible:
       id: "Current entity MyanKafe"
     timeout: 120000
+- tapOn:
+    id: "Tab Home"
 - scrollUntilVisible:
     element:
       id: "New Income"

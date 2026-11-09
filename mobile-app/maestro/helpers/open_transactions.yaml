@@ -1,7 +1,5 @@
 appId: com.myankafe.finance
 ---
-# Relaunch lands on Home (session kept). Prefer the Home CTA over the tab
-# label so we do not fight Android/system "Transactions" matches.
 - launchApp:
     clearState: false
     stopApp: true
@@ -9,13 +7,8 @@ appId: com.myankafe.finance
     visible:
       id: "Current entity MyanKafe"
     timeout: 120000
-- scrollUntilVisible:
-    element:
-      id: "Open transactions"
-    direction: DOWN
-    timeout: 60000
 - tapOn:
-    id: "Open transactions"
+    id: "Tab Transactions"
 - extendedWaitUntil:
     visible:
       id: "New entry"

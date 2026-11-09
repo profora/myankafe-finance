@@ -7,7 +7,8 @@ appId: com.myankafe.finance
     visible:
       id: "Current entity MyanKafe"
     timeout: 120000
-- tapOn: "Profile"
+- tapOn:
+    id: "Tab Profile"
 - extendedWaitUntil:
     visible: "Sign out"
     timeout: 60000
