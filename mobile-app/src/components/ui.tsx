@@ -111,7 +111,7 @@ export function SelectField({
                   key={`${option.id}:${option.label}`}
                   accessibilityRole="button"
                   accessibilityLabel={option.label}
-                  testID={`${label} option ${option.label}`}
+                  testID={`${label} option ${option.label}`.replace(/[()]/g, "")}
                   accessibilityState={{ selected: option.id === value }}
                   onPress={() => {
                     onChange(option.id);
