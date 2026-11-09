@@ -88,7 +88,6 @@ export default function TransactionsScreen() {
   const header = (
     <Page>
       <EntitySwitcher />
-      <TextField label="Search" value={q} onChangeText={setQ} placeholder="Find by text or contact" />
       <Text style={styles.meta}>Status</Text>
       <View style={styles.row}>
         {["", ...TRANSACTION_STATUSES].map((value) => (
@@ -121,6 +120,7 @@ export default function TransactionsScreen() {
           </Pressable>
         ))}
       </View>
+      <TextField label="Search" value={q} onChangeText={setQ} placeholder="Find by text or contact" />
       <View style={styles.dates}>
         <View style={{ flex: 1 }}><TextField label="From" value={from} onChangeText={setFrom} placeholder="YYYY-MM-DD" /></View>
         <View style={{ flex: 1 }}><TextField label="To" value={to} onChangeText={setTo} placeholder="YYYY-MM-DD" /></View>

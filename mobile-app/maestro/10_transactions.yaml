@@ -5,20 +5,19 @@ appId: com.myankafe.finance
 - assertVisible:
     id: "New entry"
 - tapOn:
+    id: "Status POSTED"
+- tapOn:
+    id: "Filter EXPENSE"
+- tapOn:
     id: "^Search$"
 - eraseText
 - inputText: "November rent posted"
-# Android Back dismisses the IME when open; it does not leave New Entry here.
-- pressKey: Back
+# Filters sit above Search, so chips stay reachable; tap Status again to blur IME.
+- tapOn:
+    id: "Status POSTED"
 - extendedWaitUntil:
     visible: "November rent posted"
     timeout: 60000
-- assertVisible: "November rent posted"
-- tapOn:
-    id: "Status POSTED"
-- assertVisible: "November rent posted"
-- tapOn:
-    id: "Filter EXPENSE"
 - assertVisible: "November rent posted"
 - tapOn: "November rent posted"
 - extendedWaitUntil:
