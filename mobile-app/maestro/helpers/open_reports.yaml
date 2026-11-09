@@ -7,7 +7,13 @@ appId: com.myankafe.finance
     visible:
       id: "Current entity MyanKafe"
     timeout: 120000
-- tapOn: "Reports"
+- scrollUntilVisible:
+    element:
+      id: "Open reports"
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: "Open reports"
 - extendedWaitUntil:
     visible: "Profit & Loss"
     timeout: 60000

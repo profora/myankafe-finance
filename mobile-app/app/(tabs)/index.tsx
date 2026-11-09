@@ -141,7 +141,7 @@ export default function HomeScreen() {
           accessibilityLabel="Open transactions"
           testID="Open transactions"
           style={styles.secondary}
-          onPress={() => router.push("/transactions")}
+          onPress={() => router.navigate("/transactions")}
         >
           <Text style={styles.secondaryText}>Transactions</Text>
         </Pressable>
@@ -150,7 +150,7 @@ export default function HomeScreen() {
           accessibilityLabel="Open reports"
           testID="Open reports"
           style={styles.secondary}
-          onPress={() => router.push("/reports")}
+          onPress={() => router.navigate("/reports")}
         >
           <Text style={styles.secondaryText}>Reports</Text>
         </Pressable>
