@@ -270,13 +270,21 @@ export default function NewEntryScreen() {
                   return;
                 }
                 const dest = `${FileSystem.cacheDirectory}e2e-receipt.png`;
+                const existing = await FileSystem.getInfoAsync(dest);
+                if (existing.exists) {
+                  await FileSystem.deleteAsync(dest, { idempotent: true });
+                }
                 await FileSystem.copyAsync({ from: asset.localUri, to: dest });
                 const info = await FileSystem.getInfoAsync(dest);
+                if (!info.exists) {
+                  setError("Sample receipt copy failed.");
+                  return;
+                }
                 addFile({
                   name: "e2e-receipt.png",
                   uri: dest,
                   mime: "image/png",
-                  size: info.exists && "size" in info ? info.size : undefined,
+                  size: "size" in info ? info.size : undefined,
                 });
               } catch {
                 setError("Could not attach the sample receipt.");

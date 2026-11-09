@@ -16,6 +16,7 @@ appId: com.myankafe.finance
       SPLIT_ACCOUNT: "6210 Rent"
       AMOUNT: "100"
       TOTAL_LABEL: "Total 100 MMK"
+- hideKeyboard
 - scrollUntilVisible:
     element:
       id: "Attach sample receipt"
@@ -23,6 +24,9 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn:
     id: "Attach sample receipt"
+- extendedWaitUntil:
+    visible: "e2e-receipt.png"
+    timeout: 60000
 - assertVisible: "e2e-receipt.png"
 - scrollUntilVisible:
     element:
