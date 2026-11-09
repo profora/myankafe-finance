@@ -25,10 +25,10 @@ appId: com.myankafe.finance
     id: "Received into"
 - extendedWaitUntil:
     visible:
-      id: "Received into option Cash Drawer (MMK)"
+      id: "Received into option Cash Drawer \(MMK\)"
     timeout: 30000
 - tapOn:
-    id: "Received into option Cash Drawer (MMK)"
+    id: "Received into option Cash Drawer \(MMK\)"
 - assertVisible: "New Entry"
 - extendedWaitUntil:
     visible:
