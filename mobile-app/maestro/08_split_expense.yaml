@@ -46,10 +46,10 @@ appId: com.myankafe.finance
     id: "Split 1 account option 6520 Office Supplies"
 - extendedWaitUntil:
     visible:
-      id: "Amount"
+      id: "Split 1 amount"
     timeout: 30000
 - tapOn:
-    id: "Amount"
+    id: "Split 1 amount"
 - eraseText
 - inputText: "10000"
 - hideKeyboard
@@ -68,9 +68,12 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn:
     id: "Split 2 account option 6220 Utilities"
+- extendedWaitUntil:
+    visible:
+      id: "Split 2 amount"
+    timeout: 30000
 - tapOn:
-    id: "Amount"
-    index: 1
+    id: "Split 2 amount"
 - eraseText
 - inputText: "5000"
 - hideKeyboard

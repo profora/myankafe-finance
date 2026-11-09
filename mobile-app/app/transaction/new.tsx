@@ -201,8 +201,8 @@ export default function NewEntryScreen() {
         {splits.map((split, index) => (
           <ViewBlock key={index}>
             <SelectField label={`Split ${index + 1} account`} value={split.accountId} onChange={(id) => setSplits((rows) => rows.map((row, i) => i === index ? { ...row, accountId: id } : row))} options={ledger.map((item) => ({ id: item.PublicID, label: `${item.Code} ${item.Name}` }))} />
-            <TextField label="Amount" value={split.amount} onChangeText={(amount) => setSplits((rows) => rows.map((row, i) => i === index ? { ...row, amount } : row))} keyboardType="decimal-pad" />
-            <TextField label="Line description" value={split.description} onChangeText={(description) => setSplits((rows) => rows.map((row, i) => i === index ? { ...row, description } : row))} />
+            <TextField label={`Split ${index + 1} amount`} value={split.amount} onChangeText={(amount) => setSplits((rows) => rows.map((row, i) => i === index ? { ...row, amount } : row))} keyboardType="decimal-pad" />
+            <TextField label={`Split ${index + 1} line description`} value={split.description} onChangeText={(description) => setSplits((rows) => rows.map((row, i) => i === index ? { ...row, description } : row))} />
             {splits.length > 1 ? <Button label={`Remove split ${index + 1}`} tone="secondary" onPress={() => setSplits((rows) => removeSplit(rows, index))} /> : null}
           </ViewBlock>
         ))}

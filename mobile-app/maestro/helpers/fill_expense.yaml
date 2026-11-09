@@ -37,10 +37,10 @@ appId: com.myankafe.finance
     id: "Split 1 account option ${SPLIT_ACCOUNT}"
 - extendedWaitUntil:
     visible:
-      id: "Amount"
+      id: "Split 1 amount"
     timeout: 30000
 - tapOn:
-    id: "Amount"
+    id: "Split 1 amount"
 - eraseText
 - inputText: ${AMOUNT}
 - hideKeyboard
