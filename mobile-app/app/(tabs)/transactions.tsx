@@ -92,7 +92,15 @@ export default function TransactionsScreen() {
       <Text style={styles.meta}>Status</Text>
       <View style={styles.row}>
         {["", ...TRANSACTION_STATUSES].map((value) => (
-          <Pressable key={value || "all"} accessibilityRole="button" accessibilityLabel={value ? `Status ${value}` : "Any status"} accessibilityState={{ selected: status === value }} onPress={() => setStatus(value)} style={[styles.chip, status === value && styles.chipOn]}>
+          <Pressable
+            key={value || "all"}
+            accessibilityRole="button"
+            accessibilityLabel={value ? `Status ${value}` : "Any status"}
+            testID={value ? `Status ${value}` : "Any status"}
+            accessibilityState={{ selected: status === value }}
+            onPress={() => setStatus(value)}
+            style={[styles.chip, status === value && styles.chipOn]}
+          >
             <Text style={status === value ? styles.chipOnText : styles.chipText}>{value || "Any"}</Text>
           </Pressable>
         ))}
@@ -100,7 +108,15 @@ export default function TransactionsScreen() {
       <Text style={styles.meta}>Entry type</Text>
       <View style={styles.row}>
         {["", "INCOME", "EXPENSE", "ACCOUNT_TRANSFER"].map((value) => (
-          <Pressable key={value || "any-type"} accessibilityRole="button" accessibilityLabel={value ? `Filter ${value}` : "Any entry type"} accessibilityState={{ selected: type === value }} onPress={() => setType(value)} style={[styles.chip, type === value && styles.chipOn]}>
+          <Pressable
+            key={value || "any-type"}
+            accessibilityRole="button"
+            accessibilityLabel={value ? `Filter ${value}` : "Any entry type"}
+            testID={value ? `Filter ${value}` : "Any entry type"}
+            accessibilityState={{ selected: type === value }}
+            onPress={() => setType(value)}
+            style={[styles.chip, type === value && styles.chipOn]}
+          >
             <Text style={type === value ? styles.chipOnText : styles.chipText}>{value || "Any"}</Text>
           </Pressable>
         ))}

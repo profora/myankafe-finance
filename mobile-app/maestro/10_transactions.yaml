@@ -4,13 +4,19 @@ appId: com.myankafe.finance
     file: helpers/open_transactions.yaml
 - tapOn:
     id: "^Search$"
+- eraseText
 - inputText: "November rent posted"
-- extendedWaitUntil:
-    visible: "November rent posted"
-    timeout: 30000
-- tapOn: "Status POSTED"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "November rent posted"
+    direction: DOWN
+    timeout: 60000
 - assertVisible: "November rent posted"
-- tapOn: "Filter EXPENSE"
+- tapOn:
+    id: "Status POSTED"
+- assertVisible: "November rent posted"
+- tapOn:
+    id: "Filter EXPENSE"
 - assertVisible: "November rent posted"
 - tapOn: "November rent posted"
 - extendedWaitUntil:
