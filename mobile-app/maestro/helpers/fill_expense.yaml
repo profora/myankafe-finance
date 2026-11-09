@@ -6,7 +6,9 @@ appId: com.myankafe.finance
     timeout: 60000
 - tapOn:
     id: "^Type$"
-- tapOn: "Expense"
+- tapOn:
+    id: "Type option Expense"
+- assertVisible: "New Entry"
 - tapOn:
     id: "^Description$"
 - eraseText
@@ -16,9 +18,11 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Paid from"
 - extendedWaitUntil:
-    visible: "Cash Drawer (MMK)"
+    visible:
+      id: "Paid from option Cash Drawer (MMK)"
     timeout: 30000
-- tapOn: "Cash Drawer (MMK)"
+- tapOn:
+    id: "Paid from option Cash Drawer (MMK)"
 - extendedWaitUntil:
     visible:
       id: "Split 1 account"
@@ -26,9 +30,11 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Split 1 account"
 - extendedWaitUntil:
-    visible: ${SPLIT_ACCOUNT}
+    visible:
+      id: "Split 1 account option ${SPLIT_ACCOUNT}"
     timeout: 30000
-- tapOn: ${SPLIT_ACCOUNT}
+- tapOn:
+    id: "Split 1 account option ${SPLIT_ACCOUNT}"
 - extendedWaitUntil:
     visible:
       id: "Amount"

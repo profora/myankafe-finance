@@ -15,32 +15,44 @@ appId: com.myankafe.finance
     timeout: 60000
 - tapOn:
     id: "^Type$"
-- tapOn: "Expense"
+- tapOn:
+    id: "Type option Expense"
 - tapOn:
     id: "^Description$"
 - eraseText
 - inputText: "Office and utilities"
+- hideKeyboard
+- assertVisible: "New Entry"
 - tapOn:
     id: "Paid from"
 - extendedWaitUntil:
-    visible: "Cash Drawer (MMK)"
+    visible:
+      id: "Paid from option Cash Drawer (MMK)"
     timeout: 30000
-- tapOn: "Cash Drawer (MMK)"
-- scrollUntilVisible:
-    element:
+- tapOn:
+    id: "Paid from option Cash Drawer (MMK)"
+- assertVisible: "New Entry"
+- extendedWaitUntil:
+    visible:
       id: "Split 1 account"
-    direction: DOWN
     timeout: 30000
 - tapOn:
     id: "Split 1 account"
 - extendedWaitUntil:
-    visible: "6520 Office Supplies"
+    visible:
+      id: "Split 1 account option 6520 Office Supplies"
     timeout: 30000
-- tapOn: "6520 Office Supplies"
+- tapOn:
+    id: "Split 1 account option 6520 Office Supplies"
+- extendedWaitUntil:
+    visible:
+      id: "Amount"
+    timeout: 30000
 - tapOn:
     id: "Amount"
 - eraseText
 - inputText: "10000"
+- hideKeyboard
 - tapOn:
     id: "Add split"
 - scrollUntilVisible:
@@ -51,9 +63,11 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Split 2 account"
 - extendedWaitUntil:
-    visible: "6220 Utilities"
+    visible:
+      id: "Split 2 account option 6220 Utilities"
     timeout: 30000
-- tapOn: "6220 Utilities"
+- tapOn:
+    id: "Split 2 account option 6220 Utilities"
 - tapOn:
     id: "Amount"
     index: 1

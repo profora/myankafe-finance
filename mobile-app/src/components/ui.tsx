@@ -95,7 +95,14 @@ export function SelectField({
         <Text style={selected ? styles.optionText : styles.muted}>{selected?.label || "Choose"}</Text>
       </Pressable>
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
+        <View style={styles.backdrop}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Dismiss ${label}`}
+            testID={`Dismiss ${label}`}
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setOpen(false)}
+          />
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>{label}</Text>
             <ScrollView keyboardShouldPersistTaps="handled">
@@ -104,6 +111,7 @@ export function SelectField({
                   key={`${option.id}:${option.label}`}
                   accessibilityRole="button"
                   accessibilityLabel={option.label}
+                  testID={`${label} option ${option.label}`}
                   accessibilityState={{ selected: option.id === value }}
                   onPress={() => {
                     onChange(option.id);
@@ -115,11 +123,11 @@ export function SelectField({
                 </Pressable>
               ))}
             </ScrollView>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => setOpen(false)} style={styles.sheetRow}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close" testID={`Close ${label}`} onPress={() => setOpen(false)} style={styles.sheetRow}>
               <Text style={styles.closeText}>Close</Text>
             </Pressable>
           </View>
-        </Pressable>
+        </View>
       </Modal>
     </View>
   );

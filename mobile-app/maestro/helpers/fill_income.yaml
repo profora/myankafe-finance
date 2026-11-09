@@ -1,42 +1,35 @@
 appId: com.myankafe.finance
 ---
-- extendedWaitUntil:
-    visible:
-      id: "^Description$"
-    timeout: 60000
-- assertVisible:
-    id: "^Type$"
-- tapOn:
-    id: "^Type$"
-- tapOn: "Income"
-- runFlow:
-    when:
-      visible: "Close"
-    commands:
-      - tapOn: "Close"
+# Prefer opening via Home "New Income" so Type is already INCOME and Sales channel is on-screen.
 - extendedWaitUntil:
     visible:
       id: "^Sales channel$"
     timeout: 60000
+- assertVisible: "New Entry"
 - tapOn:
     id: "^Sales channel$"
 - extendedWaitUntil:
-    visible: "COUNTER"
+    visible:
+      id: "Sales channel option COUNTER"
     timeout: 30000
-- tapOn: "COUNTER"
+- tapOn:
+    id: "Sales channel option COUNTER"
 - tapOn:
     id: "^Description$"
 - eraseText
 - inputText: ${DESCRIPTION}
 - hideKeyboard
 - assertVisible: ${DESCRIPTION}
+- assertVisible: "New Entry"
 - tapOn:
     id: "Received into"
 - extendedWaitUntil:
-    visible: "Cash Drawer (MMK)"
+    visible:
+      id: "Received into option Cash Drawer (MMK)"
     timeout: 30000
-- tapOn: "Cash Drawer (MMK)"
-- hideKeyboard
+- tapOn:
+    id: "Received into option Cash Drawer (MMK)"
+- assertVisible: "New Entry"
 - extendedWaitUntil:
     visible:
       id: "Split 1 account"
@@ -44,9 +37,11 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Split 1 account"
 - extendedWaitUntil:
-    visible: ${SPLIT_ACCOUNT}
+    visible:
+      id: "Split 1 account option ${SPLIT_ACCOUNT}"
     timeout: 30000
-- tapOn: ${SPLIT_ACCOUNT}
+- tapOn:
+    id: "Split 1 account option ${SPLIT_ACCOUNT}"
 - extendedWaitUntil:
     visible:
       id: "Amount"
@@ -57,6 +52,7 @@ appId: com.myankafe.finance
 - inputText: ${AMOUNT}
 - hideKeyboard
 - assertVisible: ${DESCRIPTION}
+- assertVisible: "New Entry"
 - scrollUntilVisible:
     element: ${TOTAL_LABEL}
     direction: DOWN
