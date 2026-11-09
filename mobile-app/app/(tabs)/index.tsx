@@ -84,7 +84,13 @@ export default function HomeScreen() {
           <View key={group.kind} style={{ gap: 8 }}>
             <Text style={styles.kind}>{group.kind.replace(/_/g, " ")}</Text>
             {group.items.map((item) => (
-              <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.name} ${formatDisplay(item.balance, item.currency)}`} onPress={() => item.ledger_account_id && router.push({ pathname: "/account/[id]/ledger", params: { id: item.ledger_account_id } })}>
+              <Pressable
+                key={item.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.name} ${formatDisplay(item.balance, item.currency)}`}
+                testID={`${item.name} ${formatDisplay(item.balance, item.currency)}`}
+                onPress={() => item.ledger_account_id && router.push({ pathname: "/account/[id]/ledger", params: { id: item.ledger_account_id } })}
+              >
                 <Card>
                   <Text style={styles.account}>{item.name}</Text>
                   <Text style={styles.meta}>

@@ -3,24 +3,28 @@ appId: com.myankafe.finance
 - runFlow:
     file: helpers/open_reports.yaml
 - tapOn: "Profit & Loss"
-- extendedWaitUntil:
-    visible: "6210 Rent"
+- scrollUntilVisible:
+    element: "6210 Rent"
+    direction: DOWN
     timeout: 60000
 - tapOn: "6210 Rent"
 - extendedWaitUntil:
     visible: "Account ledger"
     timeout: 60000
 - assertVisible: "Debit 25000.000000"
-- pressKey: back
 - runFlow:
     file: helpers/open_home.yaml
+- scrollUntilVisible:
+    element:
+      id: "Cash Drawer 32,000 MMK"
+    direction: DOWN
+    timeout: 60000
 - tapOn:
     id: "Cash Drawer 32,000 MMK"
 - extendedWaitUntil:
     visible: "Account ledger"
     timeout: 60000
 - assertVisible: "Debit"
-- pressKey: back
-- extendedWaitUntil:
-    visible: "MyanKafe Finance"
-    timeout: 30000
+- runFlow:
+    file: helpers/open_home.yaml
+- assertVisible: "MyanKafe Finance"
