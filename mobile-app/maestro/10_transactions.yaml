@@ -8,6 +8,8 @@ appId: com.myankafe.finance
     id: "Status POSTED"
 - tapOn:
     id: "Filter EXPENSE"
+- assertVisible:
+    id: "^Search$"
 - tapOn:
     id: "^Search$"
 - eraseText

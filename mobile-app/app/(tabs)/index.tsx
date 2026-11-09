@@ -136,10 +136,22 @@ export default function HomeScreen() {
         ) : (
           <Text style={styles.meta}>{offline ? "Reconnect to record entries." : "This role can review but not post entries."}</Text>
         )}
-        <Pressable style={styles.secondary} onPress={() => router.push("/transactions")}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open transactions"
+          testID="Open transactions"
+          style={styles.secondary}
+          onPress={() => router.push("/transactions")}
+        >
           <Text style={styles.secondaryText}>Transactions</Text>
         </Pressable>
-        <Pressable style={styles.secondary} onPress={() => router.push("/reports")}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open reports"
+          testID="Open reports"
+          style={styles.secondary}
+          onPress={() => router.push("/reports")}
+        >
           <Text style={styles.secondaryText}>Reports</Text>
         </Pressable>
       </ScrollView>
