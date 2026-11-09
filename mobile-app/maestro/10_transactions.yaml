@@ -8,9 +8,8 @@ appId: com.myankafe.finance
     id: "^Search$"
 - eraseText
 - inputText: "November rent posted"
-# Blur Search without Maestro hideKeyboard (that was exiting to launcher).
-- tapOn:
-    id: "Any status"
+# Android Back dismisses the IME when open; it does not leave New Entry here.
+- pressKey: Back
 - extendedWaitUntil:
     visible: "November rent posted"
     timeout: 60000
