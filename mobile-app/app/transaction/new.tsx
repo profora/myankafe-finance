@@ -197,14 +197,6 @@ export default function NewEntryScreen() {
           onChange={setFinancialAccountId}
           options={(fins.data?.items ?? []).filter((item) => item.Active).map((item) => ({ id: item.PublicID, label: `${item.Name} (${item.Currency})` }))}
         />
-        <TextField label={type === "INCOME" ? "Payer" : "Payee"} value={contactQuery} onChangeText={setContactQuery} placeholder="Search contacts" />
-        <SelectField
-          label="Contact"
-          value={contactId}
-          onChange={setContactId}
-          options={[{ id: "", label: "None" }, ...visibleContacts.map((item) => ({ id: item.id, label: item.display_name }))]}
-        />
-        {contactQuery && visibleContacts.length === 0 ? <Text style={styles.note}>No matching contact. Create it in Finance web, then search again.</Text> : null}
         {splits.map((split, index) => (
           <ViewBlock key={index}>
             <SelectField label={`Split ${index + 1} account`} value={split.accountId} onChange={(id) => setSplits((rows) => rows.map((row, i) => i === index ? { ...row, accountId: id } : row))} options={ledger.map((item) => ({ id: item.PublicID, label: `${item.Code} ${item.Name}` }))} />
@@ -215,6 +207,14 @@ export default function NewEntryScreen() {
         ))}
         <Button label="Add split" tone="secondary" onPress={() => setSplits((rows) => [...rows, { accountId: "", amount: "", description: "" }])} />
         <Text style={styles.total}>Total {total ?? "—"} {draft.currency}</Text>
+        <TextField label={type === "INCOME" ? "Payer" : "Payee"} value={contactQuery} onChangeText={setContactQuery} placeholder="Search contacts" />
+        <SelectField
+          label="Contact"
+          value={contactId}
+          onChange={setContactId}
+          options={[{ id: "", label: "None" }, ...visibleContacts.map((item) => ({ id: item.id, label: item.display_name }))]}
+        />
+        {contactQuery && visibleContacts.length === 0 ? <Text style={styles.note}>No matching contact. Create it in Finance web, then search again.</Text> : null}
         {files.map((file) => <Text key={file.uri}>{file.name}</Text>)}
         <Button label="Camera" tone="secondary" onPress={async () => {
           try {
