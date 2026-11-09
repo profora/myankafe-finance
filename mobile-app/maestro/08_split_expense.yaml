@@ -68,15 +68,18 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn:
     id: "Split 2 account option 6220 Utilities"
-- extendedWaitUntil:
-    visible:
+- assertVisible: "New Entry"
+- scrollUntilVisible:
+    element:
       id: "Split 2 amount"
-    timeout: 30000
+    direction: DOWN
+    timeout: 60000
 - tapOn:
     id: "Split 2 amount"
 - eraseText
 - inputText: "5000"
 - hideKeyboard
+- assertVisible: "New Entry"
 - extendedWaitUntil:
     visible: "Total 15000 MMK"
     timeout: 30000
