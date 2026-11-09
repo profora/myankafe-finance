@@ -100,7 +100,7 @@ export function SelectField({
             accessibilityRole="button"
             accessibilityLabel={`Dismiss ${label}`}
             testID={`Dismiss ${label}`}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             onPress={() => setOpen(false)}
           />
           <View style={styles.sheet}>
