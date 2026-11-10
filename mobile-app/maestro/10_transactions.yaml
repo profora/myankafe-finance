@@ -29,13 +29,8 @@ appId: com.myankafe.finance
     id: "^Search$"
 - eraseText
 - inputText: "November rent posted"
-- hideKeyboard
-# After typing, dismiss the IME without Android Back (Back can leave the tab).
-- scrollUntilVisible:
-    element:
-      id: "Status POSTED"
-    direction: UP
-    timeout: 30000
+# Do not hideKeyboard/Back on tab screens — Android Back leaves Transactions for Home.
+- tapOn: "Entry type"
 - extendedWaitUntil:
     visible: "November rent posted"
     timeout: 60000

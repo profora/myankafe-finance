@@ -10,7 +10,7 @@ appId: com.myankafe.finance
     id: "To / Through"
 - eraseText
 - inputText: "2026-11-30"
-- hideKeyboard
+# Avoid hideKeyboard/Back on tab roots — it can leave Reports for Home.
 - tapOn: "Profit & Loss"
 - scrollUntilVisible:
     element: "Net Profit"
