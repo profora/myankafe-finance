@@ -1,0 +1,22 @@
+appId: com.myankafe.finance
+---
+# Relaunch keeps SecureStore. If the session was dropped, sign in again.
+- launchApp:
+    clearState: false
+    stopApp: true
+- extendedWaitUntil:
+    visible: "MyanKafe"
+    timeout: 120000
+- runFlow:
+    when:
+      visible: "Sign in"
+    commands:
+      - runFlow:
+          file: login.yaml
+          env:
+            USERNAME: "ci-bookkeeper"
+            PASSWORD: ${BOOKKEEPER_PASSWORD}
+- extendedWaitUntil:
+    visible:
+      id: "Current entity MyanKafe"
+    timeout: 120000

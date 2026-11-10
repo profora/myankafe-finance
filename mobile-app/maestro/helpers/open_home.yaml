@@ -1,13 +1,7 @@
 appId: com.myankafe.finance
 ---
-# Relaunch restores session. Prefer Tab Home over tapOn "Home" (launcher conflict).
-- launchApp:
-    clearState: false
-    stopApp: true
-- extendedWaitUntil:
-    visible:
-      id: "Current entity MyanKafe"
-    timeout: 120000
+- runFlow:
+    file: ensure_session.yaml
 - tapOn:
     id: "Tab Home"
 - scrollUntilVisible:
