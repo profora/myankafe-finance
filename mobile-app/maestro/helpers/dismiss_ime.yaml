@@ -1,5 +1,6 @@
 appId: com.myankafe.finance
 ---
-# Tap top chrome to blur. Do not use hideKeyboard — Android Back pops routes / leaves tabs.
-- tapOn:
-    point: "50%,10%"
+# Blur the focused field without Android Back (Back pops routes / leaves tabs).
+- pressKey: Enter
+- waitForAnimationToEnd:
+    timeout: 5000

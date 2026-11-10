@@ -16,6 +16,8 @@ appId: com.myankafe.finance
 - tapOn:
     id: "^Description$"
 - inputText: "Cash to bank"
+- runFlow:
+    file: helpers/dismiss_ime.yaml
 - tapOn:
     id: "From account"
 - extendedWaitUntil:
@@ -44,6 +46,8 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Amount out MMK"
 - inputText: "8000"
+- runFlow:
+    file: helpers/dismiss_ime.yaml
 - tapOn:
     id: "Transfer"
 - extendedWaitUntil:

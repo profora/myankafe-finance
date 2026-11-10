@@ -48,6 +48,8 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Cancellation reason"
 - inputText: "e2e cleanup"
+- runFlow:
+    file: helpers/dismiss_ime.yaml
 - tapOn:
     id: "Cancel draft"
 - tapOn: "Cancel draft"

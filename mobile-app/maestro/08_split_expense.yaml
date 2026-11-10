@@ -53,6 +53,8 @@ appId: com.myankafe.finance
     id: "Split 1 amount"
 - eraseText
 - inputText: "10000"
+- runFlow:
+    file: helpers/dismiss_ime.yaml
 - tapOn:
     id: "Add split"
 - scrollUntilVisible:

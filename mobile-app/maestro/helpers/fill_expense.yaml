@@ -13,6 +13,9 @@ appId: com.myankafe.finance
     id: "^Description$"
 - eraseText
 - inputText: ${DESCRIPTION}
+- runFlow:
+    file: dismiss_ime.yaml
+- assertVisible: ${DESCRIPTION}
 - tapOn:
     id: "Paid from"
 - extendedWaitUntil:
