@@ -5,6 +5,7 @@ import { colors } from "../../src/theme";
 export default function TabsLayout() {
   return (
     <Tabs
+      backBehavior="none"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
