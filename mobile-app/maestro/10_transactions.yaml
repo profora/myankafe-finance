@@ -3,24 +3,45 @@ appId: com.myankafe.finance
 - runFlow:
     file: helpers/open_transactions.yaml
 - assertVisible:
+    id: "New entry"
+- assertVisible:
     id: "Any status"
+- scrollUntilVisible:
+    element:
+      id: "Status POSTED"
+    direction: DOWN
+    timeout: 30000
 - tapOn:
     id: "Status POSTED"
+- scrollUntilVisible:
+    element:
+      id: "Filter EXPENSE"
+    direction: DOWN
+    timeout: 30000
 - tapOn:
     id: "Filter EXPENSE"
-- assertVisible:
-    id: "^Search$"
+- scrollUntilVisible:
+    element:
+      id: "^Search$"
+    direction: DOWN
+    timeout: 30000
 - tapOn:
     id: "^Search$"
 - eraseText
 - inputText: "November rent posted"
-- tapOn:
-    id: "Status POSTED"
+- hideKeyboard
+- # Keep filters visible after the keyboard closes; do not press Android Back.
+- scrollUntilVisible:
+    element:
+      id: "Status POSTED"
+    direction: UP
+    timeout: 30000
 - extendedWaitUntil:
     visible: "November rent posted"
     timeout: 60000
 - assertVisible: "November rent posted"
 - tapOn: "November rent posted"
 - extendedWaitUntil:
-    visible: "Status Posted"
+    visible:
+      id: "Status Posted"
     timeout: 30000
