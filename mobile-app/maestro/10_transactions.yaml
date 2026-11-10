@@ -29,14 +29,16 @@ appId: com.myankafe.finance
     id: "^Search$"
 - eraseText
 - inputText: "November rent posted"
-# Do not scroll after focusing Search — Maestro swipes can act as Back and leave the tab.
-# Entry type sits above Search, so a direct tap blurs without navigation.
-- tapOn: "Entry type"
-- assertVisible:
+# Blur via an already-selected chip (Pressable), not scroll/Back/hideKeyboard.
+- tapOn:
     id: "Status POSTED"
 - extendedWaitUntil:
     visible: "November rent posted"
     timeout: 60000
+- scrollUntilVisible:
+    element: "November rent posted"
+    direction: DOWN
+    timeout: 30000
 - assertVisible: "November rent posted"
 - tapOn: "November rent posted"
 - extendedWaitUntil:

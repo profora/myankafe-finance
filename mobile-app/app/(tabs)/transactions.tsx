@@ -85,7 +85,9 @@ export default function TransactionsScreen() {
     (item) => item.row_id || `${item.id}:${item.financial_account_name || ""}:${item.signed_movement || ""}`,
   );
 
-  const header = (
+  // Keep filters/search outside FlashList so the Search TextInput is not remounted
+  // when query results change mid-keystroke (which truncates Maestro inputText).
+  const filters = (
     <Page>
       <EntitySwitcher />
       <Text style={styles.meta}>Status</Text>
@@ -142,37 +144,33 @@ export default function TransactionsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
       <NetworkBanner />
-      {query.isLoading ? (
-        <View style={{ flex: 1 }}>
-          {header}
+      <View style={{ flex: 1 }}>
+        {filters}
+        {query.isLoading ? (
           <LoadingState />
-        </View>
-      ) : query.isError ? (
-        <View style={{ flex: 1 }}>
-          {header}
+        ) : query.isError ? (
           <ErrorState message="Could not load transactions." onRetry={() => void query.refetch()} />
-        </View>
-      ) : (
-        <FlashList
-          data={items}
-          ListHeaderComponent={header}
-          ListEmptyComponent={<EmptyState message="No transactions match these filters." />}
-          onEndReached={() => {
-            if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
-          }}
-          renderItem={({ item }) => (
-            <Pressable accessibilityRole="button" accessibilityLabel={`${item.status} ${item.type} ${item.description}`} style={styles.card} onPress={() => router.push(`/transaction/${item.id}`)}>
-              <View style={styles.between}>
-                <Text style={styles.date}>{item.date}</Text>
-                <StatusBadge status={item.status} />
-              </View>
-              <Text style={styles.desc}>{item.description || item.type}</Text>
-              <Text style={styles.meta}>{item.type} · {item.financial_account_name || item.contact_name || "No counterparty"}</Text>
-              <Text style={styles.amount}>{formatDisplay(item.signed_movement || "0", item.account_currency || entity?.FunctionalCurrency || "")}</Text>
-            </Pressable>
-          )}
-        />
-      )}
+        ) : (
+          <FlashList
+            data={items}
+            ListEmptyComponent={<EmptyState message="No transactions match these filters." />}
+            onEndReached={() => {
+              if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+            }}
+            renderItem={({ item }) => (
+              <Pressable accessibilityRole="button" accessibilityLabel={`${item.status} ${item.type} ${item.description}`} style={styles.card} onPress={() => router.push(`/transaction/${item.id}`)}>
+                <View style={styles.between}>
+                  <Text style={styles.date}>{item.date}</Text>
+                  <StatusBadge status={item.status} />
+                </View>
+                <Text style={styles.desc}>{item.description || item.type}</Text>
+                <Text style={styles.meta}>{item.type} · {item.financial_account_name || item.contact_name || "No counterparty"}</Text>
+                <Text style={styles.amount}>{formatDisplay(item.signed_movement || "0", item.account_currency || entity?.FunctionalCurrency || "")}</Text>
+              </Pressable>
+            )}
+          />
+        )}
+      </View>
     </SafeAreaView>
   );
 }
