@@ -18,9 +18,6 @@ appId: com.myankafe.finance
     id: "^Description$"
 - eraseText
 - inputText: ${DESCRIPTION}
-- hideKeyboard
-- assertVisible: ${DESCRIPTION}
-- assertVisible: "New Entry"
 - tapOn:
     id: "Received into"
 - extendedWaitUntil:
@@ -50,7 +47,8 @@ appId: com.myankafe.finance
     id: "Split 1 amount"
 - eraseText
 - inputText: ${AMOUNT}
-- hideKeyboard
+- runFlow:
+    file: dismiss_ime.yaml
 - assertVisible: ${DESCRIPTION}
 - assertVisible: "New Entry"
 - scrollUntilVisible:

@@ -21,7 +21,8 @@ appId: com.myankafe.finance
     id: "^Description$"
 - eraseText
 - inputText: "Office and utilities"
-- hideKeyboard
+- runFlow:
+    file: helpers/dismiss_ime.yaml
 - assertVisible: "New Entry"
 - tapOn:
     id: "Paid from"
@@ -52,7 +53,6 @@ appId: com.myankafe.finance
     id: "Split 1 amount"
 - eraseText
 - inputText: "10000"
-- hideKeyboard
 - tapOn:
     id: "Add split"
 - scrollUntilVisible:
@@ -78,7 +78,8 @@ appId: com.myankafe.finance
     id: "Split 2 amount"
 - eraseText
 - inputText: "5000"
-- hideKeyboard
+- runFlow:
+    file: helpers/dismiss_ime.yaml
 - assertVisible: "New Entry"
 - extendedWaitUntil:
     visible: "Total 15000 MMK"

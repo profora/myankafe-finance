@@ -1,0 +1,5 @@
+appId: com.myankafe.finance
+---
+# Tap top chrome to blur. Do not use hideKeyboard — Android Back pops routes / leaves tabs.
+- tapOn:
+    point: "50%,10%"

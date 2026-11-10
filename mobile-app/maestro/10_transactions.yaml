@@ -29,7 +29,8 @@ appId: com.myankafe.finance
     id: "^Search$"
 - eraseText
 - inputText: "November rent posted"
-# Do not hideKeyboard/Back on tab screens — Android Back leaves Transactions for Home.
+- runFlow:
+    file: helpers/dismiss_ime.yaml
 - tapOn: "Entry type"
 - extendedWaitUntil:
     visible: "November rent posted"

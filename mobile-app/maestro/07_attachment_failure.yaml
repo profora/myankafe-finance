@@ -48,7 +48,6 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Cancellation reason"
 - inputText: "e2e cleanup"
-- hideKeyboard
 - tapOn:
     id: "Cancel draft"
 - tapOn: "Cancel draft"

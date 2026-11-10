@@ -38,7 +38,8 @@ appId: com.myankafe.finance
     id: "^Description$"
 - eraseText
 - inputText: "November rent posted"
-- hideKeyboard
+- runFlow:
+    file: helpers/dismiss_ime.yaml
 - scrollUntilVisible:
     element:
       id: "Save Draft"

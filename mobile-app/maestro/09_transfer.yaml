@@ -16,7 +16,6 @@ appId: com.myankafe.finance
 - tapOn:
     id: "^Description$"
 - inputText: "Cash to bank"
-- hideKeyboard
 - tapOn:
     id: "From account"
 - extendedWaitUntil:
@@ -45,7 +44,6 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Amount out MMK"
 - inputText: "8000"
-- hideKeyboard
 - tapOn:
     id: "Transfer"
 - extendedWaitUntil:
