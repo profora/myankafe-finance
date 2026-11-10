@@ -1,0 +1,14 @@
+appId: com.myankafe.finance
+---
+- tapOn:
+    id: "Username"
+- eraseText
+- inputText: ${USERNAME}
+- tapOn:
+    id: "Password"
+- eraseText
+- inputText: ${PASSWORD}
+- tapOn: "Sign in"
+- extendedWaitUntil:
+    visible: "MyanKafe Finance"
+    timeout: 60000

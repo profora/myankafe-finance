@@ -1,0 +1,19 @@
+appId: com.myankafe.finance
+---
+- tapOn:
+    id: "Current entity MyanKafe"
+- tapOn:
+    id: "Switch to Personal"
+- extendedWaitUntil:
+    visible: "Current entity Personal"
+    timeout: 30000
+- assertVisible: "0 MMK"
+- assertVisible: "No financial accounts for this entity."
+- tapOn:
+    id: "Current entity Personal"
+- tapOn:
+    id: "Switch to MyanKafe"
+- extendedWaitUntil:
+    visible: "Current entity MyanKafe"
+    timeout: 30000
+- assertVisible: "Cash Drawer"

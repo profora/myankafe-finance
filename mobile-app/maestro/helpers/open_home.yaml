@@ -1,0 +1,11 @@
+appId: com.myankafe.finance
+---
+- runFlow:
+    file: ensure_session.yaml
+- tapOn:
+    id: "Tab Home"
+- scrollUntilVisible:
+    element:
+      id: "New Income"
+    direction: DOWN
+    timeout: 60000

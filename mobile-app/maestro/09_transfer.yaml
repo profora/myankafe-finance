@@ -1,0 +1,64 @@
+appId: com.myankafe.finance
+---
+- runFlow:
+    file: helpers/open_home.yaml
+- scrollUntilVisible:
+    element:
+      id: "Transfer"
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: "Transfer"
+- extendedWaitUntil:
+    visible:
+      id: "From account"
+    timeout: 30000
+- tapOn:
+    id: "^Description$"
+- inputText: "Cash to bank"
+- runFlow:
+    file: helpers/dismiss_ime.yaml
+- tapOn:
+    id: "From account"
+- extendedWaitUntil:
+    visible:
+      id: "From account option Cash Drawer MMK"
+    timeout: 30000
+- tapOn:
+    id: "From account option Cash Drawer MMK"
+- tapOn:
+    id: "To account"
+- extendedWaitUntil:
+    visible:
+      id: "To account option Cash Drawer MMK"
+    timeout: 30000
+- tapOn:
+    id: "To account option Cash Drawer MMK"
+- assertVisible: "Source and destination must be different accounts."
+- tapOn:
+    id: "To account"
+- extendedWaitUntil:
+    visible:
+      id: "To account option Bank Account MMK"
+    timeout: 30000
+- tapOn:
+    id: "To account option Bank Account MMK"
+- tapOn:
+    id: "Amount out MMK"
+- inputText: "8000"
+- runFlow:
+    file: helpers/dismiss_ime.yaml
+- tapOn:
+    id: "Transfer"
+- extendedWaitUntil:
+    visible:
+      id: "Status Posted"
+    timeout: 90000
+- runFlow:
+    file: helpers/open_home.yaml
+- scrollUntilVisible:
+    element: "32,000 MMK"
+    direction: DOWN
+    timeout: 60000
+- assertVisible: "32,000 MMK"
+- assertVisible: "8,000 MMK"

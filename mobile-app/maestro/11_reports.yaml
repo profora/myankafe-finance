@@ -1,0 +1,54 @@
+appId: com.myankafe.finance
+---
+- runFlow:
+    file: helpers/open_reports.yaml
+- tapOn:
+    id: "From"
+- eraseText
+- inputText: "2026-11-01"
+- tapOn:
+    id: "To / Through"
+- eraseText
+- inputText: "2026-11-30"
+- runFlow:
+    file: helpers/dismiss_ime.yaml
+- tapOn: "Profit & Loss"
+- scrollUntilVisible:
+    element: "Net Profit"
+    direction: DOWN
+    timeout: 60000
+- assertVisible: "Net Profit"
+- assertVisible: "80,000 MMK"
+- assertVisible: "40,000 MMK"
+- scrollUntilVisible:
+    element: "Balance Sheet"
+    direction: UP
+    timeout: 30000
+- tapOn: "Balance Sheet"
+- scrollUntilVisible:
+    element: "Assets"
+    direction: DOWN
+    timeout: 60000
+- assertVisible: "32,000 MMK"
+- assertVisible: "8,000 MMK"
+- scrollUntilVisible:
+    element: "Trial Balance"
+    direction: UP
+    timeout: 30000
+- tapOn: "Trial Balance"
+- extendedWaitUntil:
+    visible: "Trial Balance"
+    timeout: 60000
+- tapOn: "Cash Movement"
+- extendedWaitUntil:
+    visible: "Cash Movement"
+    timeout: 30000
+- tapOn: "Sales Analysis"
+- scrollUntilVisible:
+    element: "80,000 MMK"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "General Ledger"
+- extendedWaitUntil:
+    visible: "General Ledger"
+    timeout: 30000

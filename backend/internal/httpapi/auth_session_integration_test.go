@@ -164,6 +164,9 @@ func TestPasswordChangeRotatesSessionsAndCredential(t *testing.T) {
 	if change.Code != http.StatusOK {
 		t.Fatalf("change-password status=%d body=%s", change.Code, change.Body.String())
 	}
+	if strings.Contains(change.Body.String(), "session_token") {
+		t.Fatalf("cookie clients must not receive a bearer token: %s", change.Body.String())
+	}
 	replacementCookies := change.Result().Cookies()
 	if len(replacementCookies) != 1 || replacementCookies[0].Value == "" {
 		t.Fatalf("missing replacement cookie: %+v", replacementCookies)
@@ -193,5 +196,82 @@ func TestPasswordChangeRotatesSessionsAndCredential(t *testing.T) {
 	})
 	if newPasswordLogin.Code != http.StatusOK {
 		t.Fatalf("new password login status=%d body=%s", newPasswordLogin.Code, newPasswordLogin.Body.String())
+	}
+}
+
+func TestBearerPasswordChangeReturnsReplacementToken(t *testing.T) {
+	store := testHTTPStore(t)
+	username, password, _ := seedPasswordUser(t, store)
+	router := passwordRouter(store)
+
+	loginReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{"username":"`+username+`","password":"`+password+`"}`))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginReq.Header.Set("X-Session-Transport", "bearer")
+	loginRec := httptest.NewRecorder()
+	router.ServeHTTP(loginRec, loginReq)
+	if loginRec.Code != http.StatusOK {
+		t.Fatalf("bearer login status=%d body=%s", loginRec.Code, loginRec.Body.String())
+	}
+	var loginBody map[string]any
+	if err := json.Unmarshal(loginRec.Body.Bytes(), &loginBody); err != nil {
+		t.Fatal(err)
+	}
+	token, _ := loginBody["session_token"].(string)
+	if token == "" {
+		t.Fatalf("bearer login missing session_token: %s", loginRec.Body.String())
+	}
+	if len(loginRec.Result().Cookies()) == 0 {
+		t.Fatal("bearer login should still set the web session cookie")
+	}
+
+	newPassword := "replacement horse battery staple"
+	body := `{"current_password":"` + password + `","new_password":"` + newPassword + `"}`
+	changeReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/change-password", strings.NewReader(body))
+	changeReq.Header.Set("Content-Type", "application/json")
+	changeReq.Header.Set("X-Session-Transport", "bearer")
+	changeReq.Header.Set("Authorization", "Bearer "+token)
+	changeRec := httptest.NewRecorder()
+	router.ServeHTTP(changeRec, changeReq)
+	if changeRec.Code != http.StatusOK {
+		t.Fatalf("bearer change status=%d body=%s", changeRec.Code, changeRec.Body.String())
+	}
+	var changed map[string]any
+	if err := json.Unmarshal(changeRec.Body.Bytes(), &changed); err != nil {
+		t.Fatal(err)
+	}
+	next, _ := changed["session_token"].(string)
+	if next == "" || next == token {
+		t.Fatalf("expected a new bearer token, got %q", next)
+	}
+
+	oldMe := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	oldMe.Header.Set("Authorization", "Bearer "+token)
+	oldRec := httptest.NewRecorder()
+	router.ServeHTTP(oldRec, oldMe)
+	if oldRec.Code != http.StatusUnauthorized {
+		t.Fatalf("old bearer should be revoked, status=%d", oldRec.Code)
+	}
+	newMe := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	newMe.Header.Set("Authorization", "Bearer "+next)
+	newRec := httptest.NewRecorder()
+	router.ServeHTTP(newRec, newMe)
+	if newRec.Code != http.StatusOK {
+		t.Fatalf("replacement bearer status=%d body=%s", newRec.Code, newRec.Body.String())
+	}
+
+	logoutReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", strings.NewReader(`{}`))
+	logoutReq.Header.Set("Content-Type", "application/json")
+	logoutReq.Header.Set("Authorization", "Bearer "+next)
+	logoutRec := httptest.NewRecorder()
+	router.ServeHTTP(logoutRec, logoutReq)
+	if logoutRec.Code != http.StatusNoContent {
+		t.Fatalf("bearer logout status=%d body=%s", logoutRec.Code, logoutRec.Body.String())
+	}
+	afterLogout := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	afterLogout.Header.Set("Authorization", "Bearer "+next)
+	afterRec := httptest.NewRecorder()
+	router.ServeHTTP(afterRec, afterLogout)
+	if afterRec.Code != http.StatusUnauthorized {
+		t.Fatalf("logged-out bearer status=%d body=%s", afterRec.Code, afterRec.Body.String())
 	}
 }

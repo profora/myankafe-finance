@@ -1,0 +1,9 @@
+appId: com.myankafe.finance
+---
+- runFlow:
+    file: ensure_session.yaml
+- tapOn:
+    id: "Tab Profile"
+- extendedWaitUntil:
+    visible: "Sign out"
+    timeout: 60000

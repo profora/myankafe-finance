@@ -1,0 +1,54 @@
+appId: com.myankafe.finance
+---
+- extendedWaitUntil:
+    visible:
+      id: "^Description$"
+    timeout: 60000
+- tapOn:
+    id: "^Type$"
+- tapOn:
+    id: "Type option Expense"
+- assertVisible: "New Entry"
+- tapOn:
+    id: "^Description$"
+- eraseText
+- inputText: ${DESCRIPTION}
+- runFlow:
+    file: dismiss_ime.yaml
+- assertVisible: ${DESCRIPTION}
+- tapOn:
+    id: "Paid from"
+- extendedWaitUntil:
+    visible:
+      id: "Paid from option Cash Drawer MMK"
+    timeout: 30000
+- tapOn:
+    id: "Paid from option Cash Drawer MMK"
+- extendedWaitUntil:
+    visible:
+      id: "Split 1 account"
+    timeout: 30000
+- tapOn:
+    id: "Split 1 account"
+- extendedWaitUntil:
+    visible:
+      id: "Split 1 account option ${SPLIT_ACCOUNT}"
+    timeout: 30000
+- tapOn:
+    id: "Split 1 account option ${SPLIT_ACCOUNT}"
+- extendedWaitUntil:
+    visible:
+      id: "Split 1 amount"
+    timeout: 30000
+- tapOn:
+    id: "Split 1 amount"
+- eraseText
+- inputText: ${AMOUNT}
+- runFlow:
+    file: dismiss_ime.yaml
+- assertVisible: ${DESCRIPTION}
+- scrollUntilVisible:
+    element: ${TOTAL_LABEL}
+    direction: DOWN
+    timeout: 30000
+- assertVisible: ${TOTAL_LABEL}

@@ -1,0 +1,15 @@
+appId: com.myankafe.finance
+---
+- runFlow:
+    file: ensure_session.yaml
+- tapOn:
+    id: "Tab Transactions"
+- extendedWaitUntil:
+    visible:
+      id: "New entry"
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: "Any status"
+    direction: UP
+    timeout: 60000

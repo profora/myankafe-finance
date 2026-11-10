@@ -1,0 +1,62 @@
+appId: com.myankafe.finance
+---
+# Prefer opening via Home "New Income" so Type is already INCOME and Sales channel is on-screen.
+- extendedWaitUntil:
+    visible:
+      id: "^Sales channel$"
+    timeout: 60000
+- assertVisible: "New Entry"
+- tapOn:
+    id: "^Sales channel$"
+- extendedWaitUntil:
+    visible:
+      id: "Sales channel option COUNTER"
+    timeout: 30000
+- tapOn:
+    id: "Sales channel option COUNTER"
+- tapOn:
+    id: "^Description$"
+- eraseText
+- inputText: ${DESCRIPTION}
+- runFlow:
+    file: dismiss_ime.yaml
+- assertVisible: ${DESCRIPTION}
+- assertVisible: "New Entry"
+- tapOn:
+    id: "Received into"
+- extendedWaitUntil:
+    visible:
+      id: "Received into option Cash Drawer MMK"
+    timeout: 30000
+- tapOn:
+    id: "Received into option Cash Drawer MMK"
+- assertVisible: "New Entry"
+- extendedWaitUntil:
+    visible:
+      id: "Split 1 account"
+    timeout: 30000
+- tapOn:
+    id: "Split 1 account"
+- extendedWaitUntil:
+    visible:
+      id: "Split 1 account option ${SPLIT_ACCOUNT}"
+    timeout: 30000
+- tapOn:
+    id: "Split 1 account option ${SPLIT_ACCOUNT}"
+- extendedWaitUntil:
+    visible:
+      id: "Split 1 amount"
+    timeout: 30000
+- tapOn:
+    id: "Split 1 amount"
+- eraseText
+- inputText: ${AMOUNT}
+- runFlow:
+    file: dismiss_ime.yaml
+- assertVisible: ${DESCRIPTION}
+- assertVisible: "New Entry"
+- scrollUntilVisible:
+    element: ${TOTAL_LABEL}
+    direction: DOWN
+    timeout: 30000
+- assertVisible: ${TOTAL_LABEL}

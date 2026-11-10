@@ -1,0 +1,6 @@
+appId: com.myankafe.finance
+---
+# Prefer Enter/done over hideKeyboard/Back (Back pops routes and leaves tabs).
+- pressKey: enter
+- waitForAnimationToEnd:
+    timeout: 5000

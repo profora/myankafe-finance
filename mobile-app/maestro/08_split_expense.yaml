@@ -1,0 +1,108 @@
+appId: com.myankafe.finance
+---
+- runFlow:
+    file: helpers/open_transactions.yaml
+- scrollUntilVisible:
+    element:
+      id: "New entry"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "New entry"
+- extendedWaitUntil:
+    visible:
+      id: "^Description$"
+    timeout: 60000
+- tapOn:
+    id: "^Type$"
+- tapOn:
+    id: "Type option Expense"
+- tapOn:
+    id: "^Description$"
+- eraseText
+- inputText: "Office and utilities"
+- runFlow:
+    file: helpers/dismiss_ime.yaml
+- assertVisible: "New Entry"
+- tapOn:
+    id: "Paid from"
+- extendedWaitUntil:
+    visible:
+      id: "Paid from option Cash Drawer MMK"
+    timeout: 30000
+- tapOn:
+    id: "Paid from option Cash Drawer MMK"
+- assertVisible: "New Entry"
+- extendedWaitUntil:
+    visible:
+      id: "Split 1 account"
+    timeout: 30000
+- tapOn:
+    id: "Split 1 account"
+- extendedWaitUntil:
+    visible:
+      id: "Split 1 account option 6520 Office Supplies"
+    timeout: 30000
+- tapOn:
+    id: "Split 1 account option 6520 Office Supplies"
+- extendedWaitUntil:
+    visible:
+      id: "Split 1 amount"
+    timeout: 30000
+- tapOn:
+    id: "Split 1 amount"
+- eraseText
+- inputText: "10000"
+- runFlow:
+    file: helpers/dismiss_ime.yaml
+- tapOn:
+    id: "Add split"
+- scrollUntilVisible:
+    element:
+      id: "Split 2 account"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "Split 2 account"
+- extendedWaitUntil:
+    visible:
+      id: "Split 2 account option 6220 Utilities"
+    timeout: 30000
+- tapOn:
+    id: "Split 2 account option 6220 Utilities"
+- assertVisible: "New Entry"
+- scrollUntilVisible:
+    element:
+      id: "Split 2 amount"
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: "Split 2 amount"
+- eraseText
+- inputText: "5000"
+- runFlow:
+    file: helpers/dismiss_ime.yaml
+- assertVisible: "New Entry"
+- extendedWaitUntil:
+    visible: "Total 15000 MMK"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "Save & Post"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "Save & Post"
+- tapOn: "Post"
+- extendedWaitUntil:
+    visible:
+      id: "Status Posted"
+    timeout: 90000
+- assertVisible: "6520 Office Supplies"
+- assertVisible: "6220 Utilities"
+- scrollUntilVisible:
+    element: "Debit 10000.000000 · Credit 0.000000"
+    direction: DOWN
+    timeout: 30000
+- assertVisible: "Debit 5000.000000 · Credit 0.000000"
+- assertVisible: "Debit 0.000000 · Credit 15000.000000"

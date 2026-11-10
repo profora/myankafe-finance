@@ -1,0 +1,25 @@
+appId: com.myankafe.finance
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+- runFlow:
+    when:
+      visible: ".*While using the app.*"
+    commands:
+      - tapOn: "While using the app"
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- runFlow:
+    when:
+      visible: "ONLY THIS TIME"
+    commands:
+      - tapOn: "ONLY THIS TIME"
+- extendedWaitUntil:
+    visible:
+      text: "Finance"
+    timeout: 120000
+- assertVisible: "Sign in"

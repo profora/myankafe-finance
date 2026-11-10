@@ -1,0 +1,36 @@
+appId: com.myankafe.finance
+---
+- runFlow:
+    file: helpers/open_reports.yaml
+- tapOn: "Profit & Loss"
+- scrollUntilVisible:
+    element: "6210 Rent"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "6210 Rent"
+- extendedWaitUntil:
+    visible: "Account ledger"
+    timeout: 60000
+- assertVisible: "Debit 25000.000000"
+- runFlow:
+    file: helpers/open_home.yaml
+- scrollUntilVisible:
+    element:
+      id: "Cash Drawer 32,000 MMK"
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: "Cash Drawer 32,000 MMK"
+- extendedWaitUntil:
+    visible: "Account ledger"
+    timeout: 60000
+# Ledger rows expose combined labels like "Debit 80000.000000" (regex full match).
+- assertVisible: "Debit 80000.000000"
+- assertVisible: "Balance 32000.000000"
+- runFlow:
+    file: helpers/open_home.yaml
+# open_home scrolls to New Income; entity chrome may sit above the viewport.
+- assertVisible:
+    id: "New Income"
+- assertVisible:
+    id: "Tab Home"

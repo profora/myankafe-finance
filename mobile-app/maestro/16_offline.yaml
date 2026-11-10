@@ -1,0 +1,36 @@
+appId: com.myankafe.finance
+---
+- runFlow:
+    file: helpers/open_profile.yaml
+- tapOn:
+    id: "Sign out"
+- tapOn: "Sign out"
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 60000
+- runFlow:
+    file: helpers/login.yaml
+    env:
+      USERNAME: "ci-bookkeeper"
+      PASSWORD: ${BOOK_NEXT_PASSWORD}
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible: "Offline. Accounting changes stay disabled until you are online."
+    timeout: 60000
+# Banner is sticky at top; the Home copy sits under Accounts and needs a scroll.
+- scrollUntilVisible:
+    element: "Reconnect to record entries."
+    direction: DOWN
+    timeout: 60000
+- assertVisible: "Reconnect to record entries."
+- assertNotVisible:
+    id: "New Expense"
+- setAirplaneMode: disabled
+- scrollUntilVisible:
+    element:
+      id: "New Expense"
+    direction: DOWN
+    timeout: 90000
+- assertVisible:
+    id: "New Expense"
+- assertNotVisible: "Offline. Accounting changes stay disabled until you are online."

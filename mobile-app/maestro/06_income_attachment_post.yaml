@@ -1,0 +1,46 @@
+appId: com.myankafe.finance
+---
+- runFlow:
+    file: helpers/open_home.yaml
+- tapOn:
+    id: "New Income"
+- runFlow:
+    file: helpers/fill_income.yaml
+    env:
+      DESCRIPTION: "Coffee sales"
+      SPLIT_ACCOUNT: "4110 Coffee & Beverage Sales"
+      AMOUNT: "80000"
+      TOTAL_LABEL: "Total 80000 MMK"
+- assertVisible: "New Entry"
+- scrollUntilVisible:
+    element:
+      id: "Attach sample receipt"
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: "Attach sample receipt"
+- extendedWaitUntil:
+    visible: "e2e-receipt.png"
+    timeout: 60000
+- assertVisible: "e2e-receipt.png"
+- assertVisible: "New Entry"
+- scrollUntilVisible:
+    element:
+      id: "Save & Post"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "Save & Post"
+- tapOn: "Post"
+- extendedWaitUntil:
+    visible:
+      id: "Status Posted"
+    timeout: 90000
+- assertVisible: "Coffee sales"
+- assertVisible: "e2e-receipt.png"
+- scrollUntilVisible:
+    element: "Debit 80000.000000 · Credit 0.000000"
+    direction: DOWN
+    timeout: 30000
+- assertVisible: "1110 Cash on Hand"
+- assertVisible: "Debit 0.000000 · Credit 80000.000000"

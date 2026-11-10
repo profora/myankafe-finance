@@ -1,0 +1,14 @@
+appId: com.myankafe.finance
+---
+- runFlow: helpers/boot_login.yaml
+- tapOn:
+    id: "Username"
+- inputText: "ci-bookkeeper"
+- tapOn:
+    id: "Password"
+- inputText: "wrong-password-xx"
+- tapOn: "Sign in"
+- extendedWaitUntil:
+    visible: "Invalid username or password."
+    timeout: 30000
+- assertVisible: "Sign in"
