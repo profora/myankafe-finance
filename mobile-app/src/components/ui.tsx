@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { colors, space } from "../theme";
 
 export function Screen({ children }: { children: ReactNode }) {
@@ -63,6 +63,9 @@ export function TextField({
         testID={label}
         accessibilityLabel={label}
         autoCapitalize="none"
+        returnKeyType="done"
+        blurOnSubmit
+        onSubmitEditing={() => Keyboard.dismiss()}
         style={styles.input}
       />
     </View>

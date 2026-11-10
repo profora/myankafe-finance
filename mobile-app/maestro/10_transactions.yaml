@@ -29,12 +29,12 @@ appId: com.myankafe.finance
     id: "^Search$"
 - eraseText
 - inputText: "November rent posted"
-- runFlow:
-    file: helpers/dismiss_ime.yaml
-- tapOn: "Entry type"
+# Keep the Transactions tab focused; do not press keys that can leave the tab root.
 - extendedWaitUntil:
     visible: "November rent posted"
     timeout: 60000
+- assertVisible:
+    id: "Tab Transactions"
 - assertVisible: "November rent posted"
 - tapOn: "November rent posted"
 - extendedWaitUntil:

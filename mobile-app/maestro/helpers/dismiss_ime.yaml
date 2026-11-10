@@ -1,6 +1,6 @@
 appId: com.myankafe.finance
 ---
-# Blur the focused field without Android Back (Back pops routes / leaves tabs).
-- pressKey: Enter
+# Prefer Enter/done over hideKeyboard/Back (Back pops routes and leaves tabs).
+- pressKey: enter
 - waitForAnimationToEnd:
     timeout: 5000
