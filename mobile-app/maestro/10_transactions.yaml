@@ -29,12 +29,17 @@ appId: com.myankafe.finance
     id: "^Search$"
 - eraseText
 - inputText: "November rent posted"
-# Keep the Transactions tab focused; do not press keys that can leave the tab root.
+# Blur by tapping filter chrome (not hideKeyboard/enter/Back — those leave this tab).
+- scrollUntilVisible:
+    element: "Entry type"
+    direction: UP
+    timeout: 30000
+- tapOn: "Entry type"
+- assertVisible:
+    id: "Status POSTED"
 - extendedWaitUntil:
     visible: "November rent posted"
     timeout: 60000
-- assertVisible:
-    id: "Tab Transactions"
 - assertVisible: "November rent posted"
 - tapOn: "November rent posted"
 - extendedWaitUntil:
