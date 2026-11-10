@@ -95,9 +95,14 @@ def main() -> None:
 
     status, txs = call("GET", f"/entities/{cafe_id}/transactions?limit=50", token)
     txs = must(status, txs, 200, "transactions")
-    posted = [t for t in txs.get("items", []) if t.get("status") == "POSTED"]
+    posted_rows = [t for t in txs.get("items", []) if t.get("status") == "POSTED"]
     drafts = [t for t in txs.get("items", []) if t.get("status") == "DRAFT"]
-    print(f"POSTED_COUNT {len(posted)} DRAFT_COUNT {len(drafts)}", flush=True)
+    # List rows can repeat one transfer once per financial account movement.
+    posted_ids = list(dict.fromkeys(t["id"] for t in posted_rows if t.get("id")))
+    print(
+        f"POSTED_COUNT {len(posted_ids)} POSTED_ROWS {len(posted_rows)} DRAFT_COUNT {len(drafts)}",
+        flush=True,
+    )
 
     expected_lines = {
         ("6210", "25000.000000", "0.000000"),
@@ -113,9 +118,9 @@ def main() -> None:
     seen = set()
     total_debit = 0.0
     total_credit = 0.0
-    for tx in posted:
-        status, detail = call("GET", f"/entities/{cafe_id}/transactions/{tx['id']}", token)
-        detail = must(status, detail, 200, f"detail {tx['id']}")
+    for tx_id in posted_ids:
+        status, detail = call("GET", f"/entities/{cafe_id}/transactions/{tx_id}", token)
+        detail = must(status, detail, 200, f"detail {tx_id}")
         for journal in detail.get("journals") or []:
             for line in journal.get("lines") or []:
                 code = line["account"]["code"]
