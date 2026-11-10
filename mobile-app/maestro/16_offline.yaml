@@ -14,11 +14,14 @@ appId: com.myankafe.finance
       USERNAME: "ci-bookkeeper"
       PASSWORD: ${BOOK_NEXT_PASSWORD}
 - setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible: "Offline. Accounting changes stay disabled until you are online."
+    timeout: 60000
+# Banner is sticky at top; the Home copy sits under Accounts and needs a scroll.
 - scrollUntilVisible:
-    element: "Offline. Accounting changes stay disabled until you are online."
+    element: "Reconnect to record entries."
     direction: DOWN
     timeout: 60000
-- assertVisible: "Offline. Accounting changes stay disabled until you are online."
 - assertVisible: "Reconnect to record entries."
 - assertNotVisible:
     id: "New Expense"
