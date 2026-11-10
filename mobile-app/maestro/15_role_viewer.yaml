@@ -2,7 +2,8 @@ appId: com.myankafe.finance
 ---
 - runFlow:
     file: helpers/open_profile.yaml
-- tapOn: "Sign out"
+- tapOn:
+    id: "Sign out"
 - tapOn: "Sign out"
 - extendedWaitUntil:
     visible: "Sign in"
@@ -12,8 +13,14 @@ appId: com.myankafe.finance
     env:
       USERNAME: "ci-viewer"
       PASSWORD: ${VIEWER_PASSWORD}
+- scrollUntilVisible:
+    element: "This role can review but not post entries."
+    direction: DOWN
+    timeout: 60000
 - assertVisible: "This role can review but not post entries."
-- assertNotVisible: "New Expense"
+- assertNotVisible:
+    id: "New Expense"
 - assertNotVisible:
     id: "New Income"
-- assertNotVisible: "Transfer"
+- assertNotVisible:
+    id: "Transfer"
