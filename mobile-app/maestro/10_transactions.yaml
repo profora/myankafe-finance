@@ -30,7 +30,7 @@ appId: com.myankafe.finance
 - eraseText
 - inputText: "November rent posted"
 - hideKeyboard
-- # Keep filters visible after the keyboard closes; do not press Android Back.
+# After typing, dismiss the IME without Android Back (Back can leave the tab).
 - scrollUntilVisible:
     element:
       id: "Status POSTED"
