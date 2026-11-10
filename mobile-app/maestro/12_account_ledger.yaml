@@ -29,8 +29,8 @@ appId: com.myankafe.finance
 - assertVisible: "Balance 32000.000000"
 - runFlow:
     file: helpers/open_home.yaml
-# open_home scrolls to New Income, so the brand title may be off-screen.
+# open_home scrolls to New Income; entity chrome may sit above the viewport.
 - assertVisible:
     id: "New Income"
 - assertVisible:
-    id: "Current entity MyanKafe"
+    id: "Tab Home"
