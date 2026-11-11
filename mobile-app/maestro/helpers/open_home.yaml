@@ -4,6 +4,7 @@ appId: com.myankafe.finance
     file: ensure_session.yaml
 - tapOn:
     id: "Tab Home"
+    point: "50%,15%"
 - scrollUntilVisible:
     element:
       id: "New Income"

@@ -1,8 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../src/theme";
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  const tabPad = Math.max(insets.bottom, 8);
   return (
     <Tabs
       backBehavior="none"
@@ -10,7 +13,11 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { minHeight: 60 },
+        tabBarStyle: {
+          minHeight: 56 + tabPad,
+          paddingBottom: tabPad,
+          height: 56 + tabPad,
+        },
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Home", tabBarButtonTestID: "Tab Home", tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} /> }} />

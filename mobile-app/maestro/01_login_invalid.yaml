@@ -7,6 +7,7 @@ appId: com.myankafe.finance
 - tapOn:
     id: "Password"
 - inputText: "wrong-password-xx"
+- runFlow: helpers/dismiss_ime.yaml
 - tapOn: "Sign in"
 - extendedWaitUntil:
     visible: "Invalid username or password."

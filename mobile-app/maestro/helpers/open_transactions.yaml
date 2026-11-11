@@ -2,8 +2,10 @@ appId: com.myankafe.finance
 ---
 - runFlow:
     file: ensure_session.yaml
+# Infinix/3-button nav: tab a11y bounds extend under system nav; center taps miss. Aim at icon.
 - tapOn:
     id: "Tab Transactions"
+    point: "50%,15%"
 - extendedWaitUntil:
     visible:
       id: "New entry"
