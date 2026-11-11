@@ -1,0 +1,14 @@
+appId: com.myankafe.finance
+---
+# Android often places the caret mid-field on tap; eraseText only deletes left of caret.
+# Tap the right edge first so backspace clears the whole value.
+- tapOn:
+    id: ${FIELD_ID}
+- tapOn:
+    id: ${FIELD_ID}
+    point: "95%,50%"
+- eraseText: 48
+- inputText: ${VALUE}
+- assertVisible:
+    id: ${FIELD_ID}
+    text: ${VALUE}
