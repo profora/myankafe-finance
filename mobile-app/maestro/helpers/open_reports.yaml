@@ -4,6 +4,7 @@ appId: com.myankafe.finance
     file: ensure_session.yaml
 - tapOn:
     id: "Tab Reports"
+    point: "50%,15%"
 - extendedWaitUntil:
     visible: "Profit & Loss"
     timeout: 60000

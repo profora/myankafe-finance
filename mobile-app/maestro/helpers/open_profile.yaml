@@ -4,6 +4,7 @@ appId: com.myankafe.finance
     file: ensure_session.yaml
 - tapOn:
     id: "Tab Profile"
+    point: "50%,15%"
 - extendedWaitUntil:
     visible: "Sign out"
     timeout: 60000

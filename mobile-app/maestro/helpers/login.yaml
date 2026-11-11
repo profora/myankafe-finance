@@ -8,6 +8,9 @@ appId: com.myankafe.finance
     id: "Password"
 - eraseText
 - inputText: ${PASSWORD}
+# Physical devices (tall Gboard) cover Sign in; Enter dismisses via TextField onSubmitEditing.
+- runFlow:
+    file: dismiss_ime.yaml
 - tapOn: "Sign in"
 - extendedWaitUntil:
     visible: "MyanKafe Finance"

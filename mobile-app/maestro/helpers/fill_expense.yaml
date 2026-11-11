@@ -30,10 +30,11 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn:
     id: "Split 1 account"
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: "Split 1 account option ${SPLIT_ACCOUNT}"
-    timeout: 30000
+    direction: DOWN
+    timeout: 60000
 - tapOn:
     id: "Split 1 account option ${SPLIT_ACCOUNT}"
 - extendedWaitUntil:
