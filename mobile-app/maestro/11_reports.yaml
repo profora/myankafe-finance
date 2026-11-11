@@ -4,11 +4,12 @@ appId: com.myankafe.finance
     file: helpers/open_reports.yaml
 - tapOn:
     id: "From"
-- eraseText
+# Android IME often leaves trailing digits if eraseText is unbounded/short.
+- eraseText: 32
 - inputText: "2026-11-01"
 - tapOn:
     id: "To / Through"
-- eraseText
+- eraseText: 32
 - inputText: "2026-11-30"
 - runFlow:
     file: helpers/dismiss_ime.yaml
