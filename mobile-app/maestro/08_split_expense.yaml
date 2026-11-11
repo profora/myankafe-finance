@@ -39,10 +39,11 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn:
     id: "Split 1 account"
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: "Split 1 account option 6520 Office Supplies"
-    timeout: 30000
+    direction: DOWN
+    timeout: 60000
 - tapOn:
     id: "Split 1 account option 6520 Office Supplies"
 - extendedWaitUntil:
@@ -64,10 +65,11 @@ appId: com.myankafe.finance
     timeout: 30000
 - tapOn:
     id: "Split 2 account"
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: "Split 2 account option 6220 Utilities"
-    timeout: 30000
+    direction: DOWN
+    timeout: 60000
 - tapOn:
     id: "Split 2 account option 6220 Utilities"
 - assertVisible: "New Entry"
