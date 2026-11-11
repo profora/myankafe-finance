@@ -1,13 +1,27 @@
 appId: com.myankafe.finance
 ---
-# Android often places the caret mid-field on tap; eraseText only deletes left of caret.
-# Tap the right edge first so backspace clears the whole value.
+# Android often places the caret mid-field; eraseText only deletes left of caret.
+# Prefer Select All + single erase; fall back to right-edge caret + long erase.
 - tapOn:
     id: ${FIELD_ID}
-- tapOn:
+- longPressOn:
     id: ${FIELD_ID}
-    point: "95%,50%"
-- eraseText: 48
+- runFlow:
+    when:
+      visible: "Select All"
+    commands:
+      - tapOn: "Select All"
+- eraseText: 1
+- runFlow:
+    when:
+      notVisible:
+        id: ${FIELD_ID}
+        text: ${VALUE}
+    commands:
+      - tapOn:
+          id: ${FIELD_ID}
+          point: "95%,50%"
+      - eraseText: 48
 - inputText: ${VALUE}
 - assertVisible:
     id: ${FIELD_ID}
